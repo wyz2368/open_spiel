@@ -1,8 +1,9 @@
 #!/bin/bash
 
-##SBATCH --job-name=egta_kuhn_poker_dqn
-#SBATCH --job-name=egta_kuhn_poker_alpharank
-#SBATCH --mail-user=yongzhao_wang@outlook.com
+#SBATCH --job-name=egta_kuhn_poker_dqn
+##SBATCH --job-name=egta_kuhn_poker_pg
+##SBATCH --job-name=egta_kuhn_poker_ars
+#SBATCH --mail-user=qmaai@umich.edu
 #SBATCH --mail-type=BEGIN,END,FAIL
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
@@ -18,3 +19,4 @@ cd ${SLURM_SUBMIT_DIR}
 ##python psro_v2_example.py --oracle_type=BR --quiesce=False --gpsro_iterations=150 --number_training_episodes=100000 --sbatch_run=True
 ##python psro_v2_example.py --oracle_type=PG --quiesce=False --gpsro_iterations=150 --number_training_episodes=100000 --sbatch_run=True
 python psro_v2_example.py --oracle_type=ARS --quiesce=False --gpsro_iterations=150 --number_training_episodes=400000 --sbatch_run=True
+
