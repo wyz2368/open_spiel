@@ -15,7 +15,8 @@
 ## The output is merely a place for slurm to ventilate its output. I don't want my home folder to be populated
 
 module load python3.6-anaconda/5.2.0
-cd ${SLURM_SUBMIT_DIR}
+cd  $(dirname '${SLURM_SUBMIT_DIR}')
+#cd ${SLURM_SUBMIT_DIR}
 ##python psro_v2_example.py --oracle_type=BR --quiesce=False --gpsro_iterations=150 --number_training_episodes=100000 --sbatch_run=True
 ##python psro_v2_example.py --oracle_type=PG --quiesce=False --gpsro_iterations=150 --number_training_episodes=100000 --sbatch_run=True
 python psro_v2_example.py --oracle_type=ARS --quiesce=False --gpsro_iterations=150 --number_training_episodes=400000 --sbatch_run=True
