@@ -40,4 +40,4 @@ open_spiel/scripts/jill.sh
 
 open_spiel/cmake-build-debug/
 
-open_spiel/python/algorithms/psro_v2/slurm_scripts/
+open_spiel/python/algorithms/psro_v2/slurm_scripts/*
