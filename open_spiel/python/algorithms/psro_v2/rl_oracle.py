@@ -22,6 +22,8 @@ import numpy as np
 
 from open_spiel.python.algorithms.psro_v2 import optimization_oracle
 from open_spiel.python.algorithms.psro_v2 import utils
+from open_spiel.python.rl_environment import TimeStep
+from open_spiel.python.rl_environment import StepType
 from tqdm import tqdm
 import sys
 
@@ -70,6 +72,50 @@ def random_count_weighted_choice(count_weight):
   chosen_index = np.random.choice(indexes, p=p)
   return chosen_index
 
+def sample_episode1(state, policies):
+    """Samples an episode using policies, starting from state.
+
+    Args:
+      state: Pyspiel state representing the current state.
+      policies: List of policy representing the policy executed by each player.
+
+    Returns:
+      The result of the call to returns() of the final state in the episode.
+          Meant to be a win/loss integer.
+    """
+    if state.is_terminal():
+      observations = {"info_state": [], "legal_actions": [], "current_player": []}
+      rewards = []
+      step_type = StepType.LAST
+      cur_rewards = state.rewards()
+      for player_id in range(2):
+        rewards.append(cur_rewards[player_id])
+        observations["info_state"].append(state.information_state_tensor(player_id))
+        observations["legal_actions"].append(state.legal_actions(player_id))
+      observations["current_player"] = state.current_player()
+      time_step = TimeStep(observations=observations,rewards=rewards,discounts=1,step_type=step_type)
+      for agent in policies:
+        agent.step(time_step)
+      return np.array(state.returns(), dtype=np.float32)
+    if state.is_simultaneous_node():
+      actions = [None] * state.num_players()
+      for player in range(state.num_players()):
+        state_policy = policies[player].action_probabilities(state, player, is_evaluation=False)
+        outcomes, probs = zip(*state_policy.items())
+        actions[player] = utils.random_choice(outcomes, probs)
+      state.apply_actions(actions)
+      return sample_episode1(state, policies)
+
+    if state.is_chance_node():
+      outcomes, probs = zip(*state.chance_outcomes())
+    else:
+      player = state.current_player()
+      state_policy = policies[player].action_probabilities(state,is_evaluation=False)
+      outcomes, probs = zip(*state_policy.items())
+
+    state.apply_action(utils.random_choice(outcomes, probs))
+    return sample_episode1(state, policies)
+
 
 class RLOracle(optimization_oracle.AbstractOracle):
   """Oracle handling Approximate Best Responses computation."""
@@ -103,6 +149,10 @@ class RLOracle(optimization_oracle.AbstractOracle):
     self._number_training_episodes = number_training_episodes
 
     super(RLOracle, self).__init__(**kwargs)
+          
+#  def sample_episode(self,unused_time_step, agents, is_evaluation=False):
+#    state = self._env._game.new_initial_state()
+#    return sample_episode1(state,agents)
 
   def sample_episode(self, unused_time_step, agents, is_evaluation=False):
     time_step = self._env.reset()
@@ -130,7 +180,6 @@ class RLOracle(optimization_oracle.AbstractOracle):
         action_list = [agent_output.action]
         time_step = self._env.step(action_list)
         cumulative_rewards += np.array(time_step.rewards)
-
     if not is_evaluation:
       for agent in agents:
         agent.step(time_step)
@@ -276,7 +325,7 @@ class RLOracle(optimization_oracle.AbstractOracle):
     new_policies = self.generate_new_policies(training_parameters)
     # TODO(author4): Look into multithreading.
     reward_trace = [[] for _ in range(game.num_players())]
-    pbar = tqdm(total=self._number_training_episodes*game.num_players(), file=sys.stdout, leave=True)
+    pbar = tqdm(total=self._number_training_episodes*game.num_players(), file=sys.stdout, leave=False)
     while not self._has_terminated(episodes_per_oracle):
       agents, indexes = self.sample_policies_for_episode(
           new_policies, training_parameters, episodes_per_oracle,

@@ -31,7 +31,7 @@ def empty_list_generator(number_dimensions):
     result = [result]
   return result
 
-def lagging_mean(li,lag=100):
+def lagging_mean(li,lag=1000):
   """
   Calcualte the lagging mean of list given
   Params:

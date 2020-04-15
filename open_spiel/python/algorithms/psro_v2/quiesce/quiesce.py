@@ -224,11 +224,7 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
     prob_matrix = meta_strategies.general_get_joint_strategy_from_marginals(strategy_support)
     payoffs=[]
     for i in range(self._num_players):
-      try:
-        payoffs.append(np.sum(meta_game[i]*prob_matrix))
-      except:
-        import pdb
-        pdb.set_trace()
+      payoffs.append(np.sum(meta_game[i]*prob_matrix))
     return payoffs
 
   def update_complete_ind(self, policy_indicator, add_sample=True):

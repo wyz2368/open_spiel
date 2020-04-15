@@ -1,3 +1,6 @@
+"""
+A python scripts for generating all batch files for parameter tuning
+"""
 import shutil
 import os
 import numpy as np
@@ -65,7 +68,7 @@ ORIGIN = os.path.dirname(os.path.realpath(__file__)) + '/base_slurm.sh'
 MODULE1 = "module load python3.6-anaconda/5.2.0"
 MODULE2 = "cd $(dirname $(dirname '${SLURM_SUBMIT_DIR}'))"
 OUTPUT = "#SBATCH --output="
-COMMAND = "python ../psro_v2_example.py --oracle_type=ARS --quiesce=False --gpsro_iterations=150 --number_training_episodes=100000 --sbatch_run=True --log_train=False"
+COMMAND = "python ../psro_v2_example.py --oracle_type=ARS --quiesce=False --gpsro_iterations=100 --number_training_episodes=300000 --sbatch_run=True --log_train=False"
 
 def bash_factory(dir_name='scripts', num_files=10, grid_search_flag=True):
     bash_path = os.path.dirname(os.path.realpath(__file__)) + '/' + dir_name + '/'
@@ -80,6 +83,9 @@ def bash_factory(dir_name='scripts', num_files=10, grid_search_flag=True):
         mkdir(output_path)
     param_dict = {'ars_learning_rate': [0.01,0.03,0.07,0.1,0.3,0.5],
                   'noise': [0.01,0.03,0.07,0.1,0.3,0.5]}
+#    param_dict = {'seed':[np.random.randint(low=0,high=1e5) for _ in range(10)]}
+    
+    praram_dict = {}
     if grid_search_flag:
         params = grid_search(param_dict)
     else:

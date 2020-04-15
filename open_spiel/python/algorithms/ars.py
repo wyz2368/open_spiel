@@ -119,7 +119,6 @@ class ARS(rl_agent.AbstractAgent):
         self.sample_deltas()
         self.deltas_iterator()
 
-
     def _act(self, info_state, legal_actions, is_evaluation):
         if self.v2:
             self.normalizer.observe(info_state)
@@ -231,18 +230,20 @@ class ARS(rl_agent.AbstractAgent):
             raise ValueError("Not all directions are evaluated.")
 
         all_rewards = np.array(self._pos_rew + self._neg_rew)
-        sigma_r = all_rewards.std()
 
         # Sorting the rollouts by the max(r_pos, r_neg) and selecting the best directions
         scores = {k: max(r_pos, r_neg) for k, (r_pos, r_neg) in enumerate(zip(self._pos_rew, self._neg_rew))}
         order = sorted(scores.keys(), key=lambda x: scores[x], reverse=True)[:self._nb_best_directions]
         rollouts = [(self._pos_rew[k], self._neg_rew[k], self._deltas[k]) for k in order]
-
+        sigma_r_array = []
         step = np.zeros(self.theta.shape)
         for r_pos, r_neg, d in rollouts:
             step += (r_pos - r_neg) * d
+            sigma_r_array.extend([r_pos,r_neg])
+        sigma_r = np.array(sigma_r_array).std()
 
         self.theta += self._learning_rate / (self._nb_best_directions * sigma_r) * step
+        return sigma_r
 
     def get_weights(self):
         return self.theta

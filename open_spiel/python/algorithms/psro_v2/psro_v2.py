@@ -341,12 +341,10 @@ class PSROSolver(abstract_meta_trainer.AbstractMetaTrainer):
             "probabilities_of_playing_policies": new_probabilities
         }
         training_parameters[current_player].append(new_parameter)
-
     if self.symmetric_game:
       self._policies = self._game_num_players * self._policies
       self._num_players = self._game_num_players
       training_parameters = [training_parameters[0]]
-
     # List of List of new policies (One list per player)
     # collect training performance to plot if RL oracle
     if self._train_loggable_oracle:

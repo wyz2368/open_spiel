@@ -34,6 +34,7 @@ import numpy as np
 import pickle
 import atexit
 import pyspiel
+import random
 import tensorflow.compat.v1 as tf
 from tensorboardX import SummaryWriter
 import logging
@@ -52,12 +53,11 @@ from open_spiel.python.algorithms.psro_v2 import rl_oracle
 from open_spiel.python.algorithms.psro_v2 import rl_policy
 from open_spiel.python.algorithms.psro_v2 import strategy_selectors
 from open_spiel.python.algorithms.psro_v2.quiesce.quiesce import PSROQuiesceSolver
+from open_spiel.python.algorithms.psro_v2 import meta_strategies
 from open_spiel.python.algorithms.psro_v2.quiesce import quiesce_sparse
 
 
 FLAGS = flags.FLAGS
-flags.DEFINE_string("root_result_folder",'root_result',"root directory of saved results")
-flags.DEFINE_bool("sbatch_run",False,"whether to redirect standard output to checkpoint directory")
 # Game-related
 flags.DEFINE_string("game_name", "kuhn_poker", "Game name.")
 flags.DEFINE_integer("n_players", 2, "The number of players.")
@@ -118,18 +118,21 @@ flags.DEFINE_integer("update_target_network_every", 500, "Update target "
                      "network every [X] steps")
 flags.DEFINE_integer("learn_every", 10, "Learn every [X] steps.")
 
-# General
-flags.DEFINE_integer("seed", 1, "Seed.")
-flags.DEFINE_bool("local_launch", False, "Launch locally or not.")
-flags.DEFINE_bool("verbose", True, "Enables verbose printing and profiling.")
-flgas.DEFINE_bool("log_train",False,"log training reward curve")
-
 #ARS
 flags.DEFINE_float("ars_learning_rate", 0.02, "ARS learning rate.")
-flags.DEFINE_integer("num_directions", 64, "Number of exploration directions.")
-flags.DEFINE_integer("num_best_directions", 64, "Select # best directions.")
+flags.DEFINE_integer("num_directions", 16, "Number of exploration directions.")
+flags.DEFINE_integer("num_best_directions", 16, "Select # best directions.")
 flags.DEFINE_float("noise", 0.03, "Coefficient of Gaussian noise.")
 flags.DEFINE_bool("v2", False, "v2 of ARS which normalizes observations.")
+
+# General
+flags.DEFINE_string("root_result_folder",'root_result',"root directory of saved results")
+flags.DEFINE_bool("sbatch_run",False,"whether to redirect standard output to checkpoint directory")
+flags.DEFINE_integer("seed", None, "Seed.")
+flags.DEFINE_bool("local_launch", False, "Launch locally or not.")
+flags.DEFINE_bool("verbose", True, "Enables verbose printing and profiling.")
+flags.DEFINE_bool("log_train",True,"log training reward curve")
+
 
 def init_pg_responder(sess, env):
   """Initializes the Policy Gradient-based responder and agents."""
@@ -255,7 +258,37 @@ def init_ars_responder(sess, env):
     agent.freeze()
   return oracle, agents
 
-def print_policy_analysis(policies, game, verbose=False):
+
+def print_benefical_deviation_analysis(last_meta_game, meta_game, last_meta_prob, verbose=False):
+  """
+  Function to check whether players have found policy of beneficial deviation in this round. It is possible to extract last_meta_game from meta_game. But it needs further manipulation and meta_game from last iteration is already there
+  Args:
+    last_meta_game: List of list of meta_game (One array per game player). last iteration
+    meta_game: List of list of meta_game (One array per game player). Current iteration
+    last_meta_prob: nash equilibrium of last g_psro_iteration. List of list. Last iteration
+  Returns:
+    a list of length num_players, indicating each player having found a beneficial deviation or not
+  """
+  prob_matrix = meta_strategies.general_get_joint_strategy_from_marginals(last_meta_prob)
+  this_meta_prob = [np.append(ele,0) for ele in last_meta_prob]
+  beneficial_deviation = []
+  for i in range(len(meta_game)):
+    ne_payoff = np.sum(last_meta_game[i]*prob_matrix)
+    dev_prob = this_meta_prob.copy()
+    dev_prob[i] = np.append(np.zeros(len(last_meta_prob[i])),1)
+    new_prob_matrix = meta_strategies.general_get_joint_strategy_from_marginals(dev_prob)
+    dev_payoff = np.sum(meta_game[i]*new_prob_matrix)
+    if ne_payoff > dev_payoff:
+      beneficial_deviation.append(False)
+    else:
+      beneficial_deviation.append(True)
+  if verbose:
+    print("\n---------------------------\nBeneficial Deviation :")
+    for p in range(len(beneficial_deviation)):
+      print('player '+str(p),beneficial_deviation[p])
+  return beneficial_deviation
+
+def print_policy_analysis(policies, game, verbose=False, pdb=False):
   """Function printing policy diversity within game's known policies.
 
   Warning : only works with deterministic policies.
@@ -285,9 +318,10 @@ def print_policy_analysis(policies, game, verbose=False):
           for a in max_prob_actions:
             cur_str += "-" + str(a)
       cur_set.add(cur_str)
+    
     unique_policies.append(cur_set)
   if verbose:
-    print("\n=====================================\nPolicy Diversity :")
+    print("\n---------------------------\nPolicy Diversity :")
     for player, cur_set in enumerate(unique_policies):
       print("Player {} : {} unique policies.".format(player, len(cur_set)))
   print("")
@@ -297,7 +331,7 @@ def save_at_termination(solver, file_for_meta_game):
     with open(file_for_meta_game,'wb') as f:
         pickle.dump(solver.get_meta_game(), f)
 
-def gpsro_looper(env, oracle, agents, writer, quiesce=False, checkpoint_dir=None):
+def gpsro_looper(env, oracle, agents, writer, quiesce=False, checkpoint_dir=None, seed=None):
   """Initializes and executes the GPSRO training loop."""
   sample_from_marginals = True  # TODO(somidshafiei) set False for alpharank
   training_strategy_selector = FLAGS.training_strategy_selector or strategy_selectors.probabilistic_strategy_selector
@@ -322,18 +356,21 @@ def gpsro_looper(env, oracle, agents, writer, quiesce=False, checkpoint_dir=None
       sample_from_marginals=sample_from_marginals,
       symmetric_game=FLAGS.symmetric_game,
       checkpoint_dir=checkpoint_dir)
-
+  
+  last_meta_prob = [np.array([1]) for _ in range(FLAGS.n_players)]
+  last_meta_game = g_psro_solver.get_meta_game()
   atexit.register(save_at_termination, solver=g_psro_solver, file_for_meta_game=checkpoint_dir+'/meta_game.pkl')
   start_time = time.time()
-  for gpsro_iteration in range(FLAGS.gpsro_iterations):
+  for gpsro_iteration in range(1,FLAGS.gpsro_iterations+1):
     if FLAGS.verbose:
+      print("\n===========================\n")
       print("Iteration : {}".format(gpsro_iteration))
       print("Time so far: {}".format(time.time() - start_time))
-    train_reward_curve = g_psro_solver.iteration()
+    train_reward_curve = g_psro_solver.iteration(seed=seed)
     meta_game = g_psro_solver.get_meta_game()
     meta_probabilities = g_psro_solver.get_meta_strategies()
     policies = g_psro_solver.get_policies()
-    
+   
     if FLAGS.verbose:
       print("Meta game : {}".format(meta_game))
       print("Probabilities : {}".format(meta_probabilities))
@@ -344,11 +381,14 @@ def gpsro_looper(env, oracle, agents, writer, quiesce=False, checkpoint_dir=None
 
     exploitabilities, expl_per_player = exploitability.nash_conv(
         env.game, aggr_policies, return_only_nash_conv=False)
-
     unique_policies = print_policy_analysis(policies, env.game, FLAGS.verbose)
-
     for p, cur_set in enumerate(unique_policies):
-      writer.add_scalar('p'+str(player)+'unique_p',len(cur_set),gpsro_iteration)
+      writer.add_scalar('p'+str(p)+'_unique_p',len(cur_set),gpsro_iteration)
+    
+    beneficial_deviation = print_benefical_deviation_analysis(last_meta_game, meta_game, last_meta_prob, FLAGS.verbose)
+    last_meta_prob, last_meta_game = meta_probabilities, meta_game
+    for p in range(len(beneficial_deviation)):
+      writer.add_scalar('p'+str(p)+'_beneficial_dev',int(beneficial_deviation[p]),gpsro_iteration)
 
     if FLAGS.log_train and (gpsro_iteration<=10 or gpsro_iteration%5==0):
       for p in range(len(train_reward_curve)):
@@ -364,19 +404,36 @@ def gpsro_looper(env, oracle, agents, writer, quiesce=False, checkpoint_dir=None
 def main(argv):
   if len(argv) > 1:
     raise app.UsageError("Too many command-line arguments.")
-
-  np.random.seed(FLAGS.seed)
+ 
+  if FLAGS.seed is None:
+    seed = np.random.randint(low=0, high=1e5)
+  else:
+    seed = FLAGS.seed
+  np.random.seed(seed)
+  random.seed(seed)
+  tf.set_random_seed(seed)
   game = pyspiel.load_game_as_turn_based(FLAGS.game_name,
                                          {"players": pyspiel.GameParameter(
                                              FLAGS.n_players)})
-  env = rl_environment.Environment(game)
+  env = rl_environment.Environment(game,seed=seed)
   env.reset()
 
   if not os.path.exists(FLAGS.root_result_folder):
     os.makedirs(FLAGS.root_result_folder)
-  checkpoint_dir = os.path.join(os.getcwd(),
-                                FLAGS.root_result_folder,
-                                FLAGS.game_name+'_'+'_or_'+FLAGS.oracle_type+'_sims_'+str(FLAGS.sims_per_entry)+'_it_'+str(FLAGS.gpsro_iterations)+'_ep_'+str(FLAGS.number_training_episodes)+'_hl_'+str(FLAGS.hidden_layer_size)+'_bs_'+str(FLAGS.batch_size)+'_nhl_'+str(FLAGS.n_hidden_layers)+'_arslr_'+str(FLAGS.ars_learning_rate)+'_arsn_'+str(FLAGS.noise)+'_'+datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S'))
+  checkpoint_dir = FLAGS.game_name+str(FLAGS.n_players)+'_sims_'+str(FLAGS.sims_per_entry)+'_it_'+str(FLAGS.gpsro_iterations)+'_ep_'+str(FLAGS.number_training_episodes)+'_se_'+str(seed)+'_or_'+FLAGS.oracle_type
+  if FLAGS.oracle_type == 'ARS':
+    oracle_flag_str = '_arslr_'+str(FLAGS.ars_learning_rate)+'_arsn_'+str(FLAGS.noise)+'_arsnd_'+str(FLAGS.num_directions)+'_arsbd_'+str(FLAGS.num_best_directions)
+  elif FLAGS.oracle_type == 'BR':
+    oracle_flag_str = ''
+  else:
+    oracle_flag_str = '_hl_'+str(FLAGS.hidden_layer_size)+'_bs_'+str(FLAGS.batch_size)+'_nhl_'+str(FLAGS.n_hidden_layers)
+    if FLAGS.oracle_type == 'DQN':
+      oracle_flag_str += '_dqnlr_'+str(FLAGS.dqn_learning_rate)+'_tnuf_'+str(FLAGS.update_target_network_every)+'_lf_'+str(FLAGS.learn_every)
+    else:
+      oracle_flag_str += '_ls_'+str(FLAGS.loss_str)+'_nqbp_'+str(FLAGS.num_q_before_pi)+'_ec_'+str(FLAGS.entropy_cost)+'_clr_'+str(FLAGS.critic_learning_rate)+'_pilr_'+str(FLAGS.pi_learing_rate)
+  checkpoint_dir = checkpoint_dir + oracle_flag_str + '_'+datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+  checkpoint_dir = os.path.join(os.getcwd(),FLAGS.root_result_folder, checkpoint_dir)
+                                
   writer = SummaryWriter(logdir=checkpoint_dir+'/log')
   if FLAGS.sbatch_run:
     sys.stdout = open(checkpoint_dir+'/stdout.txt','w+')
@@ -392,7 +449,7 @@ def main(argv):
     elif FLAGS.oracle_type == "ARS":
       oracle, agents = init_ars_responder(sess, env)
     sess.run(tf.global_variables_initializer())
-    gpsro_looper(env, oracle, agents, writer, quiesce=FLAGS.quiesce, checkpoint_dir=checkpoint_dir)
+    gpsro_looper(env, oracle, agents, writer, quiesce=FLAGS.quiesce, checkpoint_dir=checkpoint_dir, seed=seed)
 
   writer.close()
 
