@@ -21,12 +21,13 @@ from __future__ import print_function
 import itertools
 
 from absl.testing import parameterized
+import pyspiel
 import tensorflow.compat.v1 as tf
 
 from open_spiel.python import rl_environment
 from open_spiel.python.algorithms import policy_gradient
 from open_spiel.python.algorithms.losses import rl_losses
-import pyspiel
+
 
 
 class PolicyGradientTest(parameterized.TestCase, tf.test.TestCase):
