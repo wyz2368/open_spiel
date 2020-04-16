@@ -259,7 +259,7 @@ def init_ars_responder(sess, env):
   return oracle, agents
 
 
-def print_benefical_deviation_analysis(last_meta_game, meta_game, last_meta_prob, verbose=False):
+def print_beneficial_deviation_analysis(last_meta_game, meta_game, last_meta_prob, verbose=False):
   """
   Function to check whether players have found policy of beneficial deviation in this round. It is possible to extract last_meta_game from meta_game. But it needs further manipulation and meta_game from last iteration is already there
   Args:
@@ -385,10 +385,11 @@ def gpsro_looper(env, oracle, agents, writer, quiesce=False, checkpoint_dir=None
     for p, cur_set in enumerate(unique_policies):
       writer.add_scalar('p'+str(p)+'_unique_p',len(cur_set),gpsro_iteration)
     
-    beneficial_deviation = print_benefical_deviation_analysis(last_meta_game, meta_game, last_meta_prob, FLAGS.verbose)
+    beneficial_deviation = print_beneficial_deviation_analysis(last_meta_game, meta_game, last_meta_prob, FLAGS.verbose)
     last_meta_prob, last_meta_game = meta_probabilities, meta_game
     for p in range(len(beneficial_deviation)):
       writer.add_scalar('p'+str(p)+'_beneficial_dev',int(beneficial_deviation[p]),gpsro_iteration)
+    writer.add_scalar('beneficial_devs',sum(beneficial_deviation),gpsro_iteration)
 
     if FLAGS.log_train and (gpsro_iteration<=10 or gpsro_iteration%5==0):
       for p in range(len(train_reward_curve)):
@@ -420,7 +421,7 @@ def main(argv):
 
   if not os.path.exists(FLAGS.root_result_folder):
     os.makedirs(FLAGS.root_result_folder)
-  checkpoint_dir = FLAGS.game_name+str(FLAGS.n_players)+'_sims_'+str(FLAGS.sims_per_entry)+'_it_'+str(FLAGS.gpsro_iterations)+'_ep_'+str(FLAGS.number_training_episodes)+'_se_'+str(seed)+'_or_'+FLAGS.oracle_type
+  checkpoint_dir = FLAGS.game_name+str(FLAGS.n_players)+'_sims_'+str(FLAGS.sims_per_entry)+'_it_'+str(FLAGS.gpsro_iterations)+'_ep_'+str(FLAGS.number_training_episodes)+'_or_'+FLAGS.oracle_type
   if FLAGS.oracle_type == 'ARS':
     oracle_flag_str = '_arslr_'+str(FLAGS.ars_learning_rate)+'_arsn_'+str(FLAGS.noise)+'_arsnd_'+str(FLAGS.num_directions)+'_arsbd_'+str(FLAGS.num_best_directions)
   elif FLAGS.oracle_type == 'BR':
@@ -431,7 +432,7 @@ def main(argv):
       oracle_flag_str += '_dqnlr_'+str(FLAGS.dqn_learning_rate)+'_tnuf_'+str(FLAGS.update_target_network_every)+'_lf_'+str(FLAGS.learn_every)
     else:
       oracle_flag_str += '_ls_'+str(FLAGS.loss_str)+'_nqbp_'+str(FLAGS.num_q_before_pi)+'_ec_'+str(FLAGS.entropy_cost)+'_clr_'+str(FLAGS.critic_learning_rate)+'_pilr_'+str(FLAGS.pi_learing_rate)
-  checkpoint_dir = checkpoint_dir + oracle_flag_str + '_'+datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+  checkpoint_dir = checkpoint_dir + oracle_flag_str+'_se_'+str(seed)+'_'+datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
   checkpoint_dir = os.path.join(os.getcwd(),FLAGS.root_result_folder, checkpoint_dir)
                                 
   writer = SummaryWriter(logdir=checkpoint_dir+'/log')

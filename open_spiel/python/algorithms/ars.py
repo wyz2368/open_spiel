@@ -152,6 +152,7 @@ class ARS(rl_agent.AbstractAgent):
             info_state = time_step.observations["info_state"][self.player_id]
             legal_actions = time_step.observations["legal_actions"][self.player_id]
             action, probs = self._act(info_state, legal_actions, is_evaluation)
+            
         else:
             action = None
             probs = []
@@ -235,12 +236,16 @@ class ARS(rl_agent.AbstractAgent):
         scores = {k: max(r_pos, r_neg) for k, (r_pos, r_neg) in enumerate(zip(self._pos_rew, self._neg_rew))}
         order = sorted(scores.keys(), key=lambda x: scores[x], reverse=True)[:self._nb_best_directions]
         rollouts = [(self._pos_rew[k], self._neg_rew[k], self._deltas[k]) for k in order]
+
         sigma_r_array = []
         step = np.zeros(self.theta.shape)
         for r_pos, r_neg, d in rollouts:
             step += (r_pos - r_neg) * d
             sigma_r_array.extend([r_pos,r_neg])
         sigma_r = np.array(sigma_r_array).std()
+        
+        if sigma_r == 0:
+          sigma_r = 1
 
         self.theta += self._learning_rate / (self._nb_best_directions * sigma_r) * step
         return sigma_r

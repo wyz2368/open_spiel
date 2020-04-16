@@ -195,6 +195,7 @@ class RLOracle(optimization_oracle.AbstractOracle):
   def sample_policies_for_episode(self, new_policies, training_parameters,
                                   episodes_per_oracle, strategy_sampler):
     """Randomly samples a set of policies to run during the next episode.
+    If ARS is the policies that needs to be trained, then keep the trained against policy for num_of_directions times
 
     Note : sampling is biased to select players & strategies that haven't
     trained as much as the others.
@@ -230,7 +231,22 @@ class RLOracle(optimization_oracle.AbstractOracle):
     total_policies = agent_chosen_dict["total_policies"]
     probabilities_of_playing_policies = agent_chosen_dict[
         "probabilities_of_playing_policies"]
-    episode_policies = strategy_sampler(total_policies,
+
+    if type(new_policy._policy).__name__ == 'ARS':
+      if not hasattr(self,'_ARS_episodes'):
+        self._ARS_episodes = {}
+        for i in range(num_players):
+          self._ARS_episodes[i] = [0,None]
+      ARS_nb_dir_pol = new_policy._policy._nb_directions * 2
+      current_count = self._ARS_episodes[chosen_player][0]
+      if current_count % ARS_nb_dir_pol == 0:
+        episode_policies = strategy_sampler(total_policies, probabilities_of_playing_policies)
+        self._ARS_episodes[chosen_player] = [current_count+1, episode_policies]
+      else:
+        episode_policies = self._ARS_episodes[chosen_player][1]
+        self._ARS_episodes[chosen_player][0] += 1
+    else:
+      episode_policies = strategy_sampler(total_policies,
                                         probabilities_of_playing_policies)
 
     live_agents_player_index = [(chosen_player, agent_chosen_ind)]
@@ -342,4 +358,6 @@ class RLOracle(optimization_oracle.AbstractOracle):
     # later not have to make the distinction between static and training
     # policies in training iterations.
     freeze_all(new_policies)
+    if hasattr(self,'_ARS_episodes'):
+      delattr(self,'_ARS_episodes')
     return new_policies, reward_trace
