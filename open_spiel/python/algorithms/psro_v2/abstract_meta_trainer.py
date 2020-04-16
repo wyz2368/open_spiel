@@ -353,7 +353,7 @@ class AbstractMetaTrainer(object):
     Assign a new oracle.
     :return:
     """
-    kelf._oracle = oracle
+    self._oracle = oracle
     #TODO: check the __name__ exists.
     print("The current oracle is {}.".format(oracle.__name__))
 

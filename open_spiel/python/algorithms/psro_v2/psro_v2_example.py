@@ -122,7 +122,7 @@ flags.DEFINE_integer("learn_every", 10, "Learn every [X] steps.")
 flags.DEFINE_integer("seed", 1, "Seed.")
 flags.DEFINE_bool("local_launch", False, "Launch locally or not.")
 flags.DEFINE_bool("verbose", True, "Enables verbose printing and profiling.")
-flgas.DEFINE_bool("log_train",False,"log training reward curve")
+flags.DEFINE_bool("log_train",False,"log training reward curve")
 
 #ARS
 flags.DEFINE_float("ars_learning_rate", 0.02, "ARS learning rate.")
@@ -348,7 +348,7 @@ def gpsro_looper(env, oracle, agents, writer, quiesce=False, checkpoint_dir=None
     unique_policies = print_policy_analysis(policies, env.game, FLAGS.verbose)
 
     for p, cur_set in enumerate(unique_policies):
-      writer.add_scalar('p'+str(player)+'unique_p',len(cur_set),gpsro_iteration)
+      writer.add_scalar('p'+str(p)+'unique_p',len(cur_set),gpsro_iteration)
 
     if FLAGS.log_train and (gpsro_iteration<=10 or gpsro_iteration%5==0):
       for p in range(len(train_reward_curve)):

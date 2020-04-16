@@ -4,15 +4,18 @@ from __future__ import print_function
 import collections
 
 import numpy as np
-
+import ray
 from open_spiel.python import rl_agent
 
+
 """
-This is a customized implementation of augmented random search (ARS) for openspiel.
+This is a customized parallel implementation of augmented random search (ARS) for openspiel.
 https://arxiv.org/abs/1803.07055
 
-The code is adapted from https://github.com/sourcecode369/Augmented-Random-Search-.
+The code is adapted from https://github.com/modestyachts/ARS/blob/master
 The style of the code follows policy_gradient.py.
+
+This version corresponds to ARS-V1 without observation normalization.
 """
 
 Transition = collections.namedtuple(
@@ -198,8 +201,8 @@ class ARS(rl_agent.AbstractAgent):
     def deltas_iterator(self):
         """
         Generate noisy policy based on sampled noise.
-        There is an outlying case, it does not really take place, but just exist to facilitates code writing: 
-            self._current_policy_idx = 128 
+        There is an outlying case, it does not really take place, but just exist to facilitates code writing:
+            self._current_policy_idx = 128
             self._deltas_idx = 129
         This case will be detected by self.done and pi_update will be consequently called to reset the indexes. The "self._current_policy_idx == 2*self._nb_directions" in step(self) is also designed for this purpose
         """
@@ -307,3 +310,5 @@ class ARS(rl_agent.AbstractAgent):
         copied_object.theta += sigma * np.random.normal(size=np.shape(self.theta))
 
         return copied_object
+
+

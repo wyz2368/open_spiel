@@ -21,6 +21,16 @@ import copy
 # p = lagging_mean(a)
 # print(p)
 
-param_dict = {'ars_learning_rate': list(np.round(np.arange(0.01, 0.1, 0.01), decimals=2)),
-                  'noise': list(np.arange(0.01, 0.1, 0.01))}
-print(param_dict)
+a = 3
+
+class Happy():
+    def __init__(self, a):
+        self._a = a
+
+    def add(self):
+        self._a += 3
+        print(self._a)
+
+b1 = Happy(a)
+b2 = Happy(a)
+print(b1._a is b2._a, b1._a is a)
