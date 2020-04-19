@@ -129,7 +129,7 @@ flags.DEFINE_float("ars_learning_rate", 0.02, "ARS learning rate.")
 flags.DEFINE_integer("num_directions", 64, "Number of exploration directions.")
 flags.DEFINE_integer("num_best_directions", 64, "Select # best directions.")
 flags.DEFINE_float("noise", 0.03, "Coefficient of Gaussian noise.")
-flags.DEFINE_bool("v2", False, "v2 of ARS which normalizes observations.")
+
 
 def init_pg_responder(sess, env):
   """Initializes the Policy Gradient-based responder and agents."""
@@ -233,8 +233,7 @@ def init_ars_responder(sess, env):
     "learning_rate": FLAGS.ars_learning_rate,
     "nb_directions": FLAGS.num_directions,
     "nb_best_directions": FLAGS.num_directions,
-    "noise": FLAGS.noise,
-    "v2": FLAGS.v2
+    "noise": FLAGS.noise
   }
   oracle = rl_oracle.RLOracle(
     env,
@@ -308,6 +307,7 @@ def gpsro_looper(env, oracle, agents, writer, quiesce=False, checkpoint_dir=None
     solver = quiesce_sparse.PSROQuiesceSolver
   else:
     solver = PSROQuiesceSolver
+
   g_psro_solver = solver(
       env.game,
       oracle,
@@ -325,6 +325,7 @@ def gpsro_looper(env, oracle, agents, writer, quiesce=False, checkpoint_dir=None
 
   atexit.register(save_at_termination, solver=g_psro_solver, file_for_meta_game=checkpoint_dir+'/meta_game.pkl')
   start_time = time.time()
+
   for gpsro_iteration in range(FLAGS.gpsro_iterations):
     if FLAGS.verbose:
       print("Iteration : {}".format(gpsro_iteration))

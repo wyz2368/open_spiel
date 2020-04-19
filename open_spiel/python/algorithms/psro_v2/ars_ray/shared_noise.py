@@ -18,6 +18,9 @@ def create_shared_noise():
 
 
 class SharedNoiseTable(object):
+    """
+    Noise table class where noise is sampled.
+    """
     def __init__(self, noise, seed = 11):
 
         self.rg = np.random.RandomState(seed)
@@ -31,5 +34,6 @@ class SharedNoiseTable(object):
         return self.rg.randint(0, len(self.noise) - dim + 1)
 
     def get_delta(self, dim):
+        # The index marks the beginning of a sequence of noise with length dim.
         idx = self.sample_index(dim)
         return idx, self.get(idx, dim)

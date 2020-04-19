@@ -21,16 +21,10 @@ import copy
 # p = lagging_mean(a)
 # print(p)
 
-a = 3
+a = [[[1,-1],[2,-2]], [[3,-3], [4,-4]]]
+b = [[[1,-1],[2,-2]], [[3,-3], [4,-4]]]
+c = []
+for i, j in zip(a,b):
+    c.append(i+j)
 
-class Happy():
-    def __init__(self, a):
-        self._a = a
-
-    def add(self):
-        self._a += 3
-        print(self._a)
-
-b1 = Happy(a)
-b2 = Happy(a)
-print(b1._a is b2._a, b1._a is a)
+print(c)
