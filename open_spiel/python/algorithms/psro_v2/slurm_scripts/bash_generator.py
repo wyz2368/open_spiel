@@ -60,15 +60,24 @@ def random_search(num_output, param_range_dict, param_dtype_dict):
         output[key] = sample
     return output
 
-def grid_search(param_dict):
-    return list(itertools.product(*param_dict.values()))
+def grid_search(param_dict,search_ars_bd=False):
+    li = list(itertools.product(*param_dict.values()))
+    if not search_ars_bd:
+      return li
+    # customized for ars num_best_directions & num_directions
+    li_final = []
+    for ele in li:
+      if ele[0]>=ele[1]:
+        li_final.append(ele)
+    return li_final
 
 # TARGET_DIR = os.getcwd() + '/slurm_scripts/'
 ORIGIN = os.path.dirname(os.path.realpath(__file__)) + '/base_slurm.sh'
 MODULE1 = "module load python3.6-anaconda/5.2.0"
 MODULE2 = "cd $(dirname $(dirname '${SLURM_SUBMIT_DIR}'))"
 OUTPUT = "#SBATCH --output="
-COMMAND = "python ../psro_v2_example.py --oracle_type=ARS --quiesce=False --gpsro_iterations=100 --number_training_episodes=300000 --sbatch_run=True --log_train=False"
+COMMAND = "python ../se_example1.py --game_name=leduc_poker --oracle_type=DQN --quiesce=False --gpsro_iterations=500 --sbatch_run=True --log_train=False --number_training_episodes=100000"
+#COMMAND = "python ../psro_v2_example.py --game_name=leduc_poker --oracle_type=DQN --quiesce=False --gpsro_iterations=150 --sbatch_run=True --log_train=False --root_result_folder=root_result --meta_strategy_method=sp"
 
 def bash_factory(dir_name='scripts', num_files=10, grid_search_flag=True):
     bash_path = os.path.dirname(os.path.realpath(__file__)) + '/' + dir_name + '/'
@@ -81,13 +90,17 @@ def bash_factory(dir_name='scripts', num_files=10, grid_search_flag=True):
         shutil.rmtree(output_path, ignore_errors=True)
     else:
         mkdir(output_path)
-    param_dict = {'ars_learning_rate': [0.01,0.03,0.07,0.1,0.3,0.5],
-                  'noise': [0.01,0.03,0.07,0.1,0.3,0.5]}
+    param_dict = {'num_directions':[20,40],#,60,80],
+                  'num_best_directions':[20,40],
+                  'ars_learning_rate': [0.03,0.07],
+                  'noise': [0.3,0.5]}
+#                  'ars_learning_rate': [0.01,0.03,0.07,0.1,0.3],
+#                  'noise': [0.01,0.03,0.07,0.1,0.3,0.5]}
 #    param_dict = {'seed':[np.random.randint(low=0,high=1e5) for _ in range(10)]}
     
     praram_dict = {}
     if grid_search_flag:
-        params = grid_search(param_dict)
+        params = grid_search(param_dict,search_ars_bd=True)
     else:
         raise NotImplementedError
     for i, item in enumerate(params):

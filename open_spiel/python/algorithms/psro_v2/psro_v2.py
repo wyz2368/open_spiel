@@ -172,9 +172,9 @@ class PSROSolver(abstract_meta_trainer.AbstractMetaTrainer):
     super(PSROSolver, self).__init__(
         game,
         oracle,
-        initial_policies,
-        meta_strategy_method,
-        training_strategy_selector,
+        initial_policies=initial_policies,
+        meta_strategy_method=meta_strategy_method,
+        training_strategy_selector=training_strategy_selector,
         number_policies_selected=number_policies_selected,
         **kwargs)
 

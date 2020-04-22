@@ -150,7 +150,11 @@ class AbstractMetaTrainer(object):
         game or not (False).
       number_policies_selected: Maximum number of new policies to train for each
         player at each PSRO iteration.
-      oracle_list: A list with a fast oracle [1] and a slow oracle [0].
+      oracle_list: A list of two elements. First element is a list with a fast
+        oracle [1] and a slow oracle [0]. Second element is a list with the name of
+        the two oracles. Have to design it this way because rl_policy does not
+        reveal the class name in the rl_factory
+     
       **kwargs: kwargs for meta strategy computation and training strategy
         selection
     """
@@ -201,7 +205,8 @@ class AbstractMetaTrainer(object):
 
     # Mode = fast 1 or slow 0
     self._mode = 0
-    self._oracles = oracle_list
+    self._oracles = oracle_list[0]
+    self._oracles_name = oracle_list[1]
 
   def _initialize_policy(self, initial_policies):
     return NotImplementedError(
@@ -252,6 +257,14 @@ class AbstractMetaTrainer(object):
       totals += sample_episode(self._game.new_initial_state(),
                                policies).reshape(-1)
     return totals / num_episodes
+
+  def get_nash_strategies(self):
+    """Returns the nash meta-strategy distribution on meta game matrix. When other meta strategies in play, nash strategy is still needed for evaluation
+    """
+    if self._meta_strategy_method_name in {'general_nash_strategy','nash_strategy'}:
+      return self.get_meta_strategies()
+    meta_strategy_probabilities = meta_strategies.general_nash_strategy(self,checkpoint_dir=self.checkpoint_dir)
+    return [np.copy(a) for a in meta_strategy_probabilities]
 
   def get_meta_strategies(self):
     """Returns the meta-strategy distribution on meta game matrix."""
@@ -316,7 +329,7 @@ class AbstractMetaTrainer(object):
         """
     self._iterations += 1
 
-    self.update_agents()  # Generate new, Best Response agents via oracle.
+    train_reward_curve = self.update_agents()  # Generate new, Best Response agents via oracle.
     self.update_empirical_gamestate(seed=seed)  # Update gamestate matrix.
 
     period = self._slow_oracle_period + self._fast_oracle_period
@@ -339,23 +352,24 @@ class AbstractMetaTrainer(object):
         self.reset_slow_oracle_counter()
 
     self.update_meta_strategies()  # Compute meta strategy (e.g. Nash)
+    return train_reward_curve
 
   def switch_oracle(self):
     """
         Switch fast and slow oracle.
         :return:
     """
-    self.update_oracle(self._oracles[1 - self._mode])
     self._mode = 1 - self._mode
+    self.update_oracle(self._oracles[self._mode])
 
   def update_oracle(self, oracle):
     """
     Assign a new oracle.
     :return:
     """
-    kelf._oracle = oracle
+    self._oracle = oracle
     #TODO: check the __name__ exists.
-    print("The current oracle is {}.".format(oracle.__name__))
+    print("The current oracle is {}.".format(self._oracles_name[self._mode]))
 
   def evalute_and_pick_meta_method(self):
     """

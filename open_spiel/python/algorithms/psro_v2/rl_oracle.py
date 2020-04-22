@@ -341,11 +341,16 @@ class RLOracle(optimization_oracle.AbstractOracle):
     new_policies = self.generate_new_policies(training_parameters)
     # TODO(author4): Look into multithreading.
     reward_trace = [[] for _ in range(game.num_players())]
-    pbar = tqdm(total=self._number_training_episodes*game.num_players(), file=sys.stdout, leave=False)
+    tot = self._number_training_episodes*game.num_players()
+    pbar = tqdm(total=tot, file=sys.stdout, miniters=tot//5)
     while not self._has_terminated(episodes_per_oracle):
       agents, indexes = self.sample_policies_for_episode(
           new_policies, training_parameters, episodes_per_oracle,
           strategy_sampler)
+      #if indexes[0][0] == 0:
+      #  if sum(training_parameters[1][0]['probabilities_of_playing_policies'][1]!=0)>1:
+      #    print(agents[0]._policy._deltas_idx,end=':')
+      #    print(agents[1])
       reward = self._rollout(game, agents, **oracle_specific_execution_kwargs)
       reward_trace[indexes[0][0]].append(reward[indexes[0][0]])
       episodes_per_oracle = update_episodes_per_oracles(episodes_per_oracle,
@@ -358,6 +363,8 @@ class RLOracle(optimization_oracle.AbstractOracle):
     # later not have to make the distinction between static and training
     # policies in training iterations.
     freeze_all(new_policies)
+
+    # Specified written for ARS aligning same opponent strategies for directions
     if hasattr(self,'_ARS_episodes'):
       delattr(self,'_ARS_episodes')
     return new_policies, reward_trace

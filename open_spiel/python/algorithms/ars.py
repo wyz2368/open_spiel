@@ -165,6 +165,7 @@ class ARS(rl_agent.AbstractAgent):
             # Episode done, add to dataset and maybe learn.
             if time_step.last():
                 self._add_episode_data_to_dataset()
+                
                 direction = self._current_policy_idx // self._nb_directions
                 delta_idx = self._current_policy_idx % self._nb_directions
                 if direction == 0:
@@ -214,6 +215,7 @@ class ARS(rl_agent.AbstractAgent):
             # Not update policy at the end of evey episode in PSRO.
             self._pi_update()
             self.sample_deltas()
+            self.deltas_iterator()
             return
         else:
             raise ValueError("Number of directions tried beyond scope.")
