@@ -267,31 +267,36 @@ def init_ars_responder(sess, env):
 
 def print_beneficial_deviation_analysis(last_meta_game, meta_game, last_meta_prob, verbose=False):
   """
-  Function to check whether players have found policy of beneficial deviation in this round. It is possible to extract last_meta_game from meta_game. But it needs further manipulation and meta_game from last iteration is already there
+  Function to check whether players have found policy of beneficial deviation in current meta_game compared to the last_meta_game
   Args:
-    last_meta_game: List of list of meta_game (One array per game player). last iteration
-    meta_game: List of list of meta_game (One array per game player). Current iteration
+    last_meta_game: List of list of meta_game (One array per game player). The meta game to compare against
+    meta_game: List of list of meta_game (One array per game player). Current iteration's meta game. Same length with last_meta_game, and each element in meta_game has to include all entries in last_meta_game's corresponding elements
     last_meta_prob: nash equilibrium of last g_psro_iteration. List of list. Last iteration
   Returns:
-    a list of length num_players, indicating each player having found a beneficial deviation or not
+    a list of length num_players, indicating the number of beneficial deviations for each player from last_meta_prob
   """
+  num_player = len(last_meta_prob)
+  num_new_pol = [ meta_game[0].shape[i]-len(last_meta_prob[i]) for i in range(num_player)]
+  num_pol = [ meta_game[0].shape[i] for i in range(num_player)]
   prob_matrix = meta_strategies.general_get_joint_strategy_from_marginals(last_meta_prob)
-  this_meta_prob = [np.append(ele,0) for ele in last_meta_prob]
-  beneficial_deviation = []
-  for i in range(len(meta_game)):
+  this_meta_prob = [np.append(last_meta_prob[i],[0 for _ in range(num_new_pol[i])]) for i in range(num_player)]
+  beneficial_deviation = [0 for _ in range(num_player)]
+  for i in range(num_player): 
     ne_payoff = np.sum(last_meta_game[i]*prob_matrix)
-    dev_prob = this_meta_prob.copy()
-    dev_prob[i] = np.append(np.zeros(len(last_meta_prob[i])),1)
-    new_prob_matrix = meta_strategies.general_get_joint_strategy_from_marginals(dev_prob)
-    dev_payoff = np.sum(meta_game[i]*new_prob_matrix)
-    if ne_payoff > dev_payoff:
-      beneficial_deviation.append(False)
-    else:
-      beneficial_deviation.append(True)
+    # iterate through player's new policy
+    for j in range(num_new_pol[i]):
+      dev_prob = this_meta_prob.copy()
+      dev_prob[i] = np.zeros(num_pol[i])
+      dev_prob[i][len(last_meta_prob[i])+j] = 1
+      new_prob_matrix = meta_strategies.general_get_joint_strategy_from_marginals(dev_prob)
+      dev_payoff = np.sum(meta_game[i]*new_prob_matrix)
+      if ne_payoff < dev_payoff:
+        beneficial_deviation[i] += 1
+
   if verbose:
     print("\n---------------------------\nBeneficial Deviation :")
     for p in range(len(beneficial_deviation)):
-      print('player '+str(p),beneficial_deviation[p])
+      print('player '+str(p)+':',beneficial_deviation[p])
   return beneficial_deviation
 
 def print_policy_analysis(policies, game, verbose=False, pdb=False):
@@ -389,36 +394,52 @@ def gpsro_looper(env, oracle, oracle_list, agents, writer, quiesce=False, checkp
       print("Nash Probabilities : {}".format(nash_meta_probabilities))
 
     # The following lines only work for sequential games for the moment.
+    ######### calculate exploitability then log it
     if env.game.get_type().dynamics == pyspiel.GameType.Dynamics.SEQUENTIAL:
       aggregator = policy_aggregator.PolicyAggregator(env.game)
       aggr_policies = aggregator.aggregate(range(FLAGS.n_players), policies, nash_meta_probabilities)
-
     exploitabilities, expl_per_player = exploitability.nash_conv(
         env.game, aggr_policies, return_only_nash_conv=False)
-    unique_policies = print_policy_analysis(policies, env.game, FLAGS.verbose)
-    for p, cur_set in enumerate(unique_policies):
-      writer.add_scalar('p'+str(p)+'_unique_p',len(cur_set),gpsro_iteration)
-
-    if gpsro_iteration % 10 ==0:
-      save_at_termination(solver=g_psro_solver, file_for_meta_game=checkpoint_dir+'/meta_game.pkl')
-    
-    beneficial_deviation = print_beneficial_deviation_analysis(last_meta_game, meta_game, last_meta_prob, FLAGS.verbose)
-    last_meta_prob, last_meta_game = meta_probabilities, meta_game
-    for p in range(len(beneficial_deviation)):
-      writer.add_scalar('p'+str(p)+'_beneficial_dev',int(beneficial_deviation[p]),gpsro_iteration)
-    writer.add_scalar('beneficial_devs',sum(beneficial_deviation),gpsro_iteration)
-
-    if FLAGS.log_train and (gpsro_iteration<=10 or gpsro_iteration%5==0):
-      for p in range(len(train_reward_curve)):
-        for p_i in range(len(train_reward_curve[p])):
-          writer.add_scalar('player'+str(p)+'_'+str(gpsro_iteration),train_reward_curve[p][p_i],p_i)
     for p in range(len(expl_per_player)):
       writer.add_scalar('player'+str(p)+'_exp',expl_per_player[p],gpsro_iteration)
     writer.add_scalar('exp',exploitabilities,gpsro_iteration)
     if FLAGS.verbose:
       print("Exploitabilities : {}".format(exploitabilities))
       print("Exploitabilities per player : {}".format(expl_per_player))
+    
+    ######### analyze unique policy
+    unique_policies = print_policy_analysis(policies, env.game, FLAGS.verbose)
+    for p, cur_set in enumerate(unique_policies):
+      writer.add_scalar('p'+str(p)+'_unique_p',len(cur_set),gpsro_iteration)
+    
+    ######### record meta_game into pkl
+    if gpsro_iteration % 10 ==0:
+      save_at_termination(solver=g_psro_solver, file_for_meta_game=checkpoint_dir+'/meta_game.pkl')
+   
+    ######### analyze if this iteration found beneficial deviation
+    beneficial_deviation = print_beneficial_deviation_analysis(last_meta_game, meta_game, last_meta_prob, FLAGS.verbose)
+    last_meta_prob, last_meta_game = meta_probabilities, meta_game
+    #for p in range(len(beneficial_deviation)):
+    #  writer.add_scalar('p'+str(p)+'_beneficial_dev',int(beneficial_deviation[p]),gpsro_iteration)
+    writer.add_scalar('beneficial_devs',sum(beneficial_deviation),gpsro_iteration)
 
+    ######### analyze if the fast oracle has found beneficial deviation from slow oracle
+    period = FLAGS.fast_oracle_period + FLAGS.slow_oracle_period
+    if gpsro_iteration % period == 0:
+      beneficial_deviation = print_beneficial_deviation_analysis(last_slow_meta_game, meta_game, last_slow_meta_prob, verbose=False)
+      writer.add_scalar('fast_bef_dev_from_slow',sum(beneficial_deviation),gpsro_iteration)
+      print('fast oracle dev from slow', beneficial_deviation)
+    elif gpsro_iteration % period == FLAGS.slow_oracle_period:
+      last_slow_meta_prob, last_slow_meta_game = meta_probabilities, meta_game
+    else:
+      print('fast oracle ARS running')
+    
+    ######### record training curve to tensorboard
+    if FLAGS.log_train and (gpsro_iteration<=10 or gpsro_iteration%5==0):
+      for p in range(len(train_reward_curve)):
+        for p_i in range(len(train_reward_curve[p])):
+          writer.add_scalar('player'+str(p)+'_'+str(gpsro_iteration),train_reward_curve[p][p_i],p_i)
+    
 def main(argv):
   if len(argv) > 1:
     raise app.UsageError("Too many command-line arguments.")
@@ -438,9 +459,10 @@ def main(argv):
 
   if not os.path.exists(FLAGS.root_result_folder):
     os.makedirs(FLAGS.root_result_folder)
-  checkpoint_dir = FLAGS.game_name+str(FLAGS.n_players)+'_sims_'+str(FLAGS.sims_per_entry)+'_it_'+str(FLAGS.gpsro_iterations)+'_ep_'+str(FLAGS.number_training_episodes)+'_or_'+FLAGS.oracle_type
+  checkpoint_dir = FLAGS.game_name+str(FLAGS.n_players)+'_sims_'+str(FLAGS.sims_per_entry)+'_it_'+str(FLAGS.gpsro_iterations)+'_ep_'+str(FLAGS.number_training_episodes)+'_or_'+FLAGS.oracle_type+'_mf_'+FLAGS.meta_strategy_method_frequency+'_fp_'+FLAGS.fast_oracle_period+'_sp_'+FLAGS.slow_oracle_period
+
   # slow oracle is always ARS
-  oracle_flag_str = '_arslr_'+str(FLAGS.ars_learning_rate)+'_arsn_'+str(FLAGS.noise)+'_arsnd_'+str(FLAGS.num_directions)+'_arsbd_'+str(FLAGS.num_best_directions)
+  checkpoint_dir += '_arslr_'+str(FLAGS.ars_learning_rate)+'_arsn_'+str(FLAGS.noise)+'_arsnd_'+str(FLAGS.num_directions)+'_arsbd_'+str(FLAGS.num_best_directions)
   if FLAGS.oracle_type == 'BR':
     oracle_flag_str = ''
   else:

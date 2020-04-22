@@ -76,10 +76,10 @@ ORIGIN = os.path.dirname(os.path.realpath(__file__)) + '/base_slurm.sh'
 MODULE1 = "module load python3.6-anaconda/5.2.0"
 MODULE2 = "cd $(dirname $(dirname '${SLURM_SUBMIT_DIR}'))"
 OUTPUT = "#SBATCH --output="
-COMMAND = "python ../se_example1.py --game_name=leduc_poker --oracle_type=DQN --quiesce=False --gpsro_iterations=500 --sbatch_run=True --log_train=False --number_training_episodes=100000"
+COMMAND = "python ../se_example1.py --game_name=leduc_poker --oracle_type=DQN --quiesce=False --gpsro_iterations=500 --sbatch_run=True --log_train=False --number_training_episodes=100000 --root_result_folder=root_result_se --fast_oracle_period=3"
 #COMMAND = "python ../psro_v2_example.py --game_name=leduc_poker --oracle_type=DQN --quiesce=False --gpsro_iterations=150 --sbatch_run=True --log_train=False --root_result_folder=root_result --meta_strategy_method=sp"
 
-def bash_factory(dir_name='scripts', num_files=10, grid_search_flag=True):
+def bash_factory(dir_name='scripts_se', num_files=10, grid_search_flag=True):
     bash_path = os.path.dirname(os.path.realpath(__file__)) + '/' + dir_name + '/'
     if os.path.exists(bash_path):
         shutil.rmtree(bash_path, ignore_errors=True)

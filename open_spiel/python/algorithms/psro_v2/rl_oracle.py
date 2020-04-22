@@ -342,7 +342,7 @@ class RLOracle(optimization_oracle.AbstractOracle):
     # TODO(author4): Look into multithreading.
     reward_trace = [[] for _ in range(game.num_players())]
     tot = self._number_training_episodes*game.num_players()
-    pbar = tqdm(total=tot, file=sys.stdout, miniters=tot//5)
+    pbar = tqdm(total=tot, file=sys.stdout, miniters=tot//4, leave=False)
     while not self._has_terminated(episodes_per_oracle):
       agents, indexes = self.sample_policies_for_episode(
           new_policies, training_parameters, episodes_per_oracle,

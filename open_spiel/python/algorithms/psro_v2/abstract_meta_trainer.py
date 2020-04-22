@@ -183,7 +183,7 @@ class AbstractMetaTrainer(object):
 
     # Record how many iters each oracle has run in one period.
     self._slow_oracle_counter = slow_oracle_period
-    self._fast_oracle_counter = slow_oracle_period
+    self._fast_oracle_counter = fast_oracle_period
 
     # Create logs for strategy exploration (SE).
     self.logs = SElogs(slow_oracle_period,
@@ -333,9 +333,9 @@ class AbstractMetaTrainer(object):
     self.update_empirical_gamestate(seed=seed)  # Update gamestate matrix.
 
     period = self._slow_oracle_period + self._fast_oracle_period
-    if self._iterations % (self._meta_method_frequency * period) == 0 and \
-            self._iterations != (self._meta_method_frequency * period):
-      self.evalute_and_pick_meta_method()
+    #if self._iterations % (self._meta_method_frequency * period) == 0 and \
+    #        self._iterations != (self._meta_method_frequency * period):
+    #  self.evaluate_and_pick_meta_method()
 
     # Switch fast 1 and slow 0 oracle.
     if self._mode:
@@ -369,15 +369,17 @@ class AbstractMetaTrainer(object):
     """
     self._oracle = oracle
     #TODO: check the __name__ exists.
-    print("The current oracle is {}.".format(self._oracles_name[self._mode]))
+    print("\nswitching from {} this iteration to {} next".format(self._oracles_name[1-self._mode],self._oracles_name[self._mode]))
 
-  def evalute_and_pick_meta_method(self):
+  def evaluate_and_pick_meta_method(self):
     """
     Evaluate the performance of current meta-strategy method and update the
     meta-strategy method.
     :return:
     """
     # Evaluation
+    import pdb
+    pdb.set_trace()
     new_meta_str_method = self.evaluate_meta_method()
 
     # Update
