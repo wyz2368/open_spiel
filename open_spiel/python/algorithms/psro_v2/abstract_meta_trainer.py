@@ -177,19 +177,6 @@ class AbstractMetaTrainer(object):
     # Save the name of current meta_strategy_method
     self._meta_strategy_method_name = meta_strategy_method.__name__
 
-    self._meta_method_frequency = meta_strategy_method_frequency
-    self._slow_oracle_period = slow_oracle_period
-    self._fast_oracle_period = fast_oracle_period
-
-    # Record how many iters each oracle has run in one period.
-    self._slow_oracle_counter = slow_oracle_period
-    self._fast_oracle_counter = fast_oracle_period
-
-    # Create logs for strategy exploration (SE).
-    self.logs = SElogs(slow_oracle_period,
-                 fast_oracle_period,
-                 meta_strategies.META_STRATEGY_METHODS_SE)
-
     self._training_strategy_selector = _process_string_or_callable(
         training_strategy_selector,
         strategy_selectors.TRAINING_STRATEGY_SELECTORS)
@@ -204,9 +191,24 @@ class AbstractMetaTrainer(object):
     self.update_meta_strategies()
 
     # Mode = fast 1 or slow 0
-    self._mode = 0
-    self._oracles = oracle_list[0]
-    self._oracles_name = oracle_list[1]
+    if oracle_list is not None:
+      self._mode = 0
+      self._oracles = oracle_list[0]
+      #TODO: What does the next line mean?
+      self._oracles_name = oracle_list[1]
+
+      self._meta_method_frequency = meta_strategy_method_frequency
+      self._slow_oracle_period = slow_oracle_period
+      self._fast_oracle_period = fast_oracle_period
+
+      # Record how many iters each oracle has run in one period.
+      self._slow_oracle_counter = slow_oracle_period
+      self._fast_oracle_counter = fast_oracle_period
+
+      # Create logs for strategy exploration (SE).
+      self.logs = SElogs(slow_oracle_period,
+                         fast_oracle_period,
+                         meta_strategies.META_STRATEGY_METHODS_SE)
 
   def _initialize_policy(self, initial_policies):
     return NotImplementedError(
