@@ -21,5 +21,8 @@ import copy
 # p = lagging_mean(a)
 # print(p)
 
-a == 3
-print(a)
+
+from datetime import datetime, date
+a = "{:%Y_%m_%d}".format(datetime.now())
+print(type(a))
+

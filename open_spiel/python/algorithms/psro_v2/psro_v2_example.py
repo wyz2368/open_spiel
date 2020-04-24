@@ -490,6 +490,7 @@ def main(argv):
       oracle_flag_str += '_dqnlr_'+str(FLAGS.dqn_learning_rate)+'_tnuf_'+str(FLAGS.update_target_network_every)+'_lf_'+str(FLAGS.learn_every)
     else:
       oracle_flag_str += '_ls_'+str(FLAGS.loss_str)+'_nqbp_'+str(FLAGS.num_q_before_pi)+'_ec_'+str(FLAGS.entropy_cost)+'_clr_'+str(FLAGS.critic_learning_rate)+'_pilr_'+str(FLAGS.pi_learning_rate)
+
   checkpoint_dir = checkpoint_dir + oracle_flag_str+'_se_'+str(seed)+'_'+datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
   checkpoint_dir = os.path.join(os.getcwd(),FLAGS.root_result_folder, checkpoint_dir)
                                 
