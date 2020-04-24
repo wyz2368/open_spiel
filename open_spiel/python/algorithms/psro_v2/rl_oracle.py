@@ -22,10 +22,19 @@ import numpy as np
 
 from open_spiel.python.algorithms.psro_v2 import optimization_oracle
 from open_spiel.python.algorithms.psro_v2 import utils
+
 from open_spiel.python.rl_environment import TimeStep
 from open_spiel.python.rl_environment import StepType
+
+from open_spiel.python.algorithms.psro_v2.ars_ray.utils import rollout_rewards_combinator
+
 from tqdm import tqdm
 import sys
+import ray
+
+from open_spiel.python.algorithms.psro_v2.ars_ray.shared_noise import *
+from open_spiel.python.algorithms.psro_v2.ars_ray.workers import Worker
+
 
 def update_episodes_per_oracles(episodes_per_oracle, played_policies_indexes):
   """Updates the current episode count per policy.
@@ -124,8 +133,10 @@ class RLOracle(optimization_oracle.AbstractOracle):
                env,
                best_response_class,
                best_response_kwargs,
-               number_training_episodes=1e3,
+               number_training_episodes=1e4,
                self_play_proportion=0.0,
+               num_workers=16,
+               ars_parallel=False,
                **kwargs):
     """Init function for the RLOracle.
 
@@ -147,6 +158,17 @@ class RLOracle(optimization_oracle.AbstractOracle):
 
     self._self_play_proportion = self_play_proportion
     self._number_training_episodes = number_training_episodes
+
+    # Initialization for ARS parallel
+    self._ars_parallel = ars_parallel
+    if ars_parallel:
+      ray.init()
+      self._num_workers = num_workers
+      deltas_id = create_shared_noise.remote()
+      self.deltas = SharedNoiseTable(ray.get(deltas_id), seed=216)
+      self.workers = [Worker.remote(env=self._env,
+                                    env_seed=7 * i,
+                                    deltas=deltas_id) for i in range(num_workers)]
 
     super(RLOracle, self).__init__(**kwargs)
           
@@ -175,8 +197,7 @@ class RLOracle(optimization_oracle.AbstractOracle):
         # that prevents policies from training, for all values of is_evaluation.
         # Since all policies returned by the oracle are frozen before being
         # returned, only currently-trained policies can effectively learn.
-        agent_output = agents[player_id].step(
-            time_step, is_evaluation=is_evaluation)
+        agent_output = agents[player_id].step(time_step, is_evaluation=is_evaluation)
         action_list = [agent_output.action]
         time_step = self._env.step(action_list)
         cumulative_rewards += np.array(time_step.rewards)
@@ -340,23 +361,37 @@ class RLOracle(optimization_oracle.AbstractOracle):
 
     new_policies = self.generate_new_policies(training_parameters)
     # TODO(author4): Look into multithreading.
+
     reward_trace = [[] for _ in range(game.num_players())]
+
     tot = self._number_training_episodes*game.num_players()
     pbar = tqdm(total=tot, file=sys.stdout, miniters=tot//4, leave=False)
+
     while not self._has_terminated(episodes_per_oracle):
       agents, indexes = self.sample_policies_for_episode(
           new_policies, training_parameters, episodes_per_oracle,
           strategy_sampler)
+
       #if indexes[0][0] == 0:
       #  if sum(training_parameters[1][0]['probabilities_of_playing_policies'][1]!=0)>1:
       #    print(agents[0]._policy._deltas_idx,end=':')
       #    print(agents[1])
       reward = self._rollout(game, agents, **oracle_specific_execution_kwargs)
       reward_trace[indexes[0][0]].append(reward[indexes[0][0]])
+
+      if self._ars_parallel:
+        # No reward trace for ARS.
+        rollout_rewards, deltas_idx = self.deploy_workers(agents, indexes)
+        self.update_ars_agent(rollout_rewards, deltas_idx, agents, indexes)
+      else:
+        reward = self._rollout(game, agents, **oracle_specific_execution_kwargs)
+        reward_trace[indexes[0][0]].append(reward[indexes[0][0]])
+
       episodes_per_oracle = update_episodes_per_oracles(episodes_per_oracle,
                                                         indexes)
       pbar.update(1)
     pbar.close()
+
     for i in range(len(reward_trace)):
         reward_trace[i] = utils.lagging_mean(reward_trace[i])
     # Freeze the new policies to keep their weights static. This allows us to
@@ -368,3 +403,57 @@ class RLOracle(optimization_oracle.AbstractOracle):
     if hasattr(self,'_ARS_episodes'):
       delattr(self,'_ARS_episodes')
     return new_policies, reward_trace
+
+    #####################################################
+    ############# Parallem Implementation of ARS ########
+    #####################################################
+
+  def deploy_workers(self, agents, indexes):
+    """
+    Running workers and collecting returns of noisy policies for updaing ARS agents.
+    :param agents: a list of policies, one per player.
+    :param indexes: live agent index.
+    :return: returns of noisy policies and corresponding noise indices.
+    """
+    # put policy weights in the object store
+    #TODO: Be careful about the Tensorflow agents. Check if it works.
+    agents_id = ray.put(agents)
+
+    nb_directions = agents[indexes[0][0]]._policy._nb_directions
+    num_rollouts = int(nb_directions / self._num_workers)
+
+    # parallel generation of rollouts
+    rollout_ids_one = [worker.do_sample_episode.remote(agents_id,
+                                                 num_rollouts=num_rollouts,
+                                                 is_evaluate=False) for worker in self.workers]
+
+    rollout_ids_two = [worker.do_sample_episode.remote(agents_id,
+                                                 num_rollouts=1,
+                                                 is_evaluate=False) for worker in
+                       self.workers[:(nb_directions % self._num_workers)]]
+
+    results_one = ray.get(rollout_ids_one)
+    results_two = ray.get(rollout_ids_two)
+
+    rollout_rewards = [[] for _ in agents]
+    deltas_idx = []
+
+    for result in results_one:
+      deltas_idx += result['deltas_idx']
+      rollout_rewards = rollout_rewards_combinator(rollout_rewards, result['rollout_rewards'])
+
+    for result in results_two:
+      deltas_idx += result['deltas_idx']
+      rollout_rewards = rollout_rewards_combinator(rollout_rewards, result['rollout_rewards'])
+
+    deltas_idx = np.array(deltas_idx)
+    # Only pick the rollout_rewards for agent being trained.
+    rollout_rewards = np.array(rollout_rewards[indexes[0][0]], dtype=np.float64)
+
+    return rollout_rewards, deltas_idx
+
+  def update_ars_agent(self, rollout_rewards, deltas_idx, agents, indexes):
+    """
+    Update the active agent.
+    """
+    agents[indexes[0][0]]._policy._pi_update(rollout_rewards, deltas_idx)
