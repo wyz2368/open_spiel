@@ -21,10 +21,5 @@ import copy
 # p = lagging_mean(a)
 # print(p)
 
-a = [[[1,-1],[2,-2]], [[3,-3], [4,-4]]]
-b = [[[1,-1],[2,-2]], [[3,-3], [4,-4]]]
-c = []
-for i, j in zip(a,b):
-    c.append(i+j)
-
-print(c)
+a == 3
+print(a)

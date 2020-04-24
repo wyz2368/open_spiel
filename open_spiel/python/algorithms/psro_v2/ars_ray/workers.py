@@ -27,9 +27,10 @@ class Worker(object):
                  ):
 
         # initialize rl environment.
-        game = pyspiel.load_game_as_turn_based(env.name(),
+
+        game = pyspiel.load_game_as_turn_based(env.name,
                                                {"players": pyspiel.GameParameter(
-                                                   env.num_players())})
+                                                   env.num_players)})
         self._env = rl_environment.Environment(game)
 
         # Each worker gets access to the shared noise table

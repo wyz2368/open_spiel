@@ -130,6 +130,10 @@ flags.DEFINE_integer("num_directions", 64, "Number of exploration directions.")
 flags.DEFINE_integer("num_best_directions", 64, "Select # best directions.")
 flags.DEFINE_float("noise", 0.03, "Coefficient of Gaussian noise.")
 
+#ARS_parallel
+flags.DEFINE_integer("num_workers", 4, "Number of workers for parallel ars.")
+flags.DEFINE_bool("ars_parallel", False, "Whether implement ars in parallel.")
+
 
 def init_pg_responder(sess, env):
   """Initializes the Policy Gradient-based responder and agents."""
@@ -253,6 +257,50 @@ def init_ars_responder(sess, env):
   for agent in agents:
     agent.freeze()
   return oracle, agents
+
+def init_ars_parallel_responder(sess, env):
+  """
+  Initializes the ARS responder and agents.
+  :param sess: A fake sess=None
+  :param env: A rl environment.
+  :return: oracle and agents.
+  """
+  info_state_size = env.observation_spec()["info_state"][0]
+  num_actions = env.action_spec()["num_actions"]
+  agent_class = rl_policy.ARSPolicy_parallel
+  agent_kwargs = {
+    "session": sess,
+    "info_state_size": info_state_size,
+    "num_actions": num_actions,
+    "learning_rate": FLAGS.ars_learning_rate,
+    "nb_directions": FLAGS.num_directions,
+    "nb_best_directions": FLAGS.num_directions,
+    "noise": FLAGS.noise
+  }
+
+  oracle = rl_oracle.RLOracle(
+    env,
+    agent_class,
+    agent_kwargs,
+    number_training_episodes=FLAGS.number_training_episodes,
+    self_play_proportion=FLAGS.self_play_proportion,
+    sigma=FLAGS.sigma,
+    num_workers=FLAGS.num_workers,
+    ars_parallel=FLAGS.ars_parallel
+  )
+
+  agents = [
+    agent_class(
+      env,
+      player_id,
+      **agent_kwargs)
+    for player_id in range(FLAGS.n_players)
+  ]
+  for agent in agents:
+    agent.freeze()
+  return oracle, agents
+
+
 
 def print_policy_analysis(policies, game, verbose=False):
   """Function printing policy diversity within game's known policies.
@@ -392,6 +440,8 @@ def main(argv):
       oracle, agents = init_br_responder(env)
     elif FLAGS.oracle_type == "ARS":
       oracle, agents = init_ars_responder(sess, env)
+    elif FLAGS.oracle_type == "ARS_parallel":
+      oracle, agents = init_ars_parallel_responder(sess, env)
     sess.run(tf.global_variables_initializer())
     gpsro_looper(env, oracle, agents, writer, quiesce=FLAGS.quiesce, checkpoint_dir=checkpoint_dir)
 

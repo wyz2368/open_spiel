@@ -25,6 +25,7 @@ from open_spiel.python import rl_environment
 from open_spiel.python.algorithms import dqn
 from open_spiel.python.algorithms import policy_gradient
 from open_spiel.python.algorithms import ars
+from open_spiel.python.algorithms.psro_v2.ars_ray import ars_ray
 
 
 def rl_policy_factory(rl_class):
@@ -150,4 +151,5 @@ def rl_policy_factory(rl_class):
 PGPolicy = rl_policy_factory(policy_gradient.PolicyGradient)
 DQNPolicy = rl_policy_factory(dqn.DQN)
 ARSPolicy = rl_policy_factory(ars.ARS)
+ARSPolicy_parallel = rl_policy_factory(ars_ray.ARS)
 # pylint: enable=invalid-name
