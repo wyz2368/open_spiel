@@ -172,9 +172,9 @@ class PSROSolver(abstract_meta_trainer.AbstractMetaTrainer):
     super(PSROSolver, self).__init__(
         game,
         oracle,
-        initial_policies,
-        meta_strategy_method,
-        training_strategy_selector,
+        initial_policies=initial_policies,
+        meta_strategy_method=meta_strategy_method,
+        training_strategy_selector=training_strategy_selector,
         number_policies_selected=number_policies_selected,
         **kwargs)
 
@@ -341,12 +341,10 @@ class PSROSolver(abstract_meta_trainer.AbstractMetaTrainer):
             "probabilities_of_playing_policies": new_probabilities
         }
         training_parameters[current_player].append(new_parameter)
-
     if self.symmetric_game:
       self._policies = self._game_num_players * self._policies
       self._num_players = self._game_num_players
       training_parameters = [training_parameters[0]]
-
     # List of List of new policies (One list per player)
     # collect training performance to plot if RL oracle
     if self._train_loggable_oracle:

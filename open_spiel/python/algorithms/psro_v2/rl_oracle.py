@@ -22,7 +22,12 @@ import numpy as np
 
 from open_spiel.python.algorithms.psro_v2 import optimization_oracle
 from open_spiel.python.algorithms.psro_v2 import utils
+
+from open_spiel.python.rl_environment import TimeStep
+from open_spiel.python.rl_environment import StepType
+
 from open_spiel.python.algorithms.psro_v2.ars_ray.utils import rollout_rewards_combinator
+
 from tqdm import tqdm
 import sys
 import ray
@@ -76,6 +81,50 @@ def random_count_weighted_choice(count_weight):
   chosen_index = np.random.choice(indexes, p=p)
   return chosen_index
 
+def sample_episode1(state, policies):
+    """Samples an episode using policies, starting from state.
+
+    Args:
+      state: Pyspiel state representing the current state.
+      policies: List of policy representing the policy executed by each player.
+
+    Returns:
+      The result of the call to returns() of the final state in the episode.
+          Meant to be a win/loss integer.
+    """
+    if state.is_terminal():
+      observations = {"info_state": [], "legal_actions": [], "current_player": []}
+      rewards = []
+      step_type = StepType.LAST
+      cur_rewards = state.rewards()
+      for player_id in range(2):
+        rewards.append(cur_rewards[player_id])
+        observations["info_state"].append(state.information_state_tensor(player_id))
+        observations["legal_actions"].append(state.legal_actions(player_id))
+      observations["current_player"] = state.current_player()
+      time_step = TimeStep(observations=observations,rewards=rewards,discounts=1,step_type=step_type)
+      for agent in policies:
+        agent.step(time_step)
+      return np.array(state.returns(), dtype=np.float32)
+    if state.is_simultaneous_node():
+      actions = [None] * state.num_players()
+      for player in range(state.num_players()):
+        state_policy = policies[player].action_probabilities(state, player, is_evaluation=False)
+        outcomes, probs = zip(*state_policy.items())
+        actions[player] = utils.random_choice(outcomes, probs)
+      state.apply_actions(actions)
+      return sample_episode1(state, policies)
+
+    if state.is_chance_node():
+      outcomes, probs = zip(*state.chance_outcomes())
+    else:
+      player = state.current_player()
+      state_policy = policies[player].action_probabilities(state,is_evaluation=False)
+      outcomes, probs = zip(*state_policy.items())
+
+    state.apply_action(utils.random_choice(outcomes, probs))
+    return sample_episode1(state, policies)
+
 
 class RLOracle(optimization_oracle.AbstractOracle):
   """Oracle handling Approximate Best Responses computation."""
@@ -122,6 +171,10 @@ class RLOracle(optimization_oracle.AbstractOracle):
                                     deltas=deltas_id) for i in range(num_workers)]
 
     super(RLOracle, self).__init__(**kwargs)
+          
+#  def sample_episode(self,unused_time_step, agents, is_evaluation=False):
+#    state = self._env._game.new_initial_state()
+#    return sample_episode1(state,agents)
 
   def sample_episode(self, unused_time_step, agents, is_evaluation=False):
     time_step = self._env.reset()
@@ -148,7 +201,6 @@ class RLOracle(optimization_oracle.AbstractOracle):
         action_list = [agent_output.action]
         time_step = self._env.step(action_list)
         cumulative_rewards += np.array(time_step.rewards)
-
     if not is_evaluation:
       for agent in agents:
         agent.step(time_step)
@@ -164,6 +216,7 @@ class RLOracle(optimization_oracle.AbstractOracle):
   def sample_policies_for_episode(self, new_policies, training_parameters,
                                   episodes_per_oracle, strategy_sampler):
     """Randomly samples a set of policies to run during the next episode.
+    If ARS is the policies that needs to be trained, then keep the trained against policy for num_of_directions times
 
     Note : sampling is biased to select players & strategies that haven't
     trained as much as the others.
@@ -199,7 +252,22 @@ class RLOracle(optimization_oracle.AbstractOracle):
     total_policies = agent_chosen_dict["total_policies"]
     probabilities_of_playing_policies = agent_chosen_dict[
         "probabilities_of_playing_policies"]
-    episode_policies = strategy_sampler(total_policies,
+
+    if type(new_policy._policy).__name__ == 'ARS':
+      if not hasattr(self,'_ARS_episodes'):
+        self._ARS_episodes = {}
+        for i in range(num_players):
+          self._ARS_episodes[i] = [0,None]
+      ARS_nb_dir_pol = new_policy._policy._nb_directions * 2
+      current_count = self._ARS_episodes[chosen_player][0]
+      if current_count % ARS_nb_dir_pol == 0:
+        episode_policies = strategy_sampler(total_policies, probabilities_of_playing_policies)
+        self._ARS_episodes[chosen_player] = [current_count+1, episode_policies]
+      else:
+        episode_policies = self._ARS_episodes[chosen_player][1]
+        self._ARS_episodes[chosen_player][0] += 1
+    else:
+      episode_policies = strategy_sampler(total_policies,
                                         probabilities_of_playing_policies)
 
     live_agents_player_index = [(chosen_player, agent_chosen_ind)]
@@ -295,12 +363,22 @@ class RLOracle(optimization_oracle.AbstractOracle):
     # TODO(author4): Look into multithreading.
 
     reward_trace = [[] for _ in range(game.num_players())]
-    pbar = tqdm(total=self._number_training_episodes*game.num_players(), file=sys.stdout, leave=True)
+
+    tot = self._number_training_episodes*game.num_players()
+    pbar = tqdm(total=tot, file=sys.stdout, miniters=tot//4, leave=False)
 
     while not self._has_terminated(episodes_per_oracle):
       agents, indexes = self.sample_policies_for_episode(
           new_policies, training_parameters, episodes_per_oracle,
           strategy_sampler)
+
+      #if indexes[0][0] == 0:
+      #  if sum(training_parameters[1][0]['probabilities_of_playing_policies'][1]!=0)>1:
+      #    print(agents[0]._policy._deltas_idx,end=':')
+      #    print(agents[1])
+      reward = self._rollout(game, agents, **oracle_specific_execution_kwargs)
+      reward_trace[indexes[0][0]].append(reward[indexes[0][0]])
+
       if self._ars_parallel:
         # No reward trace for ARS.
         rollout_rewards, deltas_idx = self.deploy_workers(agents, indexes)
@@ -308,6 +386,7 @@ class RLOracle(optimization_oracle.AbstractOracle):
       else:
         reward = self._rollout(game, agents, **oracle_specific_execution_kwargs)
         reward_trace[indexes[0][0]].append(reward[indexes[0][0]])
+
       episodes_per_oracle = update_episodes_per_oracles(episodes_per_oracle,
                                                         indexes)
       pbar.update(1)
@@ -319,6 +398,10 @@ class RLOracle(optimization_oracle.AbstractOracle):
     # later not have to make the distinction between static and training
     # policies in training iterations.
     freeze_all(new_policies)
+
+    # Specified written for ARS aligning same opponent strategies for directions
+    if hasattr(self,'_ARS_episodes'):
+      delattr(self,'_ARS_episodes')
     return new_policies, reward_trace
 
     #####################################################

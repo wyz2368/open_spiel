@@ -150,6 +150,7 @@ class Environment(object):
                discount=1.0,
                chance_event_sampler=None,
                observation_type=None,
+               seed=None,
                **kwargs):
     """Constructor.
 
@@ -162,7 +163,7 @@ class Environment(object):
         default to INFORMATION_STATE unless the game doesn't provide it.
       **kwargs: dict, additional settings passed to the Open Spiel game.
     """
-    self._chance_event_sampler = chance_event_sampler or ChanceEventSampler()
+    self._chance_event_sampler = chance_event_sampler or ChanceEventSampler(seed=seed)
 
     if isinstance(game, pyspiel.Game):
       logging.info("Using game instance: %s", game.get_type().short_name)

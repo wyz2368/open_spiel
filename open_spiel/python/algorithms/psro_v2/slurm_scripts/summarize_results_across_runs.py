@@ -27,7 +27,7 @@ import tensorflow as tf
 from tensorboardX import SummaryWriter
 print = functools.partial(print, flush=True)
 
-ROOT_DIR = './root_result'
+ROOT_DIR = '../root_result'
 SUMMARY_DIR = ROOT_DIR+'/summary'
 IDENTIFYER = ['arslr','arsn'] # change dependent on the parameter tuned
 TAG = ['exp','player0_exp','player1_exp']

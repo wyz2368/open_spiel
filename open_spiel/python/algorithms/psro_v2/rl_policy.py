@@ -68,7 +68,7 @@ def rl_policy_factory(rl_class):
       time_step = self._env.get_time_step()
       return time_step
 
-    def action_probabilities(self, state, player_id=None):
+    def action_probabilities(self, state, player_id=None, is_evaluation=True):
       cur_player = state.current_player()
       legal_actions = state.legal_actions(cur_player)
 
@@ -94,7 +94,7 @@ def rl_policy_factory(rl_class):
             step_type=rl_environment.StepType.FIRST)
       # pylint: enable=protected-access
 
-      p = self._policy.step(time_step, is_evaluation=True).probs
+      p = self._policy.step(time_step, is_evaluation=is_evaluation).probs
       prob_dict = {action: p[action] for action in legal_actions}
       return prob_dict
 

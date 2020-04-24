@@ -1,4 +1,5 @@
 #!/bin/bash
+## A template to generate all slurm files
 
 #SBATCH --job-name=egta
 #SBATCH --mail-user=qmaai@umich.edu

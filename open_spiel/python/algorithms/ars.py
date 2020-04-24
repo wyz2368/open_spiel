@@ -118,7 +118,6 @@ class ARS(rl_agent.AbstractAgent):
         self.sample_deltas()
         self.deltas_iterator()
 
-
     def _act(self, info_state, legal_actions, is_evaluation):
         if self.v2:
             self.normalizer.observe(info_state)
@@ -152,6 +151,7 @@ class ARS(rl_agent.AbstractAgent):
             info_state = time_step.observations["info_state"][self.player_id]
             legal_actions = time_step.observations["legal_actions"][self.player_id]
             action, probs = self._act(info_state, legal_actions, is_evaluation)
+            
         else:
             action = None
             probs = []
@@ -164,6 +164,7 @@ class ARS(rl_agent.AbstractAgent):
             # Episode done, add to dataset and maybe learn.
             if time_step.last():
                 self._add_episode_data_to_dataset()
+                
                 direction = self._current_policy_idx // self._nb_directions
                 delta_idx = self._current_policy_idx % self._nb_directions
                 if direction == 0:
@@ -213,6 +214,7 @@ class ARS(rl_agent.AbstractAgent):
             # Not update policy at the end of evey episode in PSRO.
             self._pi_update()
             self.sample_deltas()
+            self.deltas_iterator()
             return
         else:
             raise ValueError("Number of directions tried beyond scope.")
@@ -230,18 +232,24 @@ class ARS(rl_agent.AbstractAgent):
             raise ValueError("Not all directions are evaluated.")
 
         all_rewards = np.array(self._pos_rew + self._neg_rew)
-        sigma_r = all_rewards.std()
 
         # Sorting the rollouts by the max(r_pos, r_neg) and selecting the best directions
         scores = {k: max(r_pos, r_neg) for k, (r_pos, r_neg) in enumerate(zip(self._pos_rew, self._neg_rew))}
         order = sorted(scores.keys(), key=lambda x: scores[x], reverse=True)[:self._nb_best_directions]
         rollouts = [(self._pos_rew[k], self._neg_rew[k], self._deltas[k]) for k in order]
 
+        sigma_r_array = []
         step = np.zeros(self.theta.shape)
         for r_pos, r_neg, d in rollouts:
             step += (r_pos - r_neg) * d
+            sigma_r_array.extend([r_pos,r_neg])
+        sigma_r = np.array(sigma_r_array).std()
+        
+        if sigma_r == 0:
+          sigma_r = 1
 
         self.theta += self._learning_rate / (self._nb_best_directions * sigma_r) * step
+        return sigma_r
 
     def get_weights(self):
         return self.theta
