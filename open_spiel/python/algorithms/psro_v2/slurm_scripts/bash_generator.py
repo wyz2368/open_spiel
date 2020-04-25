@@ -60,7 +60,7 @@ def random_search(num_output, param_range_dict, param_dtype_dict):
         output[key] = sample
     return output
 
-def grid_search(param_dict,search_ars_bd=False):
+def grid_search(param_dict, search_ars_bd=False):
     li = list(itertools.product(*param_dict.values()))
     if not search_ars_bd:
       return li

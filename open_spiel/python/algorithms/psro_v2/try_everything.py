@@ -21,8 +21,9 @@ import copy
 # p = lagging_mean(a)
 # print(p)
 
-
-from datetime import datetime, date
-a = "{:%Y_%m_%d}".format(datetime.now())
-print(type(a))
-
+a = [1,2,3,4,5]
+a = iter(a)
+print(next(a))
+print(next(a))
+print(next(a))
+print(next(a))

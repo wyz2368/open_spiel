@@ -190,6 +190,9 @@ class AbstractMetaTrainer(object):
     self._initialize_game_state()
     self.update_meta_strategies()
 
+    # For tuning ars.
+    self.stopping_time = 10000
+
     # Mode = fast 1 or slow 0
     if oracle_list is not None:
       self._mode = 0
@@ -227,8 +230,19 @@ class AbstractMetaTrainer(object):
     self._iterations += 1
     train_reward_curve = self.update_agents()  # Generate new, Best Response agents via oracle.
     self.update_empirical_gamestate(seed=seed)  # Update gamestate matrix.
-    self.update_meta_strategies()#seed=seed)  # Compute meta strategy (e.g. Nash)
+    # self.update_meta_strategies()#seed=seed)  # Compute meta strategy (e.g. Nash)
+    self.update_meta_strategies_with_stopping_time()
     return train_reward_curve
+
+  def update_meta_strategies_with_stopping_time(self):
+    if self._iterations <= self.stopping_time:
+      self._meta_strategy_probabilities = self._meta_strategy_method(self)
+      if self.symmetric_game:
+        self._meta_strategy_probabilities = [self._meta_strategy_probabilities[0]]
+    else:
+      for i, nash in enumerate(self._meta_strategy_probabilities):
+        nash = np.append(nash, 0.0)
+        self._meta_strategy_probabilities[i] = nash
 
   def update_meta_strategies(self):
     self._meta_strategy_probabilities = self._meta_strategy_method(self)
@@ -265,7 +279,7 @@ class AbstractMetaTrainer(object):
     """
     if self._meta_strategy_method_name in {'general_nash_strategy','nash_strategy'}:
       return self.get_meta_strategies()
-    meta_strategy_probabilities = meta_strategies.general_nash_strategy(self,checkpoint_dir=self.checkpoint_dir)
+    meta_strategy_probabilities = meta_strategies.general_nash_strategy(self, checkpoint_dir=self.checkpoint_dir)
     return [np.copy(a) for a in meta_strategy_probabilities]
 
   def get_meta_strategies(self):
