@@ -46,5 +46,5 @@ oracle = rl_oracle.RLOracle(
     ars_parallel=True
 )
 
-
+print("Done")
 ray.shutdown()
