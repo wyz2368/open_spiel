@@ -364,8 +364,8 @@ class RLOracle(optimization_oracle.AbstractOracle):
 
     reward_trace = [[] for _ in range(game.num_players())]
 
-    tot = self._number_training_episodes*game.num_players()
-    pbar = tqdm(total=tot, file=sys.stdout, miniters=tot//4, leave=False)
+    # tot = self._number_training_episodes*game.num_players()
+    # pbar = tqdm(total=tot, file=sys.stdout, miniters=tot//4, leave=False)
 
     while not self._has_terminated(episodes_per_oracle):
       agents, indexes = self.sample_policies_for_episode(
@@ -389,8 +389,8 @@ class RLOracle(optimization_oracle.AbstractOracle):
 
       episodes_per_oracle = update_episodes_per_oracles(episodes_per_oracle,
                                                         indexes)
-      pbar.update(1)
-    pbar.close()
+    #   pbar.update(1)
+    # pbar.close()
 
     for i in range(len(reward_trace)):
         reward_trace[i] = utils.lagging_mean(reward_trace[i])
