@@ -10,6 +10,7 @@ from open_spiel.python import rl_environment
 from open_spiel.python.algorithms.psro_v2 import rl_oracle
 from open_spiel.python.algorithms.psro_v2 import rl_policy
 
+import ray
 
 
 game = pyspiel.load_game_as_turn_based("kuhn_poker",
@@ -45,4 +46,5 @@ oracle = rl_oracle.RLOracle(
     ars_parallel=True
 )
 
-
+print("Done")
+ray.shutdown()

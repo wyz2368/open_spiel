@@ -290,8 +290,6 @@ def print_beneficial_deviation_analysis(last_meta_game, meta_game, last_meta_pro
       print('player '+str(p),beneficial_deviation[p])
   return beneficial_deviation
 
-def print_policy_analysis(policies, game, verbose=False, pdb=False):
-=======
 def init_ars_parallel_responder(sess, env):
   """
   Initializes the ARS responder and agents.
@@ -336,7 +334,7 @@ def init_ars_parallel_responder(sess, env):
 
 
 
-def print_policy_analysis(policies, game, verbose=False):
+def print_policy_analysis(policies, game, verbose=False, pdb=False):
   """Function printing policy diversity within game's known policies.
 
   Warning : only works with deterministic policies.
@@ -486,6 +484,7 @@ def main(argv):
       oracle_flag_str += '_dqnlr_'+str(FLAGS.dqn_learning_rate)+'_tnuf_'+str(FLAGS.update_target_network_every)+'_lf_'+str(FLAGS.learn_every)
     else:
       oracle_flag_str += '_ls_'+str(FLAGS.loss_str)+'_nqbp_'+str(FLAGS.num_q_before_pi)+'_ec_'+str(FLAGS.entropy_cost)+'_clr_'+str(FLAGS.critic_learning_rate)+'_pilr_'+str(FLAGS.pi_learning_rate)
+
   checkpoint_dir = checkpoint_dir + oracle_flag_str+'_se_'+str(seed)+'_'+datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
   checkpoint_dir = os.path.join(os.getcwd(),FLAGS.root_result_folder, checkpoint_dir)
                                 
