@@ -21,6 +21,5 @@ import copy
 # p = lagging_mean(a)
 # print(p)
 
-param_dict = {'ars_learning_rate': list(np.round(np.arange(0.01, 0.1, 0.01), decimals=2)),
-                  'noise': list(np.arange(0.01, 0.1, 0.01))}
-print(param_dict)
+a == 3
+print(a)
