@@ -417,8 +417,7 @@ class RLOracle(optimization_oracle.AbstractOracle):
     """
     # put policy weights in the object store
     #TODO: Be careful about the Tensorflow agents. Check if it works.
-    # agents_id = ray.put(agents)
-    agents_id = agents
+    agents_id = ray.put(agents)
 
     nb_directions = agents[indexes[0][0]]._policy._nb_directions
     num_rollouts = int(nb_directions / self._num_workers)
