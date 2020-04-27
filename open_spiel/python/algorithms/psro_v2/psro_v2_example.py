@@ -75,8 +75,8 @@ flags.DEFINE_integer("gpsro_iterations", 150,
                      "Number of training steps for GPSRO.")
 flags.DEFINE_bool("symmetric_game", False, "Whether to consider the current "
                   "game as a symmetric game.")
-flags.DEFINE_bool("quiesce",False,"Whether to use quiece")
-flags.DEFINE_bool("sparse_quiesce",False,"whether to use sparse matrix quiesce implementation")
+flags.DEFINE_bool("quiesce", False, "Whether to use quiece")
+flags.DEFINE_bool("sparse_quiesce", False, "whether to use sparse matrix quiesce implementation")
 
 # Rectify options
 flags.DEFINE_string("rectifier", "",
@@ -126,7 +126,6 @@ flags.DEFINE_float("noise", 0.03, "Coefficient of Gaussian noise.")
 
 #ARS_parallel
 flags.DEFINE_integer("num_workers", 4, "Number of workers for parallel ars.")
-flags.DEFINE_bool("ars_parallel", False, "Whether implement ars in parallel.")
 
 
 # General
@@ -320,7 +319,7 @@ def init_ars_parallel_responder(sess, env):
     self_play_proportion=FLAGS.self_play_proportion,
     sigma=FLAGS.sigma,
     num_workers=FLAGS.num_workers,
-    ars_parallel=FLAGS.ars_parallel
+    ars_parallel=True
   )
 
   agents = [
