@@ -6,9 +6,9 @@
 #SBATCH --mail-user=wangyzhsrg@aol.com
 #SBATCH --mail-type=BEGIN,END,FAIL
 #SBATCH --nodes=1
-#SBATCH --ntasks-per-node=1
+#SBATCH --ntasks-per-node=5
 #SBATCH --mem-per-cpu=7g
-#SBATCH --time=07-00:00:00
+#SBATCH --time=01-00:00:00
 #SBATCH --account=wellman1
 #SBATCH --partition=standard
 #SBATCH --output=/home/wangyzh/open_spiel/open_spiel/python/algorithms/psro_v2/logs/ars_ray_test.log
