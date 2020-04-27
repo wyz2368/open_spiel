@@ -46,5 +46,15 @@ oracle = rl_oracle.RLOracle(
     ars_parallel=True
 )
 
+agents = [
+    agent_class(
+      env,
+      player_id,
+      **agent_kwargs)
+    for player_id in range(2)
+  ]
+
+ray.put(agents)
+
 print("Done")
 ray.shutdown()
