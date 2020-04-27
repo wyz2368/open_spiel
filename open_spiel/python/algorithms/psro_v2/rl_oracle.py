@@ -426,11 +426,11 @@ class RLOracle(optimization_oracle.AbstractOracle):
     # parallel generation of rollouts
     rollout_ids_one = [worker.do_sample_episode.remote(agents_id,
                                                  num_rollouts=num_rollouts,
-                                                 is_evaluate=False) for worker in self.workers]
+                                                 is_evaluation=False) for worker in self.workers]
 
     rollout_ids_two = [worker.do_sample_episode.remote(agents_id,
                                                  num_rollouts=1,
-                                                 is_evaluate=False) for worker in
+                                                 is_evaluation=False) for worker in
                        self.workers[:(nb_directions % self._num_workers)]]
 
     results_one = ray.get(rollout_ids_one)
