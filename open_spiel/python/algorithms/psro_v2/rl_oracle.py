@@ -419,8 +419,7 @@ class RLOracle(optimization_oracle.AbstractOracle):
     # put policy weights in the object store
     #TODO: Be careful about the Tensorflow agents. Check if it works.
 
-    agents_serized = cloudpickle.dumps(agents)
-    agents_id = ray.put(agents_serized)
+    agents_id = ray.put(agents)
 
     nb_directions = agents[indexes[0][0]]._policy._nb_directions
     num_rollouts = int(nb_directions / self._num_workers)
@@ -460,3 +459,5 @@ class RLOracle(optimization_oracle.AbstractOracle):
     Update the active agent.
     """
     agents[indexes[0][0]]._policy._pi_update(rollout_rewards, deltas_idx)
+
+

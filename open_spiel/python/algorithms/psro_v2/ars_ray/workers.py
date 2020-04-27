@@ -10,7 +10,7 @@ import ray
 
 from open_spiel.python.algorithms.psro_v2.ars_ray.shared_noise import *
 from open_spiel.python.algorithms.psro_v2.ars_ray.utils import rewards_combinator
-import dill as cloudpickle
+
 
 @ray.remote
 class Worker(object):
@@ -97,7 +97,6 @@ class Worker(object):
 
         rollout_rewards = [[] for _ in agents]
         deltas_idx = []
-        agents = cloudpickle.loads(agents)
 
         # Assume only one agent is active.
         # Get the index, policy and noise coefficient of the active agent.
