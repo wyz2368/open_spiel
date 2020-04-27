@@ -31,6 +31,7 @@ from open_spiel.python.algorithms.psro_v2.ars_ray.utils import rollout_rewards_c
 from tqdm import tqdm
 import sys
 import ray
+import cloudpickle
 
 from open_spiel.python.algorithms.psro_v2.ars_ray.shared_noise import *
 from open_spiel.python.algorithms.psro_v2.ars_ray.workers import Worker
@@ -417,7 +418,9 @@ class RLOracle(optimization_oracle.AbstractOracle):
     """
     # put policy weights in the object store
     #TODO: Be careful about the Tensorflow agents. Check if it works.
-    agents_id = ray.put(agents)
+
+    agents_serized = cloudpickle.dumps(agents)
+    agents_id = ray.put(agents_serized)
 
     nb_directions = agents[indexes[0][0]]._policy._nb_directions
     num_rollouts = int(nb_directions / self._num_workers)

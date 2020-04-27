@@ -11,6 +11,7 @@ from open_spiel.python.algorithms.psro_v2 import rl_oracle
 from open_spiel.python.algorithms.psro_v2 import rl_policy
 
 import ray
+import cloudpickle
 
 
 game = pyspiel.load_game_as_turn_based("kuhn_poker",
@@ -54,7 +55,8 @@ agents = [
     for player_id in range(2)
   ]
 
-ray.put(agents)
+a = cloudpickle.dumps(agents)
+print(a)
 
 print("Done")
 ray.shutdown()
