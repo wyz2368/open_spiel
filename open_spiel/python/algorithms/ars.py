@@ -254,6 +254,9 @@ class ARS(rl_agent.AbstractAgent):
     def get_weights(self):
         return self.theta
 
+    def set_weights(self, variables):
+        self.theta = variables
+
     def _add_episode_data_to_dataset(self):
         """Add episode data to the buffer."""
         info_states = [data.info_state for data in self._episode_data]

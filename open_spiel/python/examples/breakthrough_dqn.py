@@ -106,6 +106,7 @@ def main(_):
     saver = tf.train.Saver()
     sess.run(tf.global_variables_initializer())
 
+
     for ep in range(FLAGS.num_train_episodes):
       if (ep + 1) % FLAGS.eval_every == 0:
         r_mean = eval_against_random_bots(env, agents, random_agents, 1000)

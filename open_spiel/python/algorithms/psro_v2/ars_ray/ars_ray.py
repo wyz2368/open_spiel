@@ -141,6 +141,9 @@ class ARS(rl_agent.AbstractAgent):
     def get_weights(self):
         return self.theta
 
+    def set_weights(self, variables):
+        self.theta = variables
+
 
     def copy_with_noise(self, sigma=0.0, copy_weights=True):
         """

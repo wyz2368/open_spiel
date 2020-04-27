@@ -452,3 +452,35 @@ class DQN(rl_agent.AbstractAgent):
       ])
       self._session.run(copy_target_weights)
     return copied_object
+
+  def set_weights(self, variables):
+      """
+      Set the weights of q_network and target_q_network using variables.
+      :param variables: a list returned by the self.get_weights().
+      """
+      cur_variables = [self._q_network.variables]
+      cur_variables.append(self._target_q_network.variables)
+
+      for old_vars, new_vars in zip(cur_variables, variables):
+          copy_weights = tf.group(*[
+              va.assign(vb)
+              for va, vb in zip(old_vars, new_vars)
+          ])
+          self._session.run(copy_weights)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
