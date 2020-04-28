@@ -18,7 +18,7 @@ from open_spiel.python import rl_environment
 @ray.remote
 class Worker(object):
     def __init__(self,
-                 env,
+                 env_name,
                  env_seed,
                  deltas=None,
                  slow_oracle_kargs=None,
@@ -26,10 +26,11 @@ class Worker(object):
                  ):
         # initialize rl environment.
 
-        self._num_players = env.num_players
-        game = pyspiel.load_game_as_turn_based(env.name,
+        self._env_name = env_name
+
+        game = pyspiel.load_game_as_turn_based(env_name,
                                                {"players": pyspiel.GameParameter(
-                                                   env.num_players)})
+                                                   2)})
         self._env = rl_environment.Environment(game)
 
         # Each worker gets access to the shared noise table
