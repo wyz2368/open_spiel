@@ -17,8 +17,32 @@ from open_spiel.python import rl_environment
 
 @ray.remote
 class Worker(object):
-    def __init__(self):
-        self.value = 1
+    def __init__(self,
+                 env,
+                 env_seed,
+                 deltas=None,
+                 slow_oracle_kargs=None,
+                 fast_oracle_kargs=None
+                 ):
+        # initialize rl environment.
+
+        self._num_players = env.num_players
+        game = pyspiel.load_game_as_turn_based(env.name,
+                                               {"players": pyspiel.GameParameter(
+                                                   env.num_players)})
+        self._env = rl_environment.Environment(game)
+
+        # Each worker gets access to the shared noise table
+        # with independent random streams for sampling
+        # from the shared noise table.
+        self.deltas = SharedNoiseTable(deltas, env_seed + 7)
+
+        self._policies = [[] for _ in range(self._num_players)]
+        self._slow_oracle_kargs = slow_oracle_kargs
+        self._fast_oracle_kargs = fast_oracle_kargs
+        self._delta_std = self._fast_oracle_kargs['noise']
+
+        self.strategy_sampler = utils.sample_strategy
 
 class Worker1(object):
     """ 
