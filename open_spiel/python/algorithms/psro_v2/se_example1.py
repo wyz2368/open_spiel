@@ -177,7 +177,7 @@ def init_pg_responder(sess, env):
   ]
   for agent in agents:
     agent.freeze()
-  return oracle, agents
+  return oracle, agents, agent_kwargs
 
 
 def init_br_responder(env):
@@ -223,7 +223,7 @@ def init_dqn_responder(sess, env):
   ]
   for agent in agents:
     agent.freeze()
-  return oracle, agents
+  return oracle, agents, agent_kwargs
 
 def init_ars_responder(sess, env):
   """
@@ -252,6 +252,52 @@ def init_ars_responder(sess, env):
     number_training_episodes=FLAGS.number_training_episodes,
     self_play_proportion=FLAGS.self_play_proportion,
     sigma=FLAGS.sigma)
+
+  agents = [
+    agent_class(
+      env,
+      player_id,
+      **agent_kwargs)
+    for player_id in range(FLAGS.n_players)
+  ]
+  for agent in agents:
+    agent.freeze()
+  return oracle, agents
+
+
+def init_ars_parallel_responder(sess, env, slow_oracle_type, slow_agent_kwargs):
+  """
+  Initializes the ARS responder and agents.
+  :param sess: A fake sess=None
+  :param env: A rl environment.
+  :return: oracle and agents.
+  """
+  info_state_size = env.observation_spec()["info_state"][0]
+  num_actions = env.action_spec()["num_actions"]
+  agent_class = rl_policy.ARSPolicy_parallel
+  agent_kwargs = {
+    "session": sess,
+    "info_state_size": info_state_size,
+    "num_actions": num_actions,
+    "learning_rate": FLAGS.ars_learning_rate,
+    "nb_directions": FLAGS.num_directions,
+    "nb_best_directions": FLAGS.num_directions,
+    "noise": FLAGS.noise
+  }
+
+  slow_agent_kwargs["slow_oracle_type"] = slow_oracle_type
+
+  oracle = rl_oracle.RLOracle(
+    env,
+    agent_class,
+    agent_kwargs,
+    number_training_episodes=FLAGS.number_training_episodes,
+    self_play_proportion=FLAGS.self_play_proportion,
+    sigma=FLAGS.sigma,
+    num_workers=FLAGS.num_workers,
+    ars_parallel=True,
+    slow_agent_kwargs=slow_agent_kwargs
+  )
 
   agents = [
     agent_class(
@@ -483,16 +529,22 @@ def main(argv):
   # Initialize oracle and agents
   with tf.Session() as sess:
     if FLAGS.oracle_type == "DQN":
-      slow_oracle, agents = init_dqn_responder(sess, env)
+      slow_oracle, agents, agent_kwargs = init_dqn_responder(sess, env)
     elif FLAGS.oracle_type == "PG":
-      slow_oracle, agents = init_pg_responder(sess, env)
+      slow_oracle, agents, agent_kwargs = init_pg_responder(sess, env)
     elif FLAGS.oracle_type == "BR":
       slow_oracle, agents = init_br_responder(env)
+      agent_kwargs = None
     elif FLAGS.oracle_type == "ARS":
       slow_oracle, agents = init_ars_responder(sess, env)
     sess.run(tf.global_variables_initializer())
 
-    fast_oracle, agents = init_ars_responder(sess=None, env=env)
+
+    # fast_oracle, agents = init_ars_responder(sess=None, env=env)
+    fast_oracle, agents = init_ars_parallel_responder(sess=None,
+                                                      env=env,
+                                                      slow_oracle_type=FLAGS.oracle_type,
+                                                      slow_agent_kwargs=agent_kwargs)
 
     oracle_list[0].append(slow_oracle)
     oracle_list[0].append(fast_oracle)

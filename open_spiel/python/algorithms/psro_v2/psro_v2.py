@@ -341,15 +341,17 @@ class PSROSolver(abstract_meta_trainer.AbstractMetaTrainer):
             "probabilities_of_playing_policies": new_probabilities
         }
         training_parameters[current_player].append(new_parameter)
+
     if self.symmetric_game:
       self._policies = self._game_num_players * self._policies
       self._num_players = self._game_num_players
       training_parameters = [training_parameters[0]]
+
     # List of List of new policies (One list per player)
     # collect training performance to plot if RL oracle
     if self._train_loggable_oracle:
       # rl oracle return reward trace together with approximate best response policies
-      self.oracle,reward_trace = self._oracle(self._game, training_parameters, strategy_sampler=sample_strategy, using_joint_strategies=self._rectify_training or not self.sample_from_marginals)
+      self.oracle, reward_trace = self._oracle(self._game, training_parameters, strategy_sampler=sample_strategy, using_joint_strategies=self._rectify_training or not self.sample_from_marginals)
     else:
       # best response oracle does not return reward_trace
       self.oracle = self._oracle(self._game, training_parameters, strategy_sampler=sample_strategy, using_joint_strategies=self._rectify_training or not self.sample_from_marginals)

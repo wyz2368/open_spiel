@@ -53,5 +53,4 @@ def rollout_rewards_combinator(rollout_rewards, new_rewards):
     return new_rollout_rewards
 
 
-def agents_distill(agents):
-    pass
+
