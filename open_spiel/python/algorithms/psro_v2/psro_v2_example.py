@@ -311,6 +311,7 @@ def init_ars_parallel_responder(sess, env):
     "noise": FLAGS.noise
   }
 
+  print("enter here")
   oracle = rl_oracle.RLOracle(
     env,
     agent_class,
