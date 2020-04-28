@@ -17,6 +17,10 @@ from open_spiel.python import rl_environment
 
 @ray.remote
 class Worker(object):
+    def __init__(self):
+        self.value = 1
+
+class Worker1(object):
     """ 
     Object class for parallel rollout generation.
     """
