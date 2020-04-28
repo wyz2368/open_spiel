@@ -33,6 +33,9 @@ import sys
 import ray
 import dill as cloudpickle
 
+import functools
+print = functools.partial(print, flush=True)
+
 from open_spiel.python.algorithms.psro_v2.ars_ray.shared_noise import *
 from open_spiel.python.algorithms.psro_v2.ars_ray.workers import Worker
 
