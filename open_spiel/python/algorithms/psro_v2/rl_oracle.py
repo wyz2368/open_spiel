@@ -322,16 +322,21 @@ class RLOracle(optimization_oracle.AbstractOracle):
                            for player_params in training_parameters]
     episodes_per_oracle = np.array(episodes_per_oracle)
 
-    self.update_used_policies_in_workers(training_parameters)
     new_policies = self.generate_new_policies(training_parameters)
-    # TODO(author4): Look into multithreading.
+
+    # Sync total policies in all workers.
+    if self._ars_parallel:
+      self.update_used_policies_in_workers(training_parameters)
+      self.update_new_policies_in_workers(new_policies)
 
     reward_trace = [[] for _ in range(game.num_players())]
 
     while not self._has_terminated(episodes_per_oracle):
       if self._ars_parallel:
-        # No reward trace for ARS.
+        # No reward trace for ARS_parallel.
         chosen_player = self.choose_live_agent(episodes_per_oracle)
+        # Notice that one episode contains trials of all directions of ars.
+        indexes = [(chosen_player, 0)]
         rollout_rewards, deltas_idx = self.deploy_workers(training_parameters, chosen_player)
         self.update_ars_agent(rollout_rewards, deltas_idx, new_policies, chosen_player)
       else:
@@ -342,7 +347,7 @@ class RLOracle(optimization_oracle.AbstractOracle):
         reward = self._rollout(game, agents, **oracle_specific_execution_kwargs)
         reward_trace[indexes[0][0]].append(reward[indexes[0][0]])
 
-        episodes_per_oracle = update_episodes_per_oracles(episodes_per_oracle,
+      episodes_per_oracle = update_episodes_per_oracles(episodes_per_oracle,
                                                         indexes)
 
 
@@ -371,11 +376,9 @@ class RLOracle(optimization_oracle.AbstractOracle):
     :param indexes: live agent index.
     :return: returns of noisy policies and corresponding noise indices.
     """
-    # put policy weights in the object store
-    #TODO: Be careful about the Tensorflow agents. Check if it works.
-
+    # put the training player id and meta-strategies in the object store.
     chosen_player_id = ray.put(chosen_player)
-    probabilities_of_playing_policies_id = ray.put(training_parameters[chosen_player][-1]['probabilities_of_playing_policies'])
+    probabilities_of_playing_policies_id = ray.put(training_parameters[chosen_player][0]['probabilities_of_playing_policies'])
 
     nb_directions = self._best_response_kwargs["nb_directions"]
     num_rollouts = int(nb_directions / self._num_workers)
@@ -441,7 +444,7 @@ class RLOracle(optimization_oracle.AbstractOracle):
     for player in range(len(training_parameters)):
       policies_types_per_player = []
       weights = []
-      extra_policies = training_parameters[player][-1]["total_policies"][used_num_policies, :]
+      extra_policies = training_parameters[player][0]["total_policies"][used_num_policies, :]
       for policy in extra_policies:
         weights.append([policy.get_weights()])
         policies_types_per_player.append(type(policy._policy).__name__)

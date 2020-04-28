@@ -169,9 +169,11 @@ class Worker(object):
     def best_responder(self, policy_type, player):
         if policy_type == "DQN":
             agent_class = rl_policy.DQNPolicy
+            assert self._slow_oracle_kargs is not None
             new_pol = agent_class(self._env, player, **self._slow_oracle_kargs)
         elif policy_type == "PG":
             agent_class = rl_policy.PGPolicy
+            assert self._slow_oracle_kargs is not None
             new_pol = agent_class(self._env, player, **self._slow_oracle_kargs)
         elif policy_type == "ARS_parallel":
             agent_class = rl_policy.ARSPolicy_parallel

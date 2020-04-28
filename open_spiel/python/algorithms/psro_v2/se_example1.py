@@ -265,7 +265,7 @@ def init_ars_responder(sess, env):
   return oracle, agents
 
 
-def init_ars_parallel_responder(sess, env, slow_oracle_type, slow_agent_kwargs):
+def init_ars_parallel_responder(sess, env, slow_agent_kwargs):
   """
   Initializes the ARS responder and agents.
   :param sess: A fake sess=None
@@ -284,8 +284,6 @@ def init_ars_parallel_responder(sess, env, slow_oracle_type, slow_agent_kwargs):
     "nb_best_directions": FLAGS.num_directions,
     "noise": FLAGS.noise
   }
-
-  slow_agent_kwargs["slow_oracle_type"] = slow_oracle_type
 
   oracle = rl_oracle.RLOracle(
     env,
@@ -543,7 +541,6 @@ def main(argv):
     # fast_oracle, agents = init_ars_responder(sess=None, env=env)
     fast_oracle, agents = init_ars_parallel_responder(sess=None,
                                                       env=env,
-                                                      slow_oracle_type=FLAGS.oracle_type,
                                                       slow_agent_kwargs=agent_kwargs)
 
     oracle_list[0].append(slow_oracle)
