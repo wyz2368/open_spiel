@@ -126,10 +126,12 @@ class RLOracle(optimization_oracle.AbstractOracle):
     # Initialization for ARS parallel
     self._ars_parallel = ars_parallel
     if ars_parallel:
+      print("enter 6")
       ray.init(temp_dir='./ars_temp_dir/')
       self._num_workers = num_workers
       deltas_id = create_shared_noise.remote()
       self.deltas = SharedNoiseTable(ray.get(deltas_id), seed=216)
+      print("enter 5")
       self.workers = [Worker.remote(env=self._env,
                                     env_seed=7 * i,
                                     deltas=deltas_id,
