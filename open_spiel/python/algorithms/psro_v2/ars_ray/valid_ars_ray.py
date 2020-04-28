@@ -55,8 +55,7 @@ agents = [
     for player_id in range(2)
   ]
 
-a = cloudpickle.dumps(agents)
-print(a)
+
 
 print("Done")
 ray.shutdown()
