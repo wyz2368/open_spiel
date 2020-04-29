@@ -37,21 +37,8 @@ import functools
 print = functools.partial(print, flush=True)
 
 from open_spiel.python.algorithms.psro_v2.ars_ray.shared_noise import *
-# from open_spiel.python.algorithms.psro_v2.ars_ray.workers import Worker
+from open_spiel.python.algorithms.psro_v2.ars_ray.workers import Worker
 
-@ray.remote
-class Worker(object):
-    def __init__(self,
-                 env_name,
-                 env_seed,
-                 deltas=None,
-                 slow_oracle_kargs=None,
-                 fast_oracle_kargs=None
-                 ):
-        # initialize rl environment.
-
-        self._env_name = env_name
-        print(env_name)
 
 def update_episodes_per_oracles(episodes_per_oracle, played_policies_indexes):
   """Updates the current episode count per policy.
