@@ -27,6 +27,7 @@ class Worker(object):
         # initialize rl environment.
 
         self._env_name = env_name
+        print(env_name)
 
         # game = pyspiel.load_game_as_turn_based(env_name,
         #                                        {"players": pyspiel.GameParameter(
