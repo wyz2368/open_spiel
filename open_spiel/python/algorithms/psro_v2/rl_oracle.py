@@ -37,8 +37,21 @@ import functools
 print = functools.partial(print, flush=True)
 
 from open_spiel.python.algorithms.psro_v2.ars_ray.shared_noise import *
-from open_spiel.python.algorithms.psro_v2.ars_ray.workers import Worker
+# from open_spiel.python.algorithms.psro_v2.ars_ray.workers import Worker
 
+@ray.remote
+class Worker(object):
+    def __init__(self,
+                 env_name,
+                 env_seed,
+                 deltas=None,
+                 slow_oracle_kargs=None,
+                 fast_oracle_kargs=None
+                 ):
+        # initialize rl environment.
+
+        self._env_name = env_name
+        print(env_name)
 
 def update_episodes_per_oracles(episodes_per_oracle, played_policies_indexes):
   """Updates the current episode count per policy.
@@ -132,13 +145,12 @@ class RLOracle(optimization_oracle.AbstractOracle):
       deltas_id = create_shared_noise.remote()
       self.deltas = SharedNoiseTable(ray.get(deltas_id), seed=216)
       print("enter 5")
-      print(self._env.name, type(self._env.name))
 
-      # self.workers = [Worker.remote(env_name=self._env.name,
-      #                               env_seed=7 * i,
-      #                               deltas=deltas_id,
-      #                               slow_oracle_kargs=slow_oracle_kargs,
-      #                               fast_oracle_kargs=best_response_kwargs) for i in range(num_workers)]
+      self.workers = [Worker.remote(env_name=self._env.name,
+                                    env_seed=7 * i,
+                                    deltas=deltas_id,
+                                    slow_oracle_kargs=slow_oracle_kargs,
+                                    fast_oracle_kargs=best_response_kwargs) for i in range(num_workers)]
       self._slow_oracle_kargs = slow_oracle_kargs
       print("enter 4")
 
