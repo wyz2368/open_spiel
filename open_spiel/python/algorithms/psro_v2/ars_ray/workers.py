@@ -1,10 +1,3 @@
-'''
-Parallel implementation of the Augmented Random Search method.
-Horia Mania --- hmania@berkeley.edu
-Aurelia Guy
-Benjamin Recht 
-'''
-
 import numpy as np
 import ray
 
@@ -15,7 +8,8 @@ from open_spiel.python.algorithms.psro_v2.ars_ray.utils import rewards_combinato
 from open_spiel.python.algorithms.psro_v2 import rl_policy
 
 from open_spiel.python import rl_environment
-# import tensorflow.compat.v1 as tf
+
+import tensorflow.compat.v1 as tf
 
 import random
 
@@ -52,8 +46,7 @@ class Worker(object):
         self._fast_oracle_kargs = fast_oracle_kargs
         self._delta_std = self._fast_oracle_kargs['noise']
 
-        # self._sess = tf.Session()
-        self._sess = None
+        self._sess = tf.Session()
         if self._slow_oracle_kargs is not None:
             self._slow_oracle_kargs['session'] = self._sess
 

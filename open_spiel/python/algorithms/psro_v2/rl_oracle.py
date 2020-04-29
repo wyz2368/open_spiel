@@ -37,8 +37,8 @@ import functools
 print = functools.partial(print, flush=True)
 
 from open_spiel.python.algorithms.psro_v2.ars_ray.shared_noise import *
-from open_spiel.python.algorithms.psro_v2.ars_ray.workers import Worker
-
+# from open_spiel.python.algorithms.psro_v2.ars_ray.workers import Worker
+from open_spiel.python.algorithms.psro_v2.psro_v2_example import Worker
 
 def update_episodes_per_oracles(episodes_per_oracle, played_policies_indexes):
   """Updates the current episode count per policy.
