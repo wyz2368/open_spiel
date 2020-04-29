@@ -8,11 +8,13 @@ Benjamin Recht
 import numpy as np
 import ray
 
+import pyspiel
+
 from open_spiel.python.algorithms.psro_v2.ars_ray.shared_noise import *
 from open_spiel.python.algorithms.psro_v2.ars_ray.utils import rewards_combinator
 from open_spiel.python.algorithms.psro_v2 import utils
 from open_spiel.python.algorithms.psro_v2 import rl_policy
-import pyspiel
+
 from open_spiel.python import rl_environment
 import tensorflow.compat.v1 as tf
 
