@@ -37,10 +37,10 @@ import pyspiel
 import random
 
 
-import ray
-from open_spiel.python.algorithms.psro_v2.ars_ray.workers import Worker
-
-import tensorflow.compat.v1 as tf
+# import ray
+# from open_spiel.python.algorithms.psro_v2.ars_ray.workers import Worker
+#
+# import tensorflow.compat.v1 as tf
 from tensorboardX import SummaryWriter
 import logging
 logging.disable(logging.INFO)
@@ -60,6 +60,11 @@ from open_spiel.python.algorithms.psro_v2 import strategy_selectors
 from open_spiel.python.algorithms.psro_v2.quiesce.quiesce import PSROQuiesceSolver
 from open_spiel.python.algorithms.psro_v2 import meta_strategies
 from open_spiel.python.algorithms.psro_v2.quiesce import quiesce_sparse
+
+import ray
+from open_spiel.python.algorithms.psro_v2.ars_ray.workers import Worker
+
+import tensorflow.compat.v1 as tf
 
 
 FLAGS = flags.FLAGS
