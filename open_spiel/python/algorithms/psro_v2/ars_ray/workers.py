@@ -8,7 +8,7 @@ Benjamin Recht
 import numpy as np
 import ray
 
-import pyspiel
+# import pyspiel
 
 from open_spiel.python.algorithms.psro_v2.ars_ray.shared_noise import *
 from open_spiel.python.algorithms.psro_v2.ars_ray.utils import rewards_combinator
@@ -35,6 +35,7 @@ class Worker(object):
                  ):
 
         # initialize rl environment.
+        import pyspiel
 
         self._num_players = 2
         game = pyspiel.load_game_as_turn_based(env_name,
