@@ -17,7 +17,7 @@ from open_spiel.python import rl_environment
 import tensorflow.compat.v1 as tf
 
 
-
+@ray.remote
 class Worker(object):
     """
     Object class for parallel rollout generation.
