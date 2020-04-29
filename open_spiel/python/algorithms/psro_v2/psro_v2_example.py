@@ -33,13 +33,12 @@ from absl import flags
 import numpy as np
 import pickle
 #import atexit
+
+import tensorflow.compat.v1 as tf
+
 import pyspiel
 import random
 
-
-# import ray
-# from open_spiel.python.algorithms.psro_v2.ars_ray.workers import Worker
-#
 # import tensorflow.compat.v1 as tf
 from tensorboardX import SummaryWriter
 import logging
@@ -60,11 +59,6 @@ from open_spiel.python.algorithms.psro_v2 import strategy_selectors
 from open_spiel.python.algorithms.psro_v2.quiesce.quiesce import PSROQuiesceSolver
 from open_spiel.python.algorithms.psro_v2 import meta_strategies
 from open_spiel.python.algorithms.psro_v2.quiesce import quiesce_sparse
-
-import ray
-from open_spiel.python.algorithms.psro_v2.ars_ray.workers import Worker
-
-import tensorflow.compat.v1 as tf
 
 
 FLAGS = flags.FLAGS
@@ -470,12 +464,6 @@ def gpsro_looper(env, oracle, agents, writer, quiesce=False, checkpoint_dir=None
       print("Exploitabilities per player : {}".format(expl_per_player))
 
 def main(argv):
-
-  if FLAGS.oracle_type == "ARS_parallel":
-    ray.init(temp_dir='./ars_temp_dir/')
-    workers = [Worker.remote(env_name="kuhn_poker") for _ in range(4)]
-
-
   if len(argv) > 1:
     raise app.UsageError("Too many command-line arguments.")
  
