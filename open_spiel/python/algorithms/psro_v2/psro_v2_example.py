@@ -302,7 +302,7 @@ def init_ars_parallel_responder(sess, env):
   num_actions = env.action_spec()["num_actions"]
   agent_class = rl_policy.ARSPolicy_parallel
   agent_kwargs = {
-    "session": sess,
+    "session": None,
     "info_state_size": info_state_size,
     "num_actions": num_actions,
     "learning_rate": FLAGS.ars_learning_rate,
