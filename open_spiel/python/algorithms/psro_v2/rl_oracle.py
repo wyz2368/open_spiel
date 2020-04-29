@@ -127,7 +127,7 @@ class RLOracle(optimization_oracle.AbstractOracle):
     self._ars_parallel = ars_parallel
     if ars_parallel:
 
-      ray.init(temp_dir='./ars_temp_dir/')
+      # ray.init(temp_dir='./ars_temp_dir/')
       self._num_workers = num_workers
       deltas_id = create_shared_noise.remote()
       self.deltas = SharedNoiseTable(ray.get(deltas_id), seed=216)
@@ -135,11 +135,11 @@ class RLOracle(optimization_oracle.AbstractOracle):
       if slow_oracle_kargs is not None:
         slow_oracle_kargs["session"] = None
 
-      self.workers = [Worker.remote(env_name=self._env.name,
-                                    env_seed=7 * i,
-                                    deltas=deltas_id,
-                                    slow_oracle_kargs=slow_oracle_kargs,
-                                    fast_oracle_kargs=best_response_kwargs) for i in range(num_workers)]
+      # self.workers = [Worker.remote(env_name=self._env.name,
+      #                               env_seed=7 * i,
+      #                               deltas=deltas_id,
+      #                               slow_oracle_kargs=slow_oracle_kargs,
+      #                               fast_oracle_kargs=best_response_kwargs) for i in range(num_workers)]
 
     super(RLOracle, self).__init__(**kwargs)
 

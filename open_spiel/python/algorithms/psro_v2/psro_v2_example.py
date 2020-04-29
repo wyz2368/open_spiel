@@ -36,6 +36,8 @@ import pickle
 import pyspiel
 import random
 
+
+import ray
 from open_spiel.python.algorithms.psro_v2.ars_ray.workers import Worker
 
 import tensorflow.compat.v1 as tf
@@ -48,7 +50,7 @@ print = functools.partial(print, flush=True)
 from open_spiel.python import policy
 from open_spiel.python import rl_environment
 from open_spiel.python.algorithms import exploitability
-from open_spiel.python.algorithms import get_all_states
+# from open_spiel.python.algorithms import get_all_states
 from open_spiel.python.algorithms import policy_aggregator
 from open_spiel.python.algorithms.psro_v2 import best_response_oracle
 from open_spiel.python.algorithms.psro_v2 import psro_v2
@@ -463,7 +465,10 @@ def gpsro_looper(env, oracle, agents, writer, quiesce=False, checkpoint_dir=None
       print("Exploitabilities per player : {}".format(expl_per_player))
 
 def main(argv):
-  workers = [Worker.remote(env_name="kuhn_poker") for _ in range(4)]
+
+  if FLAGS.oracle_type == "ARS_parallel":
+    ray.init(temp_dir='./ars_temp_dir/')
+    workers = [Worker.remote(env_name="kuhn_poker") for _ in range(4)]
 
 
   if len(argv) > 1:
