@@ -133,11 +133,11 @@ class RLOracle(optimization_oracle.AbstractOracle):
       self.deltas = SharedNoiseTable(ray.get(deltas_id), seed=216)
       print("enter 5")
 
-      self.workers = [Worker.remote(env_name=self._env.name,
-                                    env_seed=7 * i,
-                                    deltas=deltas_id,
-                                    slow_oracle_kargs=slow_oracle_kargs,
-                                    fast_oracle_kargs=best_response_kwargs) for i in range(num_workers)]
+      # self.workers = [Worker.remote(env_name=self._env.name,
+      #                               env_seed=7 * i,
+      #                               deltas=deltas_id,
+      #                               slow_oracle_kargs=slow_oracle_kargs,
+      #                               fast_oracle_kargs=best_response_kwargs) for i in range(num_workers)]
       self._slow_oracle_kargs = slow_oracle_kargs
       print("enter 4")
 
