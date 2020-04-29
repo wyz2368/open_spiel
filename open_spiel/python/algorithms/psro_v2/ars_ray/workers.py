@@ -12,11 +12,12 @@ import pyspiel
 
 from open_spiel.python.algorithms.psro_v2.ars_ray.shared_noise import *
 from open_spiel.python.algorithms.psro_v2.ars_ray.utils import rewards_combinator
-from open_spiel.python.algorithms.psro_v2 import utils
 from open_spiel.python.algorithms.psro_v2 import rl_policy
 
 from open_spiel.python import rl_environment
 import tensorflow.compat.v1 as tf
+
+import random
 
 
 @ray.remote
@@ -50,8 +51,6 @@ class Worker(object):
         self._slow_oracle_kargs = slow_oracle_kargs
         self._fast_oracle_kargs = fast_oracle_kargs
         self._delta_std = self._fast_oracle_kargs['noise']
-
-        self.strategy_sampler = utils.sample_strategy
 
         self._sess = tf.Session()
         if self._slow_oracle_kargs is not None:
@@ -193,7 +192,47 @@ class Worker(object):
         return new_pol
 
     def sample_agents(self, probabilities_of_playing_policies, chosen_player):
-        agents = self.strategy_sampler(self._policies, probabilities_of_playing_policies)
+        agents = self.sample_strategy_marginal(self._policies, probabilities_of_playing_policies)
         agents[chosen_player] = self._policies[chosen_player][-1]
 
         return agents
+
+    def sample_strategy_marginal(self, total_policies, probabilities_of_playing_policies):
+        """Samples strategies given marginal probabilities.
+
+        Uses independent sampling if probs_are_marginal, and joint sampling otherwise.
+
+        Args:
+          total_policies: A list, each element a list of each player's policies.
+          probabilities_of_playing_policies: This is a list, with the k-th element
+            also a list specifying the play probabilities of the k-th player's
+            policies.
+
+        Returns:
+          sampled_policies: A list specifying a single sampled joint strategy.
+        """
+
+        num_players = len(total_policies)
+        sampled_policies = []
+        for k in range(num_players):
+            current_policies = total_policies[k]
+            current_probabilities = probabilities_of_playing_policies[k]
+            sampled_policy_k = self.random_choice(current_policies, current_probabilities)
+            sampled_policies.append(sampled_policy_k)
+        return sampled_policies
+
+    def random_choice(self, outcomes, probabilities):
+        """Samples from discrete probability distribution.
+
+        `numpy.choice` does not seem optimized for repeated calls, this code
+        had higher performance.
+
+        Args:
+          outcomes: List of categorical outcomes.
+          probabilities: Discrete probability distribtuion as list of floats.
+
+        Returns:
+          Entry of `outcomes` sampled according to the distribution.
+        """
+        cumsum = np.cumsum(probabilities)
+        return outcomes[np.searchsorted(cumsum / cumsum[-1], random.random())]
