@@ -36,21 +36,7 @@ import pickle
 import pyspiel
 import random
 
-
 from open_spiel.python.algorithms.psro_v2.ars_ray.workers import Worker
-
-workers = [Worker.remote(env_name="kuhn_poker") for _ in range(4)]
-
-
-
-
-
-
-
-
-
-
-
 
 import tensorflow.compat.v1 as tf
 from tensorboardX import SummaryWriter
@@ -477,6 +463,9 @@ def gpsro_looper(env, oracle, agents, writer, quiesce=False, checkpoint_dir=None
       print("Exploitabilities per player : {}".format(expl_per_player))
 
 def main(argv):
+  workers = [Worker.remote(env_name="kuhn_poker") for _ in range(4)]
+
+
   if len(argv) > 1:
     raise app.UsageError("Too many command-line arguments.")
  
