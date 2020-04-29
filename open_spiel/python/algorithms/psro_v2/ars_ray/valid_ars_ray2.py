@@ -14,5 +14,11 @@ class Worker(object):
         self._env_name = env_name
         print(env_name)
 
-ray.init(temp_dir='./ars_temp_dir/')
-workers = [Worker.remote("kuhn") for _ in range(3)]
+
+class Run():
+    def __init__(self):
+        ray.init(temp_dir='./ars_temp_dir/')
+        self._workers = [Worker.remote("kuhn") for _ in range(3)]
+
+
+a = Run()
