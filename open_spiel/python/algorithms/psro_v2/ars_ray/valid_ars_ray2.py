@@ -10,7 +10,7 @@ class Worker(object):
                  fast_oracle_kargs=None
                  ):
         # initialize rl environment.
-
+        import pyspiel
         self._env_name = env_name
         print(env_name)
 
