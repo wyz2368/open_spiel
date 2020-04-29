@@ -8,14 +8,14 @@ Benjamin Recht
 import numpy as np
 import ray
 
-# import pyspiel
+import pyspiel
 
 from open_spiel.python.algorithms.psro_v2.ars_ray.shared_noise import *
 from open_spiel.python.algorithms.psro_v2.ars_ray.utils import rewards_combinator
-# from open_spiel.python.algorithms.psro_v2 import rl_policy
-#
-# from open_spiel.python import rl_environment
-# import tensorflow.compat.v1 as tf
+from open_spiel.python.algorithms.psro_v2 import rl_policy
+
+from open_spiel.python import rl_environment
+import tensorflow.compat.v1 as tf
 
 import random
 
@@ -35,11 +35,6 @@ class Worker(object):
                  ):
 
         # initialize rl environment.
-        import pyspiel
-
-
-        from open_spiel.python import rl_environment
-        import tensorflow.compat.v1 as tf
 
         self._num_players = 2
         game = pyspiel.load_game_as_turn_based(env_name,
@@ -180,7 +175,6 @@ class Worker(object):
         return len(self._policies[0])
 
     def best_responder(self, policy_type, player):
-        from open_spiel.python.algorithms.psro_v2 import rl_policy
         if policy_type == "DQN":
             agent_class = rl_policy.DQNPolicy
             assert self._slow_oracle_kargs is not None
