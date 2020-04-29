@@ -17,16 +17,18 @@ from open_spiel.python import rl_environment
 
 @ray.remote
 class Worker(object):
-    def __init__(self,
-                 env_name,
-                 env_seed,
-                 deltas=None,
-                 slow_oracle_kargs=None,
-                 fast_oracle_kargs=None
-                 ):
-        # initialize rl environment.
-
-        self._env_name = env_name
+    def __init__(self):
+        self.value = 1
+    # def __init__(self,
+    #              env_name,
+    #              env_seed,
+    #              deltas=None,
+    #              slow_oracle_kargs=None,
+    #              fast_oracle_kargs=None
+    #              ):
+    #     # initialize rl environment.
+    #
+    #     self._env_name = env_name
 
         # game = pyspiel.load_game_as_turn_based(env_name,
         #                                        {"players": pyspiel.GameParameter(
