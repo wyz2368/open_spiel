@@ -22,7 +22,7 @@ class Worker(object):
 
     def __init__(self,
                  env_name,
-                 env_seed,
+                 env_seed=2,
                  deltas=None,
                  slow_oracle_kargs=None,
                  fast_oracle_kargs=None

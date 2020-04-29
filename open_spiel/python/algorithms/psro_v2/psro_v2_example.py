@@ -35,6 +35,23 @@ import pickle
 #import atexit
 import pyspiel
 import random
+
+
+from open_spiel.python.algorithms.psro_v2.ars_ray.workers import Worker
+
+workers = [Worker.remote(env_name="kuhn_poker") for _ in range(4)]
+
+
+
+
+
+
+
+
+
+
+
+
 import tensorflow.compat.v1 as tf
 from tensorboardX import SummaryWriter
 import logging
