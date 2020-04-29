@@ -14,5 +14,5 @@ class Worker(object):
         self._env_name = env_name
         print(env_name)
 
-
+ray.init(temp_dir='./ars_temp_dir/')
 workers = [Worker.remote("kuhn") for _ in range(3)]
