@@ -32,14 +32,11 @@ from absl import app
 from absl import flags
 import numpy as np
 import pickle
-#import atexit
-
-import tensorflow.compat.v1 as tf
 
 import pyspiel
 import random
 
-# import tensorflow.compat.v1 as tf
+import tensorflow.compat.v1 as tf
 from tensorboardX import SummaryWriter
 import logging
 logging.disable(logging.INFO)
