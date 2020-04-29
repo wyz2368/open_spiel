@@ -132,7 +132,8 @@ class RLOracle(optimization_oracle.AbstractOracle):
       deltas_id = create_shared_noise.remote()
       self.deltas = SharedNoiseTable(ray.get(deltas_id), seed=216)
       print("enter 5")
-      self.workers = [Worker.remote(env=self._env.name,
+
+      self.workers = [Worker.remote(env_name=self._env.name,
                                     env_seed=7 * i,
                                     deltas=deltas_id,
                                     slow_oracle_kargs=slow_oracle_kargs,
