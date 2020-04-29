@@ -23,12 +23,13 @@ from absl import flags
 from absl import logging
 import numpy as np
 
+import tensorflow.compat.v1 as tf
 
 from open_spiel.python import rl_environment
 from open_spiel.python.algorithms import dqn
 from open_spiel.python.algorithms import random_agent
 
-import tensorflow.compat.v1 as tf
+# import tensorflow.compat.v1 as tf
 
 FLAGS = flags.FLAGS
 

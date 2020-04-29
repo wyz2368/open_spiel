@@ -46,7 +46,10 @@ class Worker(object):
         self._fast_oracle_kargs = fast_oracle_kargs
         self._delta_std = self._fast_oracle_kargs['noise']
 
-        self._sess = tf.Session()
+        self._sess = tf.get_default_session()
+        if self._sess is None:
+            self._sess = tf.Session()
+
         if self._slow_oracle_kargs is not None:
             self._slow_oracle_kargs['session'] = self._sess
 
