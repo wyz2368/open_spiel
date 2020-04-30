@@ -1,3 +1,8 @@
+import sys
+import functools
+print = functools.partial(print, flush=True)
+print(sys.version)
+
 import numpy as np
 import ray
 
