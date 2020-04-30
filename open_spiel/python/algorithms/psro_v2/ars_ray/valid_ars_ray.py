@@ -14,6 +14,8 @@ import ray
 import cloudpickle
 
 from open_spiel.python.algorithms.psro_v2.ars_ray.workers import worker
+from open_spiel.python.algorithms.psro_v2.parallel.worker import do_something
+import concurrent.futures
 
 game = pyspiel.load_game_as_turn_based("kuhn_poker",
                                       {"players": pyspiel.GameParameter(
@@ -47,9 +49,18 @@ agent_kwargs = {
 #     num_workers=4,
 #     ars_parallel=True
 # )
-ray.init(temp_dir='./ars_temp_dir/')
-for _ in range(3):
-    print(ray.get(worker.remote("kuhn_poker")))
+
+# ray.init(temp_dir='./ars_temp_dir/')
+# for _ in range(3):
+#     print(ray.get(worker.remote("kuhn_poker")))
+
+with concurrent.futures.ProcessPoolExecutor() as executor:
+    secs = ['kuhn_poker', 'leduc_poker']
+    results = executor.map(do_something, secs)
+
+    for result in results:
+        print(result)
+
 
 # agents = [
 #     agent_class(
