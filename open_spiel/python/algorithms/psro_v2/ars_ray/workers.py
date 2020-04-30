@@ -1,8 +1,8 @@
 import numpy as np
 import ray
 
-# import pyspiel
-#
+import pyspiel
+
 # from open_spiel.python.algorithms.psro_v2.ars_ray.shared_noise import *
 # from open_spiel.python.algorithms.psro_v2.ars_ray.utils import rewards_combinator
 # from open_spiel.python.algorithms.psro_v2 import rl_policy
@@ -22,7 +22,7 @@ class Worker(object):
               slow_oracle_kargs=None,
               fast_oracle_kargs=None
               ):
-        pass
+
     def output(self):
         return "asdf"
 
