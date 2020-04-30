@@ -22,7 +22,7 @@ class Worker(object):
               slow_oracle_kargs=None,
               fast_oracle_kargs=None
               ):
-
+        pass
     def output(self):
         return "asdf"
 
