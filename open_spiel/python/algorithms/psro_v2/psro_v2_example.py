@@ -36,7 +36,7 @@ import pickle
 import pyspiel
 import random
 
-import tensorflow.compat.v1 as tf
+# import tensorflow.compat.v1 as tf
 from tensorboardX import SummaryWriter
 import logging
 logging.disable(logging.INFO)
@@ -46,7 +46,7 @@ print = functools.partial(print, flush=True)
 from open_spiel.python import policy
 from open_spiel.python import rl_environment
 from open_spiel.python.algorithms import exploitability
-# from open_spiel.python.algorithms import get_all_states
+from open_spiel.python.algorithms import get_all_states
 from open_spiel.python.algorithms import policy_aggregator
 from open_spiel.python.algorithms.psro_v2 import best_response_oracle
 from open_spiel.python.algorithms.psro_v2 import psro_v2
@@ -470,7 +470,9 @@ def main(argv):
     seed = FLAGS.seed
   np.random.seed(seed)
   random.seed(seed)
-  tf.set_random_seed(seed)
+
+  # tf.set_random_seed(seed)
+
   game = pyspiel.load_game_as_turn_based(FLAGS.game_name,
                                          {"players": pyspiel.GameParameter(
                                              FLAGS.n_players)})
@@ -499,7 +501,8 @@ def main(argv):
     sys.stdout = open(checkpoint_dir+'/stdout.txt','w+')
 
   # Initialize oracle and agents
-  with tf.Session() as sess:
+  # with tf.Session() as sess:
+    sess = None
     if FLAGS.oracle_type == "DQN":
       oracle, agents = init_dqn_responder(sess, env)
     elif FLAGS.oracle_type == "PG":
@@ -510,7 +513,7 @@ def main(argv):
       oracle, agents = init_ars_responder(sess, env)
     elif FLAGS.oracle_type == "ARS_parallel":
       oracle, agents = init_ars_parallel_responder(sess, env)
-    sess.run(tf.global_variables_initializer())
+    # sess.run(tf.global_variables_initializer())
     gpsro_looper(env, oracle, agents, writer, quiesce=FLAGS.quiesce, checkpoint_dir=checkpoint_dir, seed=seed)
 
   writer.close()

@@ -331,16 +331,12 @@ class RLOracle(optimization_oracle.AbstractOracle):
 
     new_policies = self.generate_new_policies(training_parameters)
 
-    print("enter 1")
-
     # Sync total policies in all workers.
     if self._ars_parallel:
       self.update_used_policies_in_workers(training_parameters)
       self.update_new_policies_in_workers(new_policies)
 
     reward_trace = [[] for _ in range(game.num_players())]
-
-    print("enter 2")
 
     while not self._has_terminated(episodes_per_oracle):
       if self._ars_parallel:
@@ -349,7 +345,6 @@ class RLOracle(optimization_oracle.AbstractOracle):
         # Notice that one episode contains trials of all directions of ars.
         indexes = [(chosen_player, 0)]
         rollout_rewards, deltas_idx = self.deploy_workers(training_parameters, chosen_player)
-        print("enter 3")
         self.update_ars_agent(rollout_rewards, deltas_idx, new_policies, chosen_player)
       else:
         agents, indexes = self.sample_policies_for_episode(
@@ -458,7 +453,7 @@ class RLOracle(optimization_oracle.AbstractOracle):
       weights = []
       extra_policies = training_parameters[player][0]["total_policies"][used_num_policies, :]
       for policy in extra_policies:
-        weights.append([policy.get_weights()])
+        weights.append(policy.get_weights())
         policies_types_per_player.append(type(policy._policy).__name__)
       extra_policies_weights.append(weights)
       policies_types.append(policies_types_per_player)
