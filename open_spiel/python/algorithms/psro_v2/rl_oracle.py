@@ -452,7 +452,7 @@ class RLOracle(optimization_oracle.AbstractOracle):
       policies_types_per_player = []
       weights = []
       #TODO: This line may: list indices must be integers or slices, not tuple.
-      extra_policies = training_parameters[player][0]["total_policies"][used_num_policies, :]
+      extra_policies = training_parameters[player][0]["total_policies"][player][used_num_policies, :]
       for policy in extra_policies:
         weights.append(policy.get_weights())
         policies_types_per_player.append(type(policy._policy).__name__)
