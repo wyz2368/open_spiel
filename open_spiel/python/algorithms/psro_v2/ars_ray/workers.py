@@ -161,12 +161,14 @@ class Worker(object):
 
     def sync_total_policies(self, extra_policies_weights, policies_types, chosen_player):
         with self._sess:
-            # if chosen_player
-            for player in range(self._num_players):
-                for i, policy_type in enumerate(policies_types[player]):
-                    new_pol = self.best_responder(policy_type, player)
-                    new_pol.set_weights(extra_policies_weights[player][i])
-                    self._policies[player].append(new_pol)
+            if chosen_player is not None:
+                self._policies[chosen_player][-1].set_weights(extra_policies_weights[chosen_player][-1])
+            else:
+                for player in range(self._num_players):
+                    for i, policy_type in enumerate(policies_types[player]):
+                        new_pol = self.best_responder(policy_type, player)
+                        new_pol.set_weights(extra_policies_weights[player][i])
+                        self._policies[player].append(new_pol)
 
 
     def get_num_policies(self):
