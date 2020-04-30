@@ -138,7 +138,7 @@ class Worker(object):
                     pos_reward = self.sample_episode(None, agents, is_evaluation, delta, chosen_player)
 
                     # compute reward used for negative pertubation rollout. List, one reward per player.
-                    neg_reward = self.sample_episode(None, agents, is_evaluation, delta, chosen_player)
+                    neg_reward = self.sample_episode(None, agents, is_evaluation, -delta, chosen_player)
 
                     # a list of lists, one per player. For each player, a list contains the positive
                     # rewards and negative rewards in a format [[pos rew, neg rew],
