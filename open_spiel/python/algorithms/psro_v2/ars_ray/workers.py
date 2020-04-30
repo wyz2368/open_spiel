@@ -24,20 +24,20 @@ def worker(env_name):
     return env.name
 
 
-# @ray.remote
-# class Worker(object):
-#     def __init__(self,
-#               env_name,
-#               env_seed=2,
-#               deltas=None,
-#               slow_oracle_kargs=None,
-#               fast_oracle_kargs=None
-#               ):
-#         pass
-#
-#     def output(self):
-#         import sys
-#         return sys.path
+@ray.remote
+class Worker(object):
+    def __init__(self,
+              env_name,
+              env_seed=2,
+              deltas=None,
+              slow_oracle_kargs=None,
+              fast_oracle_kargs=None
+              ):
+        pass
+
+    def output(self):
+        import sys
+        return sys.path
 
 
 # @ray.remote

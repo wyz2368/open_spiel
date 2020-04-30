@@ -7,7 +7,7 @@ print = functools.partial(print, flush=True)
 
 
 from open_spiel.python import rl_environment
-from open_spiel.python.algorithms.psro_v2 import rl_oracle
+# from open_spiel.python.algorithms.psro_v2 import rl_oracle
 from open_spiel.python.algorithms.psro_v2 import rl_policy
 
 import ray
