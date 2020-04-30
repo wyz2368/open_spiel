@@ -1,7 +1,7 @@
 import numpy as np
 import ray
 
-import sys
+
 
 import pyspiel
 
@@ -27,6 +27,7 @@ class Worker(object):
         pass
 
     def output(self):
+        import sys
         return sys.path
 
 
