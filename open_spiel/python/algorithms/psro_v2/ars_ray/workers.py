@@ -233,3 +233,7 @@ class Worker(object):
         """
         cumsum = np.cumsum(probabilities)
         return outcomes[np.searchsorted(cumsum / cumsum[-1], random.random())]
+
+
+    def output(self):
+        print("asdf")

@@ -47,6 +47,9 @@ oracle = rl_oracle.RLOracle(
     ars_parallel=True
 )
 
+for worker in oracle.workers:
+    worker.output.remote()
+
 agents = [
     agent_class(
       env,
