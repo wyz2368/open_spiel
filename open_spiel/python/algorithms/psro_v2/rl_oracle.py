@@ -482,7 +482,9 @@ class RLOracle(optimization_oracle.AbstractOracle):
     policies_types_id = ray.put(policies_types)
 
     for worker in self.workers:
-      worker.sync_total_policies.remote(extra_policies_weights_id, policies_types_id)
+      worker.sync_total_policies.remote(extra_policies_weights_id,
+                                        policies_types_id,
+                                        keep_old_policies)
 
 
 

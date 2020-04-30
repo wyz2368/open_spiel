@@ -14,4 +14,4 @@
 
 module load python3.6-anaconda/5.2.0
 cd ${SLURM_SUBMIT_DIR}
-python valid_ars_ray2.py
+python valid_ars_ray.py
