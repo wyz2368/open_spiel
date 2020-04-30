@@ -138,44 +138,44 @@ flags.DEFINE_bool("verbose", True, "Enables verbose printing and profiling.")
 flags.DEFINE_bool("log_train",True,"log training reward curve")
 
 
-def init_pg_responder(sess, env):
-  """Initializes the Policy Gradient-based responder and agents."""
-  info_state_size = env.observation_spec()["info_state"][0]
-  num_actions = env.action_spec()["num_actions"]
-
-  agent_class = rl_policy.PGPolicy
-
-  agent_kwargs = {
-      "session":sess,
-      "info_state_size": info_state_size,
-      "num_actions": num_actions,
-      "loss_str": FLAGS.loss_str,
-      "loss_class": False,
-      "hidden_layers_sizes": [FLAGS.hidden_layer_size] * FLAGS.n_hidden_layers,
-      "batch_size": FLAGS.batch_size,
-      "entropy_cost": FLAGS.entropy_cost,
-      "critic_learning_rate": FLAGS.critic_learning_rate,
-      "pi_learning_rate": FLAGS.pi_learning_rate,
-      "num_critic_before_pi": FLAGS.num_q_before_pi,
-      "optimizer_str": FLAGS.optimizer_str
-  }
-  oracle = rl_oracle.RLOracle(
-      env,
-      agent_class,
-      agent_kwargs,
-      number_training_episodes=FLAGS.number_training_episodes,
-      self_play_proportion=FLAGS.self_play_proportion,
-      sigma=FLAGS.sigma)
-  agents = [
-      agent_class(  # pylint: disable=g-complex-comprehension
-          env,
-          player_id,
-          **agent_kwargs)
-      for player_id in range(FLAGS.n_players)
-  ]
-  for agent in agents:
-    agent.freeze()
-  return oracle, agents
+# def init_pg_responder(sess, env):
+#   """Initializes the Policy Gradient-based responder and agents."""
+#   info_state_size = env.observation_spec()["info_state"][0]
+#   num_actions = env.action_spec()["num_actions"]
+#
+#   agent_class = rl_policy.PGPolicy
+#
+#   agent_kwargs = {
+#       "session":sess,
+#       "info_state_size": info_state_size,
+#       "num_actions": num_actions,
+#       "loss_str": FLAGS.loss_str,
+#       "loss_class": False,
+#       "hidden_layers_sizes": [FLAGS.hidden_layer_size] * FLAGS.n_hidden_layers,
+#       "batch_size": FLAGS.batch_size,
+#       "entropy_cost": FLAGS.entropy_cost,
+#       "critic_learning_rate": FLAGS.critic_learning_rate,
+#       "pi_learning_rate": FLAGS.pi_learning_rate,
+#       "num_critic_before_pi": FLAGS.num_q_before_pi,
+#       "optimizer_str": FLAGS.optimizer_str
+#   }
+#   oracle = rl_oracle.RLOracle(
+#       env,
+#       agent_class,
+#       agent_kwargs,
+#       number_training_episodes=FLAGS.number_training_episodes,
+#       self_play_proportion=FLAGS.self_play_proportion,
+#       sigma=FLAGS.sigma)
+#   agents = [
+#       agent_class(  # pylint: disable=g-complex-comprehension
+#           env,
+#           player_id,
+#           **agent_kwargs)
+#       for player_id in range(FLAGS.n_players)
+#   ]
+#   for agent in agents:
+#     agent.freeze()
+#   return oracle, agents
 
 
 def init_br_responder(env):
@@ -186,42 +186,42 @@ def init_br_responder(env):
   agents = [random_policy.__copy__() for _ in range(FLAGS.n_players)]
   return oracle, agents
 
-
-def init_dqn_responder(sess, env):
-  """Initializes the Policy Gradient-based responder and agents."""
-  state_representation_size = env.observation_spec()["info_state"][0]
-  num_actions = env.action_spec()["num_actions"]
-
-  agent_class = rl_policy.DQNPolicy
-  agent_kwargs = {
-      "session": sess,
-      "state_representation_size": state_representation_size,
-      "num_actions": num_actions,
-      "hidden_layers_sizes": [FLAGS.hidden_layer_size] * FLAGS.n_hidden_layers,
-      "batch_size": FLAGS.batch_size,
-     "learning_rate": FLAGS.dqn_learning_rate,
-      "update_target_network_every": FLAGS.update_target_network_every,
-      "learn_every": FLAGS.learn_every,
-      "optimizer_str": FLAGS.optimizer_str
-  }
-  oracle = rl_oracle.RLOracle(
-      env,
-      agent_class,
-      agent_kwargs,
-      number_training_episodes=FLAGS.number_training_episodes,
-      self_play_proportion=FLAGS.self_play_proportion,
-      sigma=FLAGS.sigma)
-
-  agents = [
-      agent_class(  # pylint: disable=g-complex-comprehension
-          env,
-          player_id,
-          **agent_kwargs)
-      for player_id in range(FLAGS.n_players)
-  ]
-  for agent in agents:
-    agent.freeze()
-  return oracle, agents
+#
+# def init_dqn_responder(sess, env):
+#   """Initializes the Policy Gradient-based responder and agents."""
+#   state_representation_size = env.observation_spec()["info_state"][0]
+#   num_actions = env.action_spec()["num_actions"]
+#
+#   agent_class = rl_policy.DQNPolicy
+#   agent_kwargs = {
+#       "session": sess,
+#       "state_representation_size": state_representation_size,
+#       "num_actions": num_actions,
+#       "hidden_layers_sizes": [FLAGS.hidden_layer_size] * FLAGS.n_hidden_layers,
+#       "batch_size": FLAGS.batch_size,
+#      "learning_rate": FLAGS.dqn_learning_rate,
+#       "update_target_network_every": FLAGS.update_target_network_every,
+#       "learn_every": FLAGS.learn_every,
+#       "optimizer_str": FLAGS.optimizer_str
+#   }
+#   oracle = rl_oracle.RLOracle(
+#       env,
+#       agent_class,
+#       agent_kwargs,
+#       number_training_episodes=FLAGS.number_training_episodes,
+#       self_play_proportion=FLAGS.self_play_proportion,
+#       sigma=FLAGS.sigma)
+#
+#   agents = [
+#       agent_class(  # pylint: disable=g-complex-comprehension
+#           env,
+#           player_id,
+#           **agent_kwargs)
+#       for player_id in range(FLAGS.n_players)
+#   ]
+#   for agent in agents:
+#     agent.freeze()
+#   return oracle, agents
 
 def init_ars_responder(sess, env):
   """
@@ -504,9 +504,11 @@ def main(argv):
   # with tf.Session() as sess:
     sess = None
     if FLAGS.oracle_type == "DQN":
-      oracle, agents = init_dqn_responder(sess, env)
+      # oracle, agents = init_dqn_responder(sess, env)
+        pass
     elif FLAGS.oracle_type == "PG":
-      oracle, agents = init_pg_responder(sess, env)
+      # oracle, agents = init_pg_responder(sess, env)
+        pass
     elif FLAGS.oracle_type == "BR":
       oracle, agents = init_br_responder(env)
     elif FLAGS.oracle_type == "ARS":

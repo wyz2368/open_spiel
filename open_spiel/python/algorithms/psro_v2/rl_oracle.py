@@ -439,6 +439,7 @@ class RLOracle(optimization_oracle.AbstractOracle):
     new_policies[chosen_player]._policy._pi_update(rollout_rewards, deltas_idx)
 
     #update workers' new policies
+    #TODO: no new strategy to be added.
     self.update_new_policies_in_workers(new_policies)
 
   def update_used_policies_in_workers(self, training_parameters):
