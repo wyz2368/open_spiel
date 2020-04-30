@@ -10,8 +10,8 @@ from open_spiel.python.algorithms.psro_v2 import rl_policy
 from open_spiel.python import rl_environment
 
 import tensorflow.compat.v1 as tf
-#
-# import random
+
+import random
 
 @ray.remote
 class Worker(object):
