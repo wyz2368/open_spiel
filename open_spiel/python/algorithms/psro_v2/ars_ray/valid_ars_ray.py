@@ -13,6 +13,7 @@ from open_spiel.python.algorithms.psro_v2 import rl_policy
 import ray
 import cloudpickle
 
+from open_spiel.python.algorithms.psro_v2.ars_ray.workers import worker
 
 game = pyspiel.load_game_as_turn_based("kuhn_poker",
                                       {"players": pyspiel.GameParameter(
@@ -36,27 +37,27 @@ agent_kwargs = {
     "noise": 0.07
 }
 
-oracle = rl_oracle.RLOracle(
-    env,
-    agent_class,
-    agent_kwargs,
-    number_training_episodes=1000,
-    self_play_proportion=0.0,
-    sigma=0.0,
-    num_workers=4,
-    ars_parallel=True
-)
+# oracle = rl_oracle.RLOracle(
+#     env,
+#     agent_class,
+#     agent_kwargs,
+#     number_training_episodes=1000,
+#     self_play_proportion=0.0,
+#     sigma=0.0,
+#     num_workers=4,
+#     ars_parallel=True
+# )
 
-a = [worker.output.remote() for worker in oracle.workers]
-print(ray.get(a))
+for _ in range(3):
+    print(ray.get(worker.remote("kuhn_poker")))
 
-agents = [
-    agent_class(
-      env,
-      player_id,
-      **agent_kwargs)
-    for player_id in range(2)
-  ]
+# agents = [
+#     agent_class(
+#       env,
+#       player_id,
+#       **agent_kwargs)
+#     for player_id in range(2)
+#   ]
 
 
 

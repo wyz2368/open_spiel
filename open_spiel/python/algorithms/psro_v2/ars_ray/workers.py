@@ -16,19 +16,28 @@ import tensorflow.compat.v1 as tf
 import random
 
 @ray.remote
-class Worker(object):
-    def __init__(self,
-              env_name,
-              env_seed=2,
-              deltas=None,
-              slow_oracle_kargs=None,
-              fast_oracle_kargs=None
-              ):
-        pass
+def worker(env_name):
+    game = pyspiel.load_game_as_turn_based(env_name,
+                                                   {"players": pyspiel.GameParameter(
+                                                       2)})
+    env = rl_environment.Environment(game)
+    return env.name
 
-    def output(self):
-        import sys
-        return sys.path
+
+# @ray.remote
+# class Worker(object):
+#     def __init__(self,
+#               env_name,
+#               env_seed=2,
+#               deltas=None,
+#               slow_oracle_kargs=None,
+#               fast_oracle_kargs=None
+#               ):
+#         pass
+#
+#     def output(self):
+#         import sys
+#         return sys.path
 
 
 # @ray.remote
