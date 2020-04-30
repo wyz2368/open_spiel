@@ -159,8 +159,9 @@ class Worker(object):
             for pol in policies:
                 pol.freeze()
 
-    def sync_total_policies(self, extra_policies_weights, policies_types, keep_old_policies):
+    def sync_total_policies(self, extra_policies_weights, policies_types, chosen_player):
         with self._sess:
+            # if chosen_player
             for player in range(self._num_players):
                 for i, policy_type in enumerate(policies_types[player]):
                     new_pol = self.best_responder(policy_type, player)
@@ -236,4 +237,4 @@ class Worker(object):
 
 
     def output(self):
-        print("asdf")
+        return "asdf"

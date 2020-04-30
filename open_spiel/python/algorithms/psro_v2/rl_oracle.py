@@ -466,7 +466,7 @@ class RLOracle(optimization_oracle.AbstractOracle):
       worker.sync_total_policies.remote(extra_policies_weights_id, policies_types_id)
       worker.freeze_all.remote()
 
-  def update_new_policies_in_workers(self, new_policies, keep_old_policies=False):
+  def update_new_policies_in_workers(self, new_policies, chosen_player=None):
     policies_weights = []
     policies_types = []
     for player in range(len(new_policies)):
@@ -484,7 +484,7 @@ class RLOracle(optimization_oracle.AbstractOracle):
     for worker in self.workers:
       worker.sync_total_policies.remote(extra_policies_weights_id,
                                         policies_types_id,
-                                        keep_old_policies)
+                                        chosen_player)
 
 
 
