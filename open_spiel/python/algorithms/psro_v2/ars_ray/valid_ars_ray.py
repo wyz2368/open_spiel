@@ -47,7 +47,7 @@ agent_kwargs = {
 #     num_workers=4,
 #     ars_parallel=True
 # )
-
+ray.init(temp_dir='./ars_temp_dir/')
 for _ in range(3):
     print(ray.get(worker.remote("kuhn_poker")))
 
