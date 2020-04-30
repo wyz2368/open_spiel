@@ -175,37 +175,37 @@ class Worker(object):
             for pol in policies:
                 pol.freeze()
 
-    def sync_total_policies(self, extra_policies_weights, policies_types, chosen_player):
-        with self._sess:
-            if chosen_player is not None:
-                self._policies[chosen_player][-1].set_weights(extra_policies_weights[chosen_player][-1])
-            else:
-                for player in range(self._num_players):
-                    for i, policy_type in enumerate(policies_types[player]):
-                        new_pol = self.best_responder(policy_type, player)
-                        new_pol.set_weights(extra_policies_weights[player][i])
-                        self._policies[player].append(new_pol)
+    # def sync_total_policies(self, extra_policies_weights, policies_types, chosen_player):
+    #     with self._sess:
+    #         if chosen_player is not None:
+    #             self._policies[chosen_player][-1].set_weights(extra_policies_weights[chosen_player][-1])
+    #         else:
+    #             for player in range(self._num_players):
+    #                 for i, policy_type in enumerate(policies_types[player]):
+    #                     new_pol = self.best_responder(policy_type, player)
+    #                     new_pol.set_weights(extra_policies_weights[player][i])
+    #                     self._policies[player].append(new_pol)
 
 
     def get_num_policies(self):
         return len(self._policies[0])
 
-    def best_responder(self, policy_type, player):
-        if policy_type == "DQN":
-            agent_class = rl_policy.DQNPolicy
-            assert self._slow_oracle_kargs is not None
-            new_pol = agent_class(self._env, player, **self._slow_oracle_kargs)
-        elif policy_type == "PG":
-            agent_class = rl_policy.PGPolicy
-            assert self._slow_oracle_kargs is not None
-            new_pol = agent_class(self._env, player, **self._slow_oracle_kargs)
-        elif policy_type == "ARS_parallel":
-            agent_class = rl_policy.ARSPolicy_parallel
-            new_pol = agent_class(self._env, player, **self._fast_oracle_kargs)
-        else:
-            raise ValueError("Agent class not supported in workers")
-
-        return new_pol
+    # def best_responder(self, policy_type, player):
+    #     if policy_type == "DQN":
+    #         agent_class = rl_policy.DQNPolicy
+    #         assert self._slow_oracle_kargs is not None
+    #         new_pol = agent_class(self._env, player, **self._slow_oracle_kargs)
+    #     elif policy_type == "PG":
+    #         agent_class = rl_policy.PGPolicy
+    #         assert self._slow_oracle_kargs is not None
+    #         new_pol = agent_class(self._env, player, **self._slow_oracle_kargs)
+    #     elif policy_type == "ARS_parallel":
+    #         agent_class = rl_policy.ARSPolicy_parallel
+    #         new_pol = agent_class(self._env, player, **self._fast_oracle_kargs)
+    #     else:
+    #         raise ValueError("Agent class not supported in workers")
+    #
+    #     return new_pol
 
     def sample_agents(self, probabilities_of_playing_policies, chosen_player):
         agents = self.sample_strategy_marginal(self._policies, probabilities_of_playing_policies)
