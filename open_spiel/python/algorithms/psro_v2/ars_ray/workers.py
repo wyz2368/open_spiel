@@ -13,6 +13,7 @@ import ray
 #
 # import random
 
+@ray.remote
 class Worker(object):
     def __init__(self,
               env_name,
