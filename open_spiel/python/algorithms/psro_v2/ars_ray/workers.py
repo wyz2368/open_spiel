@@ -45,10 +45,10 @@ class Worker(object):
         # initialize rl environment.
 
         self._num_players = 2
-        # game = pyspiel.load_game_as_turn_based(env_name,
-        #                                        {"players": pyspiel.GameParameter(
-        #                                            self._num_players)})
-        # self._env = rl_environment.Environment(game)
+        game = pyspiel.load_game_as_turn_based(env_name,
+                                               {"players": pyspiel.GameParameter(
+                                                   self._num_players)})
+        self._env = rl_environment.Environment(game)
 
 
 
