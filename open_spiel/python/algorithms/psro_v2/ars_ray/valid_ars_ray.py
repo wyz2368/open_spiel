@@ -50,16 +50,10 @@ agent_kwargs = {
 #     ars_parallel=True
 # )
 
-# ray.init(temp_dir='./ars_temp_dir/')
-# for _ in range(3):
-#     print(ray.get(worker.remote("kuhn_poker")))
+ray.init(temp_dir='./ars_temp_dir/')
+for _ in range(3):
+    print(ray.get(worker.remote("kuhn_poker")))
 
-with concurrent.futures.ProcessPoolExecutor() as executor:
-    secs = ['kuhn_poker', 'leduc_poker']
-    results = executor.map(do_something, secs)
-
-    for result in results:
-        print(result)
 
 
 # agents = [
