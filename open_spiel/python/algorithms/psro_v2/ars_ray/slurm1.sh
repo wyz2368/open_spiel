@@ -1,14 +1,13 @@
 #!/bin/bash
 
-#SBATCH --job-name=egta_kuhn_poker_dqn
-##SBATCH --job-name=egta_kuhn_poker_pg
-##SBATCH --job-name=egta_kuhn_poker_ars
+#SBATCH --job-name=attacks
 #SBATCH --mail-user=wangyzhsrg@aol.com
-#SBATCH --mail-type=BEGIN,END,FAIL
-#SBATCH --nodes=1
-#SBATCH --ntasks-per-node=5
-#SBATCH --mem-per-cpu=7g
-#SBATCH --time=00-01:00:00
+#SBATCH --mail-type=END,BEGIN,FAIL
+#SBATCH --cpus-per-task=5
+#SBATCH --nodes=3
+#SBATCH --tasks-per-node 1
+#SBATCH --mem-per-cpu=1g
+#SBATCH --time=00:10:00
 #SBATCH --account=wellman1
 #SBATCH --partition=standard
 
