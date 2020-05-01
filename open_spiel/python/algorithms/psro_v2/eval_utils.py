@@ -95,3 +95,45 @@ class SElogs(object):
 
     def get_fast_iters(self):
         return self._fast_oracle_iters
+
+
+def strategy_regret(meta_games):
+    """
+        Calculate the strategy regret based on a complete payoff matrix for PSRO.
+        This function only works for two-player games.
+        Assume all players have the same number of policies.
+        :param meta_games: meta_games in PSRO
+    """
+    num_policy = np.shape(meta_games[0])[0]
+    num_players = len(meta_games)
+
+    nash = nash_solver(meta_games, solver="gambit")
+
+    nash_payoffs = []
+    dev_payoffs = []
+    regrets = []
+
+    nash_p1 = nash[0]
+    nash_p1 = np.reshape(nash_p1, newshape=(len(nash_p1),1))
+    nash_p2 = nash[1]
+
+    # Calculate the NE payoff and deviation payoff for each player.
+    for player in range(num_players):
+        meta_game = meta_games[player]
+        if player == 0:
+            dev = np.reshape(np.sum(meta_game * nash_p2, axis=1), -1)
+        elif player == 1:
+            dev = np.reshape(np.sum(nash_p1 * meta_game, axis=0), -1)
+        else:
+            raise ValueError("Only work for two-player games.")
+
+        dev_payoffs.append(dev)
+        nash_payoff = np.sum(nash_p1 * meta_game * nash_p2)
+        nash_payoffs.append(nash_payoff)
+
+    # Calculate the regret of each strategy.
+
+    for i, ne in enumerate(nash_payoffs):
+        regrets.append(ne - dev_payoffs[i])
+
+    return nash_payoffs, dev_payoffs, regrets

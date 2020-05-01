@@ -21,8 +21,8 @@ import concurrent.futures
 
 
 
-redis_password = sys.argv[1]
-num_cpus = int(sys.argv[2])
+# redis_password = sys.argv[1]
+# num_cpus = int(sys.argv[2])
 
 game = pyspiel.load_game_as_turn_based("kuhn_poker",
                                       {"players": pyspiel.GameParameter(
@@ -59,7 +59,8 @@ agent_kwargs = {
 
 
 
-ray.init(address=os.environ["ip_head"], redis_password=redis_password)
+# ray.init(address=os.environ["ip_head"], redis_password=redis_password)
+ray.init(temp_dir='./ars_temp_dir/')
 for _ in range(2):
     print(ray.get(worker.remote("kuhn_poker")))
 
