@@ -1,4 +1,6 @@
 import pyspiel
+import sys
+import os
 
 import logging
 logging.disable(logging.INFO)
@@ -16,6 +18,11 @@ import cloudpickle
 from open_spiel.python.algorithms.psro_v2.ars_ray.workers import worker
 from open_spiel.python.algorithms.psro_v2.parallel.worker import do_something
 import concurrent.futures
+
+
+
+redis_password = sys.argv[1]
+num_cpus = int(sys.argv[2])
 
 game = pyspiel.load_game_as_turn_based("kuhn_poker",
                                       {"players": pyspiel.GameParameter(
@@ -50,7 +57,9 @@ agent_kwargs = {
 #     ars_parallel=True
 # )
 
-ray.init(temp_dir='./ars_temp_dir/')
+
+
+ray.init(address=os.environ["ip_head"], redis_password=redis_password)
 for _ in range(3):
     print(ray.get(worker.remote("kuhn_poker")))
 

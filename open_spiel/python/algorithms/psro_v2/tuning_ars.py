@@ -433,7 +433,7 @@ def gpsro_looper(env, oracle, agents, writer, quiesce=False, checkpoint_dir=None
         train_reward_curve = g_psro_solver.iteration(seed=seed)
         if gpsro_iteration % 2 == 1 and gpsro_iteration > dqn_iters:
             ars_oracle, _ = init_ars_parallel_responder(None, env, next(params_list))
-            g_psro_solver.oracle = ars_oracle
+            g_psro_solver._oracle = ars_oracle
 
         meta_game = g_psro_solver.get_meta_game()
         meta_probabilities = g_psro_solver.get_meta_strategies()
