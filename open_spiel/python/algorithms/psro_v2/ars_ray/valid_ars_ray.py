@@ -60,7 +60,7 @@ agent_kwargs = {
 
 
 ray.init(address=os.environ["ip_head"], redis_password=redis_password)
-for _ in range(3):
+for _ in range(2):
     print(ray.get(worker.remote("kuhn_poker")))
 
 
