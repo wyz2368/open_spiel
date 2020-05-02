@@ -61,7 +61,7 @@ FLAGS = flags.FLAGS
 # Game-related
 flags.DEFINE_string("game_name", "kuhn_poker", "Game name.")
 flags.DEFINE_integer("n_players", 2, "The number of players.")
-
+flags.DEFINE_list("game_param",None,"game parameters") #game_param=v=1,"vmodule=a=0,b=2"
 # PSRO related
 flags.DEFINE_string("meta_strategy_method", "general_nash",
                     "Name of meta strategy computation method.")
@@ -263,31 +263,36 @@ def init_ars_responder(sess, env):
 
 def print_beneficial_deviation_analysis(last_meta_game, meta_game, last_meta_prob, verbose=False):
   """
-  Function to check whether players have found policy of beneficial deviation in this round. It is possible to extract last_meta_game from meta_game. But it needs further manipulation and meta_game from last iteration is already there
+  Function to check whether players have found policy of beneficial deviation in current meta_game compared to the last_meta_game
   Args:
-    last_meta_game: List of list of meta_game (One array per game player). last iteration
-    meta_game: List of list of meta_game (One array per game player). Current iteration
+    last_meta_game: List of list of meta_game (One array per game player). The meta game to compare against
+    meta_game: List of list of meta_game (One array per game player). Current iteration's meta game. Same length with last_meta_game, and each element in meta_game has to include all entries in last_meta_game's corresponding elements
     last_meta_prob: nash equilibrium of last g_psro_iteration. List of list. Last iteration
   Returns:
-    a list of length num_players, indicating each player having found a beneficial deviation or not
+    a list of length num_players, indicating the number of beneficial deviations for each player from last_meta_prob
   """
+  num_player = len(last_meta_prob)
+  num_new_pol = [ meta_game[0].shape[i]-len(last_meta_prob[i]) for i in range(num_player)]
+  num_pol = [ meta_game[0].shape[i] for i in range(num_player)]
   prob_matrix = meta_strategies.general_get_joint_strategy_from_marginals(last_meta_prob)
-  this_meta_prob = [np.append(ele,0) for ele in last_meta_prob]
-  beneficial_deviation = []
-  for i in range(len(meta_game)):
+  this_meta_prob = [np.append(last_meta_prob[i],[0 for _ in range(num_new_pol[i])]) for i in range(num_player)]
+  beneficial_deviation = [0 for _ in range(num_player)]
+  for i in range(num_player): 
     ne_payoff = np.sum(last_meta_game[i]*prob_matrix)
-    dev_prob = this_meta_prob.copy()
-    dev_prob[i] = np.append(np.zeros(len(last_meta_prob[i])),1)
-    new_prob_matrix = meta_strategies.general_get_joint_strategy_from_marginals(dev_prob)
-    dev_payoff = np.sum(meta_game[i]*new_prob_matrix)
-    if ne_payoff > dev_payoff:
-      beneficial_deviation.append(False)
-    else:
-      beneficial_deviation.append(True)
+    # iterate through player's new policy
+    for j in range(num_new_pol[i]):
+      dev_prob = this_meta_prob.copy()
+      dev_prob[i] = np.zeros(num_pol[i])
+      dev_prob[i][len(last_meta_prob[i])+j] = 1
+      new_prob_matrix = meta_strategies.general_get_joint_strategy_from_marginals(dev_prob)
+      dev_payoff = np.sum(meta_game[i]*new_prob_matrix)
+      if ne_payoff < dev_payoff:
+        beneficial_deviation[i] += 1
+
   if verbose:
     print("\n---------------------------\nBeneficial Deviation :")
     for p in range(len(beneficial_deviation)):
-      print('player '+str(p),beneficial_deviation[p])
+      print('player '+str(p)+':',beneficial_deviation[p])
   return beneficial_deviation
 
 def init_ars_parallel_responder(sess, env):
@@ -427,9 +432,13 @@ def gpsro_looper(env, oracle, agents, writer, quiesce=False, checkpoint_dir=None
     aggregator = policy_aggregator.PolicyAggregator(env.game)
     aggr_policies = aggregator.aggregate(
         range(FLAGS.n_players), policies, nash_meta_probabilities)
+    
+    print('found aggregated probabiolities')
 
     exploitabilities, expl_per_player = exploitability.nash_conv(
         env.game, aggr_policies, return_only_nash_conv=False)
+
+    print('calculated exploitabilities')
     unique_policies = print_policy_analysis(policies, env.game, FLAGS.verbose)
     for p, cur_set in enumerate(unique_policies):
       writer.add_scalar('p'+str(p)+'_unique_p',len(cur_set),gpsro_iteration)
@@ -465,15 +474,23 @@ def main(argv):
   np.random.seed(seed)
   random.seed(seed)
   tf.set_random_seed(seed)
-  game = pyspiel.load_game_as_turn_based(FLAGS.game_name,
-                                         {"players": pyspiel.GameParameter(
-                                             FLAGS.n_players)})
+
+  game_param = {"players": pyspiel.GameParameter(FLAGS.n_players)}
+  checkpoint_dir = FLAGS.game_name
+  if FLAGS.game_param is not None:
+    for ele in FLAGS.game_param:
+      ele_li = ele.split("=")
+      game_param[ele_li[0]] = pyspiel.GameParameter(int(ele_li[1]))
+      checkpoint_dir += '_'+ele_li[0]+'_'+ele_li[1]
+    checkpoint_dir += '_'
+  game = pyspiel.load_game_as_turn_based(FLAGS.game_name, game_param)
+
   env = rl_environment.Environment(game,seed=seed)
   env.reset()
 
   if not os.path.exists(FLAGS.root_result_folder):
     os.makedirs(FLAGS.root_result_folder)
-  checkpoint_dir = FLAGS.game_name+str(FLAGS.n_players)+'_sims_'+str(FLAGS.sims_per_entry)+'_it_'+str(FLAGS.gpsro_iterations)+'_ep_'+str(FLAGS.number_training_episodes)+'_or_'+FLAGS.oracle_type
+  checkpoint_dir += str(FLAGS.n_players)+'_sims_'+str(FLAGS.sims_per_entry)+'_it_'+str(FLAGS.gpsro_iterations)+'_ep_'+str(FLAGS.number_training_episodes)+'_or_'+FLAGS.oracle_type
   if FLAGS.oracle_type == 'ARS':
     oracle_flag_str = '_arslr_'+str(FLAGS.ars_learning_rate)+'_arsn_'+str(FLAGS.noise)+'_arsnd_'+str(FLAGS.num_directions)+'_arsbd_'+str(FLAGS.num_best_directions)
   elif FLAGS.oracle_type == 'BR':
@@ -504,7 +521,7 @@ def main(argv):
       oracle, agents = init_ars_responder(sess, env)
     elif FLAGS.oracle_type == "ARS_parallel":
       oracle, agents = init_ars_parallel_responder(sess, env)
-    sess.run(tf.global_variables_initializer())
+    #sess.run(tf.global_variables_initializer())
     gpsro_looper(env, oracle, agents, writer, quiesce=FLAGS.quiesce, checkpoint_dir=checkpoint_dir, seed=seed)
 
   writer.close()

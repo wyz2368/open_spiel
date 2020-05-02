@@ -76,10 +76,12 @@ ORIGIN = os.path.dirname(os.path.realpath(__file__)) + '/base_slurm.sh'
 MODULE1 = "module load python3.6-anaconda/5.2.0"
 MODULE2 = "cd $(dirname $(dirname '${SLURM_SUBMIT_DIR}'))"
 OUTPUT = "#SBATCH --output="
-COMMAND = "python ../se_example1.py --game_name=leduc_poker --oracle_type=DQN --quiesce=False --gpsro_iterations=500 --sbatch_run=True --log_train=False --number_training_episodes=100000 --root_result_folder=root_result_se --fast_oracle_period=3"
-#COMMAND = "python ../psro_v2_example.py --game_name=leduc_poker --oracle_type=DQN --quiesce=False --gpsro_iterations=150 --sbatch_run=True --log_train=False --root_result_folder=root_result --meta_strategy_method=sp"
+#COMMAND = "python ../se_example.py --game_name=leduc_poker --oracle_type=DQN --quiesce=False --gpsro_iterations=150 --sbatch_run=True --log_train=False --number_training_episodes=10000 --root_result_folder=root_result_un --meta_strategy_method_frequency=1 --meta_strategy_method_li=general_nash,uniform --switch_fast_slow=False"
+#COMMAND = "python ../psro_v2_example.py --game_name=kuhn_poker --quiesce=False --gpsro_iterations=100 --sbatch_run=True --log_train=False --root_result_folder=root_result_dqn"
+COMMAND = "python ../tuning_ars.py --game_name=leduc_poker --quiesce=False --gpsro_iterations=10000 --sbatch_run=True --log_train=False --root_result_folder=root_result_tune_ars --number_training_episodes=300000"
+#COMMAND = "python ../psro_v2_example.py --game_name=goofspiel --quiesce=False --gpsro_iterations=150 --sbatch_run=True --log_train=False --root_result_folder=root_result"
 
-def bash_factory(dir_name='scripts_se', num_files=10, grid_search_flag=True):
+def bash_factory(dir_name='scripts80', num_files=10, grid_search_flag=True):
     bash_path = os.path.dirname(os.path.realpath(__file__)) + '/' + dir_name + '/'
     if os.path.exists(bash_path):
         shutil.rmtree(bash_path, ignore_errors=True)
@@ -90,19 +92,53 @@ def bash_factory(dir_name='scripts_se', num_files=10, grid_search_flag=True):
         shutil.rmtree(output_path, ignore_errors=True)
     else:
         mkdir(output_path)
-    param_dict = {'num_directions':[20,40],#,60,80],
-                  'num_best_directions':[20,40],
-                  'ars_learning_rate': [0.03,0.07],
-                  'noise': [0.3,0.5]}
+#    param_dict = {'num_directions':[20,40],#,60,80],
+#                  'num_best_directions':[20,40],
+#                  'ars_learning_rate': [0.03,0.07],
+#                  'noise': [0.3,0.5],
+#                  'number_training_episodes':[10000,100000,300000]}
+
 #                  'ars_learning_rate': [0.01,0.03,0.07,0.1,0.3],
 #                  'noise': [0.01,0.03,0.07,0.1,0.3,0.5]}
 #    param_dict = {'seed':[np.random.randint(low=0,high=1e5) for _ in range(10)]}
+
+    param_dict = {'num_directions':[80],
+        'iter_stop_dqn':[2,4,6,8,10,15,20,25,30]}
+#    param_dict = {'game_param':['num_cards=5','num_cards=9','num_cards=13']}
     
-    praram_dict = {}
     if grid_search_flag:
-        params = grid_search(param_dict,search_ars_bd=True)
+        params = grid_search(param_dict,search_ars_bd=False)
     else:
-        raise NotImplementedError
+        # provides param dict keys, and params in iterrable form
+        param_dict = {'num_directions':[],
+            'num_best_directions':[],
+            'ars_learning_rate':[],
+            'noise':[],
+            'seed':[],
+            'number_training_episodes':[]}    
+        _params = [[16,16,0.01,0.3,17027],
+            [16,16,0.01,0.5,46327],
+            [16,16,0.03,0.07,67519],
+            [16,16,0.03,0.5,31871],
+            [40,20,0.03,0.5,9487],
+            [40,40,0.07,0.07,26441],
+            [80,20,0.07,0.07,50603],
+            [80,40,0.07,0.07,44905],
+            [20,20,0.07,0.3,49510],
+            [40,20,0.07,0.3,73876],
+            [40,40,0.07,0.3,56240],
+            [80,20,0.07,0.5,45147],
+            [80,40,0.1,0.07,45999],
+            [80,20,0.1,0.1,35121],
+            [80,20,0.1,0.3,77496],
+            [16,16,0.3,0.1,38457],
+            [80,20,0.3,0.5,65210]]
+        params = []
+        episodes =[100000,300000,500000]
+        for ele in _params:
+          for epi in episodes:
+            params.append(tuple(ele+[epi]))
+
     for i, item in enumerate(params):
         nick_name = ''
         for value in item:
@@ -119,5 +155,6 @@ def bash_factory(dir_name='scripts_se', num_files=10, grid_search_flag=True):
             write_line(file, MODULE2 + '\n')
             write_line(file, new_command)
 
-bash_factory()
+if __name__ == '__main__':
+    bash_factory()
 

@@ -105,6 +105,7 @@ class AbstractMetaTrainer(object):
                initial_policies=None,
                meta_strategy_method=_DEFAULT_META_STRATEGY_METHOD,
                meta_strategy_method_frequency = 1,
+               meta_strategy_li=None,
                fast_oracle_period=5,
                slow_oracle_period=1,
                training_strategy_selector=_DEFAULT_STRATEGY_SELECTION_METHOD,
@@ -186,21 +187,23 @@ class AbstractMetaTrainer(object):
     self._meta_strategy_method = meta_strategy_method
     self._kwargs = kwargs
 
+    # For tuning ars.
+    self.stopping_time = 100000
+
     self._initialize_policy(initial_policies)
     self._initialize_game_state()
     self.update_meta_strategies()
-
-    # For tuning ars.
-    self.stopping_time = 10000
+    
+    # For switching heurisitcs. 0 means do not switch heuristics
+    self._meta_method_frequency = meta_strategy_method_frequency
+    self._meta_strategy_method_li = meta_strategy_li if meta_strategy_li else [self._meta_strategy_method_name]
 
     # Mode = fast 1 or slow 0
     if oracle_list is not None:
       self._mode = 0
-      self._oracles = oracle_list[0]
-      #TODO: What does the next line mean?
+      self._oracles = oracle_list[0] # mind self._oracle is the oracle in use
       self._oracles_name = oracle_list[1]
 
-      self._meta_method_frequency = meta_strategy_method_frequency
       self._slow_oracle_period = slow_oracle_period
       self._fast_oracle_period = fast_oracle_period
 
@@ -230,11 +233,14 @@ class AbstractMetaTrainer(object):
     self._iterations += 1
     train_reward_curve = self.update_agents()  # Generate new, Best Response agents via oracle.
     self.update_empirical_gamestate(seed=seed)  # Update gamestate matrix.
-    # self.update_meta_strategies()#seed=seed)  # Compute meta strategy (e.g. Nash)
-    self.update_meta_strategies_with_stopping_time()
+    self.update_meta_strategies()#seed=seed)  # Compute meta strategy (e.g. Nash)
     return train_reward_curve
 
-  def update_meta_strategies_with_stopping_time(self):
+  def update_meta_strategies(self):
+    """
+    calculate meta_strategies probabilities
+    If iteration is less than stopping time, fix meta_strategies at some iteration. And append zero to meta_strategies, for tuning ARS
+    """
     if self._iterations <= self.stopping_time:
       self._meta_strategy_probabilities = self._meta_strategy_method(self)
       if self.symmetric_game:
@@ -243,11 +249,6 @@ class AbstractMetaTrainer(object):
       for i, nash in enumerate(self._meta_strategy_probabilities):
         nash = np.append(nash, 0.0)
         self._meta_strategy_probabilities[i] = nash
-
-  def update_meta_strategies(self):
-    self._meta_strategy_probabilities = self._meta_strategy_method(self)
-    if self.symmetric_game:
-      self._meta_strategy_probabilities = [self._meta_strategy_probabilities[0]]
 
   def update_agents(self):
     return NotImplementedError("update_agents not implemented.")
@@ -348,32 +349,34 @@ class AbstractMetaTrainer(object):
     train_reward_curve = self.update_agents()  # Generate new, Best Response agents via oracle.
     self.update_empirical_gamestate(seed=seed)  # Update gamestate matrix.
 
-    period = self._slow_oracle_period + self._fast_oracle_period
-    #if self._iterations % (self._meta_method_frequency * period) == 0 and \
-    #        self._iterations != (self._meta_method_frequency * period):
-    #  self.evaluate_and_pick_meta_method()
+    period = 1 if not hasattr(self,'_mode') else self._slow_oracle_period + self._fast_oracle_period
+    if self._meta_method_frequency!=0 and \
+        self._iterations % (self._meta_method_frequency * period) == 0 and \
+            self._iterations != (self._meta_method_frequency * period):
+      self.evaluate_and_pick_meta_method()
 
     # Switch fast 1 and slow 0 oracle.
-    if self._mode:
-      self.logs.update_fast_iters(self._iterations)
-      self._fast_oracle_counter -= 1
-      if self._fast_oracle_counter == 0:
-        self.switch_oracle()
-        self.reset_fast_oracle_counter()
-    else:
-      self.logs.update_slow_iters(self._iterations)
-      self._slow_oracle_counter -= 1
-      if self._slow_oracle_counter == 0:
-        self.switch_oracle()
-        self.reset_slow_oracle_counter()
+    if hasattr(self,'_mode'):
+      if self._mode:
+        self.logs.update_fast_iters(self._iterations)
+        self._fast_oracle_counter -= 1
+        if self._fast_oracle_counter == 0:
+          self.switch_oracle()
+          self.reset_fast_oracle_counter()
+      else:
+        self.logs.update_slow_iters(self._iterations)
+        self._slow_oracle_counter -= 1
+        if self._slow_oracle_counter == 0:
+          self.switch_oracle()
+          self.reset_slow_oracle_counter()
 
     self.update_meta_strategies()  # Compute meta strategy (e.g. Nash)
     return train_reward_curve
 
   def switch_oracle(self):
     """
-        Switch fast and slow oracle.
-        :return:
+    Switch fast and slow oracle.
+    return:
     """
     self._mode = 1 - self._mode
     self.update_oracle(self._oracles[self._mode])
@@ -381,7 +384,7 @@ class AbstractMetaTrainer(object):
   def update_oracle(self, oracle):
     """
     Assign a new oracle.
-    :return:
+    return:
     """
     self._oracle = oracle
     #TODO: check the __name__ exists.
@@ -394,12 +397,13 @@ class AbstractMetaTrainer(object):
     :return:
     """
     # Evaluation
-    import pdb
-    pdb.set_trace()
-    new_meta_str_method = self.evaluate_meta_method()
+    # new_meta_str_method = self.evaluate_meta_method()
+    if len(self._meta_strategy_method_li) > 1:
+      self.update_meta_strategy_method(self._meta_strategy_method_li[0])
+      self._meta_strategy_method_li = self._meta_strategy_method_li[1:]+self._meta_strategy_method_li[:1]
 
     # Update
-    self.update_meta_strategy_method(new_meta_str_method)
+    # self.update_meta_strategy_method(new_meta_str_method)
 
   def evaluate_meta_method(self):
     raise NotImplementedError
