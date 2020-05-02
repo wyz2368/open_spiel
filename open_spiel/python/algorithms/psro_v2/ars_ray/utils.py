@@ -51,3 +51,6 @@ def rollout_rewards_combinator(rollout_rewards, new_rewards):
     for i, j in zip(rollout_rewards, new_rewards):
         new_rollout_rewards.append(i + j)
     return new_rollout_rewards
+
+
+

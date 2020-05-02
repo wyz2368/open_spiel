@@ -77,6 +77,8 @@ class ARS(rl_agent.AbstractAgent):
         # Initialize optimizer.
         self.optimizer = optimizers.SGD(self.theta, self._learning_rate)
 
+        self._deterministic_policy = True
+
 
     def _act(self, info_state, legal_actions, is_evaluation, noise=None):
         # Make a singleton batch vector for ARS.
@@ -95,7 +97,12 @@ class ARS(rl_agent.AbstractAgent):
             probs /= sum(probs)
         else:
             probs[legal_actions] = 1 / len(legal_actions)
-        action = np.random.choice(len(probs), p=probs)
+
+        if self._deterministic_policy:
+            action = np.argmax(probs)
+        else:
+            action = np.random.choice(len(probs), p=probs)
+
         return action, probs
 
     def step(self, time_step, is_evaluation=False, noise=None):
@@ -140,6 +147,9 @@ class ARS(rl_agent.AbstractAgent):
 
     def get_weights(self):
         return self.theta
+
+    def set_weights(self, variables):
+        self.theta = variables
 
 
     def copy_with_noise(self, sigma=0.0, copy_weights=True):

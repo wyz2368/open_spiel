@@ -33,6 +33,10 @@ from open_spiel.python.algorithms.psro_v2.ars_ray.utils import rollout_rewards_c
 from tqdm import tqdm
 import sys
 import ray
+import dill as cloudpickle
+
+import functools
+print = functools.partial(print, flush=True)
 
 from open_spiel.python.algorithms.psro_v2.ars_ray.shared_noise import *
 from open_spiel.python.algorithms.psro_v2.ars_ray.workers import Worker
@@ -94,6 +98,7 @@ class RLOracle(optimization_oracle.AbstractOracle):
                self_play_proportion=0.0,
                num_workers=16,
                ars_parallel=False,
+               slow_oracle_kargs=None,
                **kwargs):
     """Init function for the RLOracle.
 
@@ -106,6 +111,8 @@ class RLOracle(optimization_oracle.AbstractOracle):
       self_play_proportion: Float, between 0 and 1. Defines the probability that
         a non-currently-training player will actually play (one of) its
         currently training strategy (Which will be trained as well).
+      num_workers: int, the number of workers running for ars parallel.
+      ars_parallel: bool, if this oracle is
       **kwargs: kwargs
     """
     self._env = env
@@ -119,16 +126,24 @@ class RLOracle(optimization_oracle.AbstractOracle):
     # Initialization for ARS parallel
     self._ars_parallel = ars_parallel
     if ars_parallel:
+
       ray.init(temp_dir='./ars_temp_dir/')
       self._num_workers = num_workers
       deltas_id = create_shared_noise.remote()
       self.deltas = SharedNoiseTable(ray.get(deltas_id), seed=216)
-      self.workers = [Worker.remote(env=self._env,
+
+      if slow_oracle_kargs is not None:
+        slow_oracle_kargs["session"] = None
+
+      self.workers = [Worker.remote(env_name=self._env.name,
                                     env_seed=7 * i,
-                                    deltas=deltas_id) for i in range(num_workers)]
+                                    deltas=deltas_id,
+                                    slow_oracle_kargs=slow_oracle_kargs,
+                                    fast_oracle_kargs=best_response_kwargs) for i in range(num_workers)]
 
     super(RLOracle, self).__init__(**kwargs)
-          
+
+
   def sample_episode(self, unused_time_step, agents, is_evaluation=False):
     time_step = self._env.reset()
     cumulative_rewards = 0.0
@@ -195,6 +210,7 @@ class RLOracle(optimization_oracle.AbstractOracle):
     episodes_per_player = [sum(episodes) for episodes in episodes_per_oracle]
     chosen_player = random_count_weighted_choice(episodes_per_player)
 
+    # TODO: What is the below doing?
     # Uniformly choose among the sampled player.
     agent_chosen_ind = np.random.randint(
         0, len(training_parameters[chosen_player]))
@@ -206,11 +222,12 @@ class RLOracle(optimization_oracle.AbstractOracle):
     probabilities_of_playing_policies = agent_chosen_dict[
         "probabilities_of_playing_policies"]
 
+    #TODO: What is the below doing?
     if type(new_policy._policy).__name__ == 'ARS':
       if not hasattr(self,'_ARS_episodes'):
         self._ARS_episodes = {}
         for i in range(num_players):
-          self._ARS_episodes[i] = [0,None]
+          self._ARS_episodes[i] = [0, None]
       ARS_nb_dir_pol = new_policy._policy._nb_directions * 2
       current_count = self._ARS_episodes[chosen_player][0]
       if current_count % ARS_nb_dir_pol == 0:
@@ -313,13 +330,23 @@ class RLOracle(optimization_oracle.AbstractOracle):
     episodes_per_oracle = np.array(episodes_per_oracle)
 
     new_policies = self.generate_new_policies(training_parameters)
-    # TODO(author4): Look into multithreading.
+
+    # Sync total policies in all workers.
+    if self._ars_parallel:
+      self.update_used_policies_in_workers(training_parameters)
+      self.update_new_policies_in_workers(new_policies)
 
     reward_trace = [[] for _ in range(game.num_players())]
-    tot = self._number_training_episodes*game.num_players()
-    pbar = tqdm(total=tot, file=sys.stdout, miniters=tot//5, leave=False)
     while not self._has_terminated(episodes_per_oracle):
-      agents, indexes = self.sample_policies_for_episode(
+      if self._ars_parallel:
+        # No reward trace for ARS_parallel.
+        chosen_player = self.choose_live_agent(episodes_per_oracle)
+        # Notice that one episode contains trials of all directions of ars.
+        indexes = [(chosen_player, 0)]
+        rollout_rewards, deltas_idx = self.deploy_workers(training_parameters, chosen_player)
+        self.update_ars_agent(rollout_rewards, deltas_idx, new_policies, chosen_player)
+      else:
+        agents, indexes = self.sample_policies_for_episode(
           new_policies, training_parameters, episodes_per_oracle,
           strategy_sampler)
 
@@ -333,8 +360,7 @@ class RLOracle(optimization_oracle.AbstractOracle):
 
       episodes_per_oracle = update_episodes_per_oracles(episodes_per_oracle,
                                                         indexes)
-    #   pbar.update(1)
-    # pbar.close()
+
 
     for i in range(len(reward_trace)):
         reward_trace[i] = utils.lagging_mean(reward_trace[i])
@@ -346,40 +372,44 @@ class RLOracle(optimization_oracle.AbstractOracle):
     # Specified written for ARS aligning same opponent strategies for directions
     if hasattr(self,'_ARS_episodes'):
       delattr(self,'_ARS_episodes')
+
+
     return new_policies, reward_trace
 
     #####################################################
     ############# Parallel Implementation of ARS ########
     #####################################################
 
-  def deploy_workers(self, agents, indexes):
+  def deploy_workers(self, training_parameters, chosen_player):
     """
     Running workers and collecting returns of noisy policies for updaing ARS agents.
     :param agents: a list of policies, one per player.
     :param indexes: live agent index.
     :return: returns of noisy policies and corresponding noise indices.
     """
-    # put policy weights in the object store
-    #TODO: Be careful about the Tensorflow agents. Check if it works.
-    agents_id = ray.put(agents)
+    # put the training player id and meta-strategies in the object store.
+    chosen_player_id = ray.put(chosen_player)
+    probabilities_of_playing_policies_id = ray.put(training_parameters[chosen_player][0]['probabilities_of_playing_policies'])
 
-    nb_directions = agents[indexes[0][0]]._policy._nb_directions
+    nb_directions = self._best_response_kwargs["nb_directions"]
     num_rollouts = int(nb_directions / self._num_workers)
 
     # parallel generation of rollouts
-    rollout_ids_one = [worker.do_sample_episode.remote(agents_id,
-                                                 num_rollouts=num_rollouts,
-                                                 is_evaluate=False) for worker in self.workers]
+    rollout_ids_one = [worker.do_sample_episode.remote(probabilities_of_playing_policies_id,
+                                                       chosen_player_id,
+                                                       num_rollouts=num_rollouts,
+                                                       is_evaluation=False) for worker in self.workers]
 
-    rollout_ids_two = [worker.do_sample_episode.remote(agents_id,
-                                                 num_rollouts=1,
-                                                 is_evaluate=False) for worker in
-                       self.workers[:(nb_directions % self._num_workers)]]
+    rollout_ids_two = [worker.do_sample_episode.remote(probabilities_of_playing_policies_id,
+                                                       chosen_player_id,
+                                                       num_rollouts=1,
+                                                       is_evaluation=False) for worker in
+                                                    self.workers[:(nb_directions % self._num_workers)]]
 
     results_one = ray.get(rollout_ids_one)
     results_two = ray.get(rollout_ids_two)
 
-    rollout_rewards = [[] for _ in agents]
+    rollout_rewards = [[] for _ in range(len(training_parameters))]
     deltas_idx = []
 
     for result in results_one:
@@ -392,12 +422,73 @@ class RLOracle(optimization_oracle.AbstractOracle):
 
     deltas_idx = np.array(deltas_idx)
     # Only pick the rollout_rewards for agent being trained.
-    rollout_rewards = np.array(rollout_rewards[indexes[0][0]], dtype=np.float64)
+    rollout_rewards = np.array(rollout_rewards[chosen_player], dtype=np.float64)
 
     return rollout_rewards, deltas_idx
 
-  def update_ars_agent(self, rollout_rewards, deltas_idx, agents, indexes):
+  def choose_live_agent(self, episodes_per_oracle):
+    """
+    Randomly choose a training agent.
+    """
+    # Prioritizing players that haven't had as much training as the others.
+    episodes_per_player = [sum(episodes) for episodes in episodes_per_oracle]
+    chosen_player = random_count_weighted_choice(episodes_per_player)
+
+    return chosen_player
+
+  def update_ars_agent(self, rollout_rewards, deltas_idx, new_policies, chosen_player):
     """
     Update the active agent.
     """
-    agents[indexes[0][0]]._policy._pi_update(rollout_rewards, deltas_idx)
+    new_policies[chosen_player]._policy._pi_update(rollout_rewards, deltas_idx)
+
+    #update workers' new policies
+    self.update_new_policies_in_workers(new_policies, chosen_player)
+
+  def update_used_policies_in_workers(self, training_parameters):
+    """
+    Update the total policies in each worker.
+    """
+    used_num_policies = ray.get(self.workers[0].get_num_policies.remote())
+    extra_policies_weights = []
+    policies_types = []
+    for player in range(len(training_parameters)):
+      policies_types_per_player = []
+      weights = []
+      #TODO: This line may: list indices must be integers or slices, not tuple.
+      extra_policies = training_parameters[player][0]["total_policies"][player][used_num_policies, :]
+      for policy in extra_policies:
+        weights.append(policy.get_weights())
+        policies_types_per_player.append(type(policy._policy).__name__)
+      extra_policies_weights.append(weights)
+      policies_types.append(policies_types_per_player)
+
+    extra_policies_weights_id = ray.put(extra_policies_weights)
+    policies_types_id = ray.put(policies_types)
+
+    for worker in self.workers:
+      worker.sync_total_policies.remote(extra_policies_weights_id, policies_types_id)
+      worker.freeze_all.remote()
+
+  def update_new_policies_in_workers(self, new_policies, chosen_player=None):
+    policies_weights = []
+    policies_types = []
+    for player in range(len(new_policies)):
+      policies_types_per_player = []
+      weights = []
+      for policy in new_policies[player]:
+        weights.append(policy.get_weights())
+        policies_types_per_player.append(type(policy._policy).__name__)
+      policies_weights.append(weights)
+      policies_types.append(policies_types_per_player)
+
+    extra_policies_weights_id = ray.put(policies_weights)
+    policies_types_id = ray.put(policies_types)
+
+    for worker in self.workers:
+      worker.sync_total_policies.remote(extra_policies_weights_id,
+                                        policies_types_id,
+                                        chosen_player)
+
+
+

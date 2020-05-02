@@ -17,6 +17,7 @@
 #include <iterator>
 #include <list>
 #include <memory>
+#include <optional>
 #include <random>
 #include <string>
 #include <unordered_map>
@@ -24,10 +25,21 @@
 #include <vector>
 
 #include "open_spiel/abseil-cpp/absl/algorithm/container.h"
+#include "open_spiel/abseil-cpp/absl/strings/str_format.h"
 #include "open_spiel/spiel.h"
 #include "open_spiel/spiel_utils.h"
 
 namespace open_spiel {
+
+void SetProb(ActionsAndProbs* actions_and_probs, Action action, double prob) {
+  for (auto& iter : *actions_and_probs) {
+    if (iter.first == action) {
+      iter.second = prob;
+      return;
+    }
+  }
+  actions_and_probs->push_back({action, prob});
+}
 
 double GetProb(const ActionsAndProbs& action_and_probs, Action action) {
   auto it = absl::c_find_if(action_and_probs,
@@ -36,6 +48,15 @@ double GetProb(const ActionsAndProbs& action_and_probs, Action action) {
                             });
   if (it == action_and_probs.end()) return -1.;
   return it->second;
+}
+
+Action GetAction(const ActionsAndProbs& action_and_probs) {
+  for (const auto& iter : action_and_probs) {
+    if (iter.second == 1.0) {
+      return iter.first;
+    }
+  }
+  return kInvalidAction;
 }
 
 TabularPolicy::TabularPolicy(const Game& game)
@@ -168,6 +189,14 @@ TabularPolicy GetFirstActionPolicy(const Game& game) {
     }
   }
   return TabularPolicy(policy);
+}
+
+std::string PrintPolicy(const ActionsAndProbs& policy) {
+  std::string policy_string;
+  for (auto [a, p] : policy) {
+    absl::StrAppend(&policy_string, absl::StrFormat("(%i, %f), ", a, p));
+  }
+  return policy_string;
 }
 
 }  // namespace open_spiel

@@ -22,11 +22,14 @@ from absl import app
 from absl import flags
 from absl import logging
 import numpy as np
+
 import tensorflow.compat.v1 as tf
 
 from open_spiel.python import rl_environment
 from open_spiel.python.algorithms import dqn
 from open_spiel.python.algorithms import random_agent
+
+# import tensorflow.compat.v1 as tf
 
 FLAGS = flags.FLAGS
 
@@ -106,26 +109,28 @@ def main(_):
     saver = tf.train.Saver()
     sess.run(tf.global_variables_initializer())
 
-    for ep in range(FLAGS.num_train_episodes):
-      if (ep + 1) % FLAGS.eval_every == 0:
-        r_mean = eval_against_random_bots(env, agents, random_agents, 1000)
-        logging.info("[%s] Mean episode rewards %s", ep + 1, r_mean)
-        saver.save(sess, FLAGS.checkpoint_dir, ep)
+    print(type(agents[0].get_weights()), agents[0].get_weights())
 
-      time_step = env.reset()
-      while not time_step.last():
-        player_id = time_step.observations["current_player"]
-        if env.is_turn_based:
-          agent_output = agents[player_id].step(time_step)
-          action_list = [agent_output.action]
-        else:
-          agents_output = [agent.step(time_step) for agent in agents]
-          action_list = [agent_output.action for agent_output in agents_output]
-        time_step = env.step(action_list)
-
-      # Episode is over, step all agents with final info state.
-      for agent in agents:
-        agent.step(time_step)
+    # for ep in range(FLAGS.num_train_episodes):
+    #   if (ep + 1) % FLAGS.eval_every == 0:
+    #     r_mean = eval_against_random_bots(env, agents, random_agents, 1000)
+    #     logging.info("[%s] Mean episode rewards %s", ep + 1, r_mean)
+    #     saver.save(sess, FLAGS.checkpoint_dir, ep)
+    #
+    #   time_step = env.reset()
+    #   while not time_step.last():
+    #     player_id = time_step.observations["current_player"]
+    #     if env.is_turn_based:
+    #       agent_output = agents[player_id].step(time_step)
+    #       action_list = [agent_output.action]
+    #     else:
+    #       agents_output = [agent.step(time_step) for agent in agents]
+    #       action_list = [agent_output.action for agent_output in agents_output]
+    #     time_step = env.step(action_list)
+    #
+    #   # Episode is over, step all agents with final info state.
+    #   for agent in agents:
+    #     agent.step(time_step)
 
 
 if __name__ == "__main__":

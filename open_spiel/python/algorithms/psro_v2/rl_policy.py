@@ -131,6 +131,9 @@ def rl_policy_factory(rl_class):
     def get_weights(self):
       return self._policy.get_weights()
 
+    def set_weights(self, variables):
+      self._policy.set_weights(variables)
+
     def copy_with_noise(self, sigma=0.0):
       copied_object = RLPolicy.__new__(RLPolicy)
       super(RLPolicy, copied_object).__init__(self.game, self.player_ids)
