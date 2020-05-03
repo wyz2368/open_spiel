@@ -10,8 +10,13 @@ class Exp3(object):
         self.weights = np.ones(num_arms)
         self.num_arms = num_arms
         self.gamma = gamma
+        self.arm_pulled = 0
 
     def sample(self):
+        """
+        Sample a new arm to pull.
+        :return: int, index of arms.
+        """
         weight_sum = np.sum(self.weights)
         self.probability_distribution = [(1.0 - self.gamma) * (w / weight_sum) + (self.gamma / len(self.weights)) for w in self.weights]
         self.arm_pulled = np.random.choice(range(len(self.probability_distribution)), p=self.probability_distribution)
@@ -27,7 +32,7 @@ class pure_exp(object):
     def __init__(self,
                  num_arms,
                  gamma=0.0):
-        self.weights = np.ones(num_arms)*100
+        self.weights = np.ones(num_arms) * 100
         self.num_arms = num_arms
         self.gamma = gamma
 

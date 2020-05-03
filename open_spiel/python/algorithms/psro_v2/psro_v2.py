@@ -42,7 +42,8 @@ from open_spiel.python import policy
 from open_spiel.python.algorithms.psro_v2 import abstract_meta_trainer
 from open_spiel.python.algorithms.psro_v2 import strategy_selectors
 from open_spiel.python.algorithms.psro_v2 import utils
-from open_spiel.python.algorithms.psro_v2.eval_utils import regret
+from open_spiel.python.algorithms.psro_v2.eval_utils import regret, strategy_regret
+
 
 TRAIN_TARGET_SELECTORS = {
     "": None,
@@ -506,13 +507,37 @@ class PSROSolver(abstract_meta_trainer.AbstractMetaTrainer):
   ############################################
 
   def evaluate_meta_method(self):
-      slow_subgame_index = self.logs.get_slow_iters()[-1]
+      """
+      Evaluating the performance of each heuristic by calculating the regret descent
+      based on the base model.
+      :return: str, the name of the new heuristic selected.
+      """
+      base_model_index = self.logs.get_fast_iters()[-(self._fast_oracle_period+1)]
+      slow_model_index = self.logs.get_fast_iters()[-1]
       meta_games = self.get_meta_game()
-      regrets = regret(meta_games, slow_subgame_index)
-      nashconv = np.sum(regrets)
 
-      self.logs.update_regrets(regrets)
-      self.logs.update_nashconv(nashconv)
+      if self._standard_regret:
+        base_model_regrets = regret(meta_games, base_model_index)
+        slow_model_regrets = regret(meta_games, slow_model_index)
+        base_model_nashconv = np.sum(base_model_regrets)
+        slow_model_nashconv = np.sum(slow_model_regrets)
+      else:
+        _, _, regrets = strategy_regret(meta_games)
+        base_model_nashconv = 0
+        slow_model_nashconv = 0
+        for player in range(self._num_players):
+            base_model_nashconv += np.sum(regrets[player][:base_model_index] * self.logs.get_meta_probs()[player][:base_model_index])
+            slow_model_nashconv += np.sum(regrets[player][:slow_model_index] * self.logs.get_meta_probs()[player][:slow_model_index])
+
+      delta_nashconv = slow_model_nashconv - base_model_nashconv
+      self._heuristic_selector.update_weights(delta_nashconv)
+      new_heuristic_index = self._heuristic_selector.sample()
+      return self._heuristic_list[new_heuristic_index]
+
+
+
+
+
 
 
 

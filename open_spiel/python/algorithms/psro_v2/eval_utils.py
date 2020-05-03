@@ -60,17 +60,21 @@ class SElogs(object):
     def __init__(self,
                  slow_oracle_period,
                  fast_oracle_period,
-                 meta_strategy_methods):
+                 meta_strategy_methods,
+                 heuristic_list):
 
         self.slow_oracle_period = slow_oracle_period
         self.fast_oracle_period = fast_oracle_period
         self.meta_strategy_methods = meta_strategy_methods
+        self.heuristic_list = heuristic_list
 
         self._slow_oracle_iters = []
         self._fast_oracle_iters = []
 
         self.regrets = []
         self.nashconv = []
+
+        self._meta_probs_history = []
 
     def update_regrets(self, regrets):
         self.regrets.append(regrets)
@@ -96,6 +100,12 @@ class SElogs(object):
     def get_fast_iters(self):
         return self._fast_oracle_iters
 
+    def update_meta_probs(self, probs):
+        self._meta_probs_history.append(probs)
+
+    def get_meta_probs(self):
+        return self._meta_probs_history
+
 
 def strategy_regret(meta_games):
     """
@@ -104,7 +114,6 @@ def strategy_regret(meta_games):
         Assume all players have the same number of policies.
         :param meta_games: meta_games in PSRO
     """
-    num_policy = np.shape(meta_games[0])[0]
     num_players = len(meta_games)
 
     nash = nash_solver(meta_games, solver="gambit")
