@@ -22,7 +22,9 @@ import numpy as np
 
 from open_spiel.python.algorithms.psro_v2 import optimization_oracle
 from open_spiel.python.algorithms.psro_v2 import utils
-
+from open_spiel.python.rl_environment import TimeStep
+from open_spiel.python.rl_environment import StepType
+from open_spiel.python.algorithms.psro_v2.ars_ray.utils import rollout_rewards_combinator
 from open_spiel.python.rl_environment import TimeStep
 from open_spiel.python.rl_environment import StepType
 
@@ -84,8 +86,6 @@ def random_count_weighted_choice(count_weight):
   p /= np.sum(p)
   chosen_index = np.random.choice(indexes, p=p)
   return chosen_index
-
-
 
 class RLOracle(optimization_oracle.AbstractOracle):
   """Oracle handling Approximate Best Responses computation."""
@@ -337,7 +337,6 @@ class RLOracle(optimization_oracle.AbstractOracle):
       self.update_new_policies_in_workers(new_policies)
 
     reward_trace = [[] for _ in range(game.num_players())]
-
     while not self._has_terminated(episodes_per_oracle):
       if self._ars_parallel:
         # No reward trace for ARS_parallel.
@@ -351,6 +350,11 @@ class RLOracle(optimization_oracle.AbstractOracle):
           new_policies, training_parameters, episodes_per_oracle,
           strategy_sampler)
 
+      if self._ars_parallel:
+        # No reward trace for ARS.
+        rollout_rewards, deltas_idx = self.deploy_workers(agents, indexes)
+        self.update_ars_agent(rollout_rewards, deltas_idx, agents, indexes)
+      else:
         reward = self._rollout(game, agents, **oracle_specific_execution_kwargs)
         reward_trace[indexes[0][0]].append(reward[indexes[0][0]])
 
@@ -373,7 +377,7 @@ class RLOracle(optimization_oracle.AbstractOracle):
     return new_policies, reward_trace
 
     #####################################################
-    ############# Parallem Implementation of ARS ########
+    ############# Parallel Implementation of ARS ########
     #####################################################
 
   def deploy_workers(self, training_parameters, chosen_player):

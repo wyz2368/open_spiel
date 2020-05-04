@@ -99,7 +99,7 @@ flags.DEFINE_string("training_strategy_selector", "probabilistic",
 # General (RL) agent parameters
 flags.DEFINE_string("oracle_type", "DQN", "Choices are DQN, PG (Policy "
                                           "Gradient), BR (exact Best Response) or ARS(Augmented Random Search)")
-flags.DEFINE_integer("number_training_episodes", int(1e4), "Number training "
+flags.DEFINE_integer("number_training_episodes", int(3e5), "Number training "
                                                            "episodes per RL policy. Used for PG and DQN")
 flags.DEFINE_float("self_play_proportion", 0.0, "Self play proportion")
 flags.DEFINE_integer("hidden_layer_size", 256, "Hidden layer size")
@@ -210,7 +210,7 @@ def init_dqn_responder(sess, env):
         env,
         agent_class,
         agent_kwargs,
-        number_training_episodes=FLAGS.number_training_episodes,
+        number_training_episodes=10000,
         self_play_proportion=FLAGS.self_play_proportion,
         sigma=FLAGS.sigma)
 
@@ -226,7 +226,7 @@ def init_dqn_responder(sess, env):
     return oracle, agents
 
 
-def init_ars_responder(sess, env):
+def init_ars_responder(sess, env, params=None):
     """
     Initializes the ARS responder and agents.
     :param sess: A fake sess=None
@@ -236,15 +236,26 @@ def init_ars_responder(sess, env):
     info_state_size = env.observation_spec()["info_state"][0]
     num_actions = env.action_spec()["num_actions"]
     agent_class = rl_policy.ARSPolicy
-    agent_kwargs = {
-        "session": sess,
-        "info_state_size": info_state_size,
-        "num_actions": num_actions,
-        "learning_rate": FLAGS.ars_learning_rate,
-        "nb_directions": FLAGS.num_directions,
-        "nb_best_directions": FLAGS.num_directions,
-        "noise": FLAGS.noise
-    }
+    if not params:
+      agent_kwargs = {
+          "session": sess,
+          "info_state_size": info_state_size,
+          "num_actions": num_actions,
+          "learning_rate": FLAGS.ars_learning_rate,
+          "nb_directions": FLAGS.num_directions,
+          "nb_best_directions": FLAGS.num_directions,
+          "noise": FLAGS.noise
+      }
+    else:
+      agent_kwargs = {
+          "session": sess,
+          "info_state_size": info_state_size,
+          "num_actions": num_actions,
+          "learning_rate": params[2],
+          "nb_directions": params[0],
+          "nb_best_directions": params[1],
+          "noise": params[3]
+      }
     oracle = rl_oracle.RLOracle(
         env,
         agent_class,
@@ -264,35 +275,41 @@ def init_ars_responder(sess, env):
         agent.freeze()
     return oracle, agents
 
-
 def print_beneficial_deviation_analysis(last_meta_game, meta_game, last_meta_prob, verbose=False):
-    """
-    Function to check whether players have found policy of beneficial deviation in this round. It is possible to extract last_meta_game from meta_game. But it needs further manipulation and meta_game from last iteration is already there
-    Args:
-      last_meta_game: List of list of meta_game (One array per game player). last iteration
-      meta_game: List of list of meta_game (One array per game player). Current iteration
-      last_meta_prob: nash equilibrium of last g_psro_iteration. List of list. Last iteration
-    Returns:
-      a list of length num_players, indicating each player having found a beneficial deviation or not
-    """
-    prob_matrix = meta_strategies.general_get_joint_strategy_from_marginals(last_meta_prob)
-    this_meta_prob = [np.append(ele, 0) for ele in last_meta_prob]
-    beneficial_deviation = []
-    for i in range(len(meta_game)):
-        ne_payoff = np.sum(last_meta_game[i] * prob_matrix)
-        dev_prob = this_meta_prob.copy()
-        dev_prob[i] = np.append(np.zeros(len(last_meta_prob[i])), 1)
-        new_prob_matrix = meta_strategies.general_get_joint_strategy_from_marginals(dev_prob)
-        dev_payoff = np.sum(meta_game[i] * new_prob_matrix)
-        if ne_payoff > dev_payoff:
-            beneficial_deviation.append(False)
-        else:
-            beneficial_deviation.append(True)
-    if verbose:
-        print("\n---------------------------\nBeneficial Deviation :")
-        for p in range(len(beneficial_deviation)):
-            print('player ' + str(p), beneficial_deviation[p])
-    return beneficial_deviation
+  """
+  Function to check whether players have found policy of beneficial deviation in current meta_game compared to the last_meta_game
+  Args:
+    last_meta_game: List of list of meta_game (One array per game player). The meta game to compare against
+    meta_game: List of list of meta_game (One array per game player). Current iteration's meta game. Same length with last_meta_game, and each element in meta_game has to include all entries in last_meta_game's corresponding elements
+    last_meta_prob: nash equilibrium of last g_psro_iteration. List of list. Last iteration
+  Returns:
+    a list of length num_players, indicating the number of beneficial deviations for each player from last_meta_prob
+  """
+  num_player = len(last_meta_prob)
+  num_new_pol = [ meta_game[0].shape[i]-len(last_meta_prob[i]) for i in range(num_player)]
+  num_pol = [ meta_game[0].shape[i] for i in range(num_player)]
+  prob_matrix = meta_strategies.general_get_joint_strategy_from_marginals(last_meta_prob)
+  this_meta_prob = [np.append(last_meta_prob[i],[0 for _ in range(num_new_pol[i])]) for i in range(num_player)]
+  beneficial_deviation = [0 for _ in range(num_player)]
+  devs = [0 for _ in range(num_player)]
+  for i in range(num_player): 
+    ne_payoff = np.sum(last_meta_game[i]*prob_matrix)
+    # iterate through player's new policy
+    for j in range(num_new_pol[i]):
+      dev_prob = this_meta_prob.copy()
+      dev_prob[i] = np.zeros(num_pol[i])
+      dev_prob[i][len(last_meta_prob[i])+j] = 1
+      new_prob_matrix = meta_strategies.general_get_joint_strategy_from_marginals(dev_prob)
+      dev_payoff = np.sum(meta_game[i]*new_prob_matrix)
+      if ne_payoff < dev_payoff:
+        beneficial_deviation[i] += 1
+        devs[i] += dev_payoff-ne_payoff
+
+  if verbose:
+    print("\n---------------------------\nBeneficial Deviation :")
+    for p in range(len(beneficial_deviation)):
+      print('player '+str(p)+':',beneficial_deviation[p])
+  return beneficial_deviation, devs
 
 
 def init_ars_parallel_responder(sess, env, params):
@@ -338,7 +355,7 @@ def init_ars_parallel_responder(sess, env, params):
     return oracle, agents
 
 
-def print_policy_analysis(policies, game, verbose=False, pdb=False):
+def print_policy_analysis(policies, game, verbose=False):
     """Function printing policy diversity within game's known policies.
 
     Warning : only works with deterministic policies.
@@ -417,12 +434,17 @@ def gpsro_looper(env, oracle, agents, writer, quiesce=False, checkpoint_dir=None
 
     g_psro_solver.stopping_time = dqn_iters
 
-    param_dict = {'num_directions': [20, 40],  # ,60,80],
-                  'num_best_directions': [20, 40],
-                  'ars_learning_rate': [0.03, 0.07],
-                  'noise': [0.3, 0.5]}
+    #param_dict = {'num_directions': [20, 40, 60, 80],
+    #              'num_best_directions': [15, 20, 40, 80],
+    #              'ars_learning_rate': [0.01, 0.015, 0.03, 0.07],
+    #              'noise': [0.01,0.03,0.07,0.1,0.3,0.5]}
+    param_dict = {'num_directions': [FLAGS.num_directions],
+                  'num_best_directions': [15, 20, 40, 80],
+                  'ars_learning_rate': [0.01, 0.015, 0.03, 0.07],
+                  'noise': [0.01,0.025,0.07,0.1,0.3,0.5]}
 
-    params_list = iter(grid_search(param_dict))
+
+    params_list = iter(grid_search(param_dict, search_ars_bd=True))
 
     for gpsro_iteration in range(1, FLAGS.gpsro_iterations + 1):
         if FLAGS.verbose:
@@ -430,15 +452,26 @@ def gpsro_looper(env, oracle, agents, writer, quiesce=False, checkpoint_dir=None
             print("Iteration : {}".format(gpsro_iteration))
             print("Time so far: {}".format(time.time() - start_time))
 
+        
+        if (gpsro_iteration-dqn_iters) % 2 == 1 and gpsro_iteration > dqn_iters:
+            next_ars_param = next(params_list)
+            if next_ars_param:
+              print('\n*****switching ARS parameter******')
+              ars_oracle, _ = init_ars_responder(None, env, next_ars_param)
+              g_psro_solver._oracle = ars_oracle
+            else:
+              break
+
         train_reward_curve = g_psro_solver.iteration(seed=seed)
-        if gpsro_iteration % 2 == 1 and gpsro_iteration > dqn_iters:
-            ars_oracle, _ = init_ars_parallel_responder(None, env, next(params_list))
-            g_psro_solver._oracle = ars_oracle
 
         meta_game = g_psro_solver.get_meta_game()
         meta_probabilities = g_psro_solver.get_meta_strategies()
         nash_meta_probabilities = g_psro_solver.get_nash_strategies()
 
+        if gpsro_iteration == dqn_iters:
+            still_nash_meta_game = meta_game
+            still_nash_meta_prob = meta_probabilities
+            still_nash_pol_ind = np.arange(meta_game[0].shape[0])
 
         policies = g_psro_solver.get_policies()
 
@@ -460,24 +493,23 @@ def gpsro_looper(env, oracle, agents, writer, quiesce=False, checkpoint_dir=None
         if gpsro_iteration % 10 == 0:
             save_at_termination(solver=g_psro_solver, file_for_meta_game=checkpoint_dir + '/meta_game.pkl')
 
-        beneficial_deviation = print_beneficial_deviation_analysis(last_meta_game, meta_game, last_meta_prob,
-                                                                   FLAGS.verbose)
-        last_meta_prob, last_meta_game = meta_probabilities, meta_game
-        for p in range(len(beneficial_deviation)):
-            writer.add_scalar('p' + str(p) + '_beneficial_dev', int(beneficial_deviation[p]), gpsro_iteration)
-        writer.add_scalar('beneficial_devs', sum(beneficial_deviation), gpsro_iteration)
-
-        if FLAGS.log_train and (gpsro_iteration <= 10 or gpsro_iteration % 5 == 0):
-            for p in range(len(train_reward_curve)):
-                for p_i in range(len(train_reward_curve[p])):
-                    writer.add_scalar('player' + str(p) + '_' + str(gpsro_iteration), train_reward_curve[p][p_i], p_i)
+        # record ARS logging 
+        if (gpsro_iteration-dqn_iters) % 2 == 0 and gpsro_iteration > dqn_iters:
+          print("\n!!!!!writing txt!!!!\n")
+          print(next_ars_param)
+          num_pol = len(policies[0])
+          selector = [np.append(still_nash_pol_ind,[num_pol-2,num_pol-1]) for _ in range(len(policies))]
+          meta_game = [ele[np.ix_(*selector)] for ele in meta_game]
+          beneficial_deviation, total_dev = print_beneficial_deviation_analysis(still_nash_meta_game,meta_game,still_nash_meta_prob)
+          writer.add_text("ars_param",str(next_ars_param),global_step=(gpsro_iteration-dqn_iters)//2)
+          writer.add_scalar("beneficial_devs",sum(beneficial_deviation),(gpsro_iteration-dqn_iters)//2)
+          writer.add_scalar("total_devs",sum(total_dev),(gpsro_iteration-dqn_iters)//2)
         for p in range(len(expl_per_player)):
             writer.add_scalar('player' + str(p) + '_exp', expl_per_player[p], gpsro_iteration)
         writer.add_scalar('exp', exploitabilities, gpsro_iteration)
         if FLAGS.verbose:
             print("Exploitabilities : {}".format(exploitabilities))
             print("Exploitabilities per player : {}".format(expl_per_player))
-
 
 def main(argv):
     if len(argv) > 1:
@@ -498,25 +530,8 @@ def main(argv):
 
     if not os.path.exists(FLAGS.root_result_folder):
         os.makedirs(FLAGS.root_result_folder)
-    checkpoint_dir = FLAGS.game_name + str(FLAGS.n_players) + '_sims_' + str(FLAGS.sims_per_entry) + '_it_' + str(
-        FLAGS.gpsro_iterations) + '_ep_' + str(FLAGS.number_training_episodes) + '_or_' + FLAGS.oracle_type
-    if FLAGS.oracle_type == 'ARS':
-        oracle_flag_str = '_arslr_' + str(FLAGS.ars_learning_rate) + '_arsn_' + str(FLAGS.noise) + '_arsnd_' + str(
-            FLAGS.num_directions) + '_arsbd_' + str(FLAGS.num_best_directions)
-    elif FLAGS.oracle_type == 'BR':
-        oracle_flag_str = ''
-    else:
-        oracle_flag_str = '_hl_' + str(FLAGS.hidden_layer_size) + '_bs_' + str(FLAGS.batch_size) + '_nhl_' + str(
-            FLAGS.n_hidden_layers)
-        if FLAGS.oracle_type == 'DQN':
-            oracle_flag_str += '_dqnlr_' + str(FLAGS.dqn_learning_rate) + '_tnuf_' + str(
-                FLAGS.update_target_network_every) + '_lf_' + str(FLAGS.learn_every)
-        else:
-            oracle_flag_str += '_ls_' + str(FLAGS.loss_str) + '_nqbp_' + str(FLAGS.num_q_before_pi) + '_ec_' + str(
-                FLAGS.entropy_cost) + '_clr_' + str(FLAGS.critic_learning_rate) + '_pilr_' + str(FLAGS.pi_learning_rate)
-
-    checkpoint_dir = checkpoint_dir + oracle_flag_str + '_se_' + str(seed) + '_' + datetime.datetime.now().strftime(
-        '%Y-%m-%d_%H-%M-%S')
+    checkpoint_dir = 'tuning_ars'+str(FLAGS.iter_stop_dqn)+'_'+FLAGS.game_name + str(FLAGS.n_players) + '_sims_' + str(FLAGS.sims_per_entry) + '_it_' + str(
+        FLAGS.gpsro_iterations) + '_ep_' + str(FLAGS.number_training_episodes) + '_or_' + FLAGS.oracle_type + '_arsnd_' + str(FLAGS.num_directions) + '_se_' + str(seed) + '_' + datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
     checkpoint_dir = os.path.join(os.getcwd(), FLAGS.root_result_folder, checkpoint_dir)
 
     writer = SummaryWriter(logdir=checkpoint_dir + '/log')

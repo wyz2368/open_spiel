@@ -223,6 +223,9 @@ class PSROSolver(abstract_meta_trainer.AbstractMetaTrainer):
     Given new payoff tables, we call self._meta_strategy_method to update the
     meta-probabilities.
     """
+    if self._iterations > self.stopping_time: #fix meta_probability
+        return super(PSROSolver, self).update_meta_strategies()
+
     #TODO: return_joint should be associated with alpha-rank.
     if self.symmetric_game:
       self._policies = self._policies * self._game_num_players

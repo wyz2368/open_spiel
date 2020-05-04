@@ -137,5 +137,5 @@ def strategy_regret(meta_games, subgame_index):
         nash_payoff = np.sum(nash_p1 * meta_game * nash_p2)
         regrets.append(nash_payoff - subgame_payoffs)
 
-
     return regrets
+

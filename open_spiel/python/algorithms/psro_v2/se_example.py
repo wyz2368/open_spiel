@@ -98,6 +98,8 @@ flags.DEFINE_string("oracle_type", "DQN", "Choices are DQN, PG (Policy "
                     "Gradient), BR (exact Best Response) or ARS(Augmented Random Search)")
 flags.DEFINE_integer("number_training_episodes", int(1e4), "Number training "
                      "episodes per RL policy. Used for PG and DQN")
+flags.DEFINE_integer("number_training_episodes_ars", int(1e5), "Number training "
+                     "episodes per RL policy. Used for PG and DQN")
 flags.DEFINE_float("self_play_proportion", 0.0, "Self play proportion")
 flags.DEFINE_integer("hidden_layer_size", 256, "Hidden layer size")
 flags.DEFINE_integer("batch_size", 32, "Batch size")
@@ -133,12 +135,15 @@ flags.DEFINE_bool("local_launch", False, "Launch locally or not.")
 flags.DEFINE_bool("verbose", True, "Enables verbose printing and profiling.")
 flags.DEFINE_bool("log_train",True,"log training reward curve")
 
+
 # Strategy Exploration
 flags.DEFINE_integer("fast_oracle_period", 5, "Number of iters using fast oracle in one period.")
 flags.DEFINE_integer("slow_oracle_period", 3, "Number of iters using slow oracle in one period.")
 flags.DEFINE_bool("exp3", False, "Using EXP3 to select heuristics.")
 flags.DEFINE_bool("standard_regret", False, "Using standard regret.")
 flags.DEFINE_float("evaluation_gamma", 0.0, "gamma for EXP3 and pure_exp.")
+flags.DEFINE_bool('switch_fast_slow',True,'run fast and slow oracle alternatively') # Only switching heuristics, not changing fast and slow oracle
+
 
 
 def init_pg_responder(sess, env):
@@ -250,53 +255,10 @@ def init_ars_responder(sess, env):
     env,
     agent_class,
     agent_kwargs,
-    number_training_episodes=FLAGS.number_training_episodes,
+
+    number_training_episodes=FLAGS.number_training_episodes_ars,
     self_play_proportion=FLAGS.self_play_proportion,
     sigma=FLAGS.sigma)
-
-  agents = [
-    agent_class(
-      env,
-      player_id,
-      **agent_kwargs)
-    for player_id in range(FLAGS.n_players)
-  ]
-  for agent in agents:
-    agent.freeze()
-  return oracle, agents
-
-
-def init_ars_parallel_responder(sess, env, slow_agent_kwargs):
-  """
-  Initializes the ARS responder and agents.
-  :param sess: A fake sess=None
-  :param env: A rl environment.
-  :return: oracle and agents.
-  """
-  info_state_size = env.observation_spec()["info_state"][0]
-  num_actions = env.action_spec()["num_actions"]
-  agent_class = rl_policy.ARSPolicy_parallel
-  agent_kwargs = {
-    "session": None,
-    "info_state_size": info_state_size,
-    "num_actions": num_actions,
-    "learning_rate": FLAGS.ars_learning_rate,
-    "nb_directions": FLAGS.num_directions,
-    "nb_best_directions": FLAGS.num_directions,
-    "noise": FLAGS.noise
-  }
-
-  oracle = rl_oracle.RLOracle(
-    env,
-    agent_class,
-    agent_kwargs,
-    number_training_episodes=FLAGS.number_training_episodes,
-    self_play_proportion=FLAGS.self_play_proportion,
-    sigma=FLAGS.sigma,
-    num_workers=FLAGS.num_workers,
-    ars_parallel=True,
-    slow_agent_kwargs=slow_agent_kwargs
-  )
 
   agents = [
     agent_class(
@@ -387,6 +349,7 @@ def save_at_termination(solver, file_for_meta_game):
     with open(file_for_meta_game,'wb') as f:
         pickle.dump(solver.get_meta_game(), f)
 
+
 def gpsro_looper(env, oracle, oracle_list, agents, writer, quiesce=False, checkpoint_dir=None, seed=None, heuristic_list=None):
   """Initializes and executes the GPSRO training loop."""
   sample_from_marginals = True  # TODO(somidshafiei) set False for alpharank
@@ -406,6 +369,7 @@ def gpsro_looper(env, oracle, oracle_list, agents, writer, quiesce=False, checkp
       rectifier=FLAGS.rectifier,
       sims_per_entry=FLAGS.sims_per_entry,
       number_policies_selected=FLAGS.number_policies_selected,
+      meta_strategy_li=FLAGS.meta_strategy_method_li,
       meta_strategy_method=FLAGS.meta_strategy_method,
       meta_strategy_method_frequency=FLAGS.meta_strategy_method_frequency,
       fast_oracle_period=FLAGS.fast_oracle_period,
@@ -453,7 +417,6 @@ def gpsro_looper(env, oracle, oracle_list, agents, writer, quiesce=False, checkp
 
     exploitabilities, expl_per_player = exploitability.nash_conv(
         env.game, aggr_policies, return_only_nash_conv=False)
-
     for p in range(len(expl_per_player)):
       writer.add_scalar('player'+str(p)+'_exp',expl_per_player[p],gpsro_iteration)
     writer.add_scalar('exp',exploitabilities,gpsro_iteration)
@@ -479,15 +442,17 @@ def gpsro_looper(env, oracle, oracle_list, agents, writer, quiesce=False, checkp
     writer.add_scalar('beneficial_devs',sum(beneficial_deviation),gpsro_iteration)
 
     ######### analyze if the fast oracle has found beneficial deviation from slow oracle
-    period = FLAGS.fast_oracle_period + FLAGS.slow_oracle_period
-    if gpsro_iteration % period == 0:
-      beneficial_deviation = print_beneficial_deviation_analysis(last_slow_meta_game, meta_game, last_slow_meta_prob, verbose=False)
-      writer.add_scalar('fast_bef_dev_from_slow',sum(beneficial_deviation),gpsro_iteration)
-      print('fast oracle dev from slow', beneficial_deviation)
-    elif gpsro_iteration % period == FLAGS.slow_oracle_period:
-      last_slow_meta_prob, last_slow_meta_game = meta_probabilities, meta_game
-    else:
-      print('fast oracle ARS running')
+    if FLAGS.switch_fast_slow:
+      period = FLAGS.fast_oracle_period + FLAGS.slow_oracle_period
+      if gpsro_iteration % period == 0:
+        beneficial_deviation = print_beneficial_deviation_analysis(last_slow_meta_game, meta_game, last_slow_meta_prob, verbose=False)
+        writer.add_scalar('fast_bef_dev_from_slow',sum(beneficial_deviation),gpsro_iteration)
+        print('fast oracle dev from slow', beneficial_deviation)
+      elif gpsro_iteration % period == FLAGS.slow_oracle_period:
+        last_slow_meta_prob, last_slow_meta_game = meta_probabilities, meta_game
+      else:
+        print('fast oracle ARS running')
+
     
     ######### record training curve to tensorboard
     if FLAGS.log_train and (gpsro_iteration<=10 or gpsro_iteration%5==0):
@@ -514,10 +479,15 @@ def main(argv):
 
   if not os.path.exists(FLAGS.root_result_folder):
     os.makedirs(FLAGS.root_result_folder)
-  checkpoint_dir = FLAGS.game_name+str(FLAGS.n_players)+'_sims_'+str(FLAGS.sims_per_entry)+'_it_'+str(FLAGS.gpsro_iterations)+'_ep_'+str(FLAGS.number_training_episodes)+'_or_'+FLAGS.oracle_type+'_mf_'+FLAGS.meta_strategy_method_frequency+'_fp_'+FLAGS.fast_oracle_period+'_sp_'+FLAGS.slow_oracle_period
 
-  # fast oracle is always ARS
-  checkpoint_dir += '_arslr_'+str(FLAGS.ars_learning_rate)+'_arsn_'+str(FLAGS.noise)+'_arsnd_'+str(FLAGS.num_directions)+'_arsbd_'+str(FLAGS.num_best_directions)
+  checkpoint_dir = 'se_'+FLAGS.game_name+str(FLAGS.n_players)+'_sims_'+str(FLAGS.sims_per_entry)+'_it_'+str(FLAGS.gpsro_iterations)+'_ep_'+str(FLAGS.number_training_episodes)+'_or_'+FLAGS.oracle_type
+  if FLAGS.meta_strategy_method_frequency:
+    checkpoint_dir += '_msf_'+ str(FLAGS.meta_strategy_method_frequency) + '_msl_'+",".join(FLAGS.meta_strategy_method_li)
+  else:
+    checkpoint_dir += '_ms_'+str(FLAGS.meta_strategy_method)
+  if FLAGS.switch_fast_slow:
+    checkpoint_dir += '_sfs_'+'_fp_'+str(FLAGS.fast_oracle_period)+'_sp_'+str(FLAGS.slow_oracle_period) + '_arslr_'+str(FLAGS.ars_learning_rate)+'_arsn_'+str(FLAGS.noise)+'_arsnd_'+str(FLAGS.num_directions)+'_arsbd_'+str(FLAGS.num_best_directions)+'_epars_'+str(FLAGS.number_training_episodes_ars)
+
   if FLAGS.oracle_type == 'BR':
     oracle_flag_str = ''
   else:
@@ -545,19 +515,17 @@ def main(argv):
     elif FLAGS.oracle_type == "ARS":
       slow_oracle, agents = init_ars_responder(sess, env)
       agent_kwargs = None
+
     sess.run(tf.global_variables_initializer())
-
-
-    fast_oracle, agents = init_ars_responder(sess=None, env=env)
-    # fast_oracle, agents = init_ars_parallel_responder(sess=None,
-    #                                                   env=env,
-    #                                                   slow_agent_kwargs=agent_kwargs)
-
-    # Initialize oracle and agents
-    oracle_list = [[], []]
-    oracle_list[0].append(slow_oracle)
-    oracle_list[0].append(fast_oracle)
-    oracle_list[1] = [FLAGS.oracle_type, 'ARS']
+    
+    if FLAGS.switch_fast_slow:
+      fast_oracle, agents = init_ars_responder(sess=None, env=env)
+      oracle_list = [[], []]
+      oracle_list[0].append(slow_oracle)
+      oracle_list[0].append(fast_oracle)
+      oracle_list[1] = [FLAGS.oracle_type,'ARS']
+    else:
+      oracle_list = None
 
     heuristic_list = ["general_nash", "uniform", "sp"]
 
@@ -570,6 +538,7 @@ def main(argv):
                  checkpoint_dir=checkpoint_dir,
                  seed=seed,
                  heuristic_list=heuristic_list)
+
 
   writer.close()
 

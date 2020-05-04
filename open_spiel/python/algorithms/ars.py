@@ -63,8 +63,8 @@ class ARS(rl_agent.AbstractAgent):
                  seed=123,
                  additional_discount_factor=1.0,
                  v2=False,
-                 discrete_action=True
-                 ):
+                 discrete_action=True,
+                 deterministic=False):
         """
         Initialize the ARS agent.
         :param session: A dummy API place holder.
@@ -80,6 +80,7 @@ class ARS(rl_agent.AbstractAgent):
         :param additional_discount_factor: Additional discount factor for episodes.
         :param v2: bool, True: enable ARS-V2
         :param discrete_action: bool, True for problems with discrete action space.
+        :param deterministic: bool, ars act deterministically or not
         """
 
         super(ARS, self).__init__(player_id)
@@ -101,6 +102,7 @@ class ARS(rl_agent.AbstractAgent):
         self._extra_discount = additional_discount_factor
         self.v2 = v2
         self.discrete_action = discrete_action
+        self.deterministic = deterministic
 
         if self.v2:
             self.normalizer = Normalizer(self._info_state_size)
@@ -140,7 +142,11 @@ class ARS(rl_agent.AbstractAgent):
             probs /= sum(probs)
         else:
             probs[legal_actions] = 1 / len(legal_actions)
-        action = np.random.choice(len(probs), p=probs)
+
+        if not self.deterministic:
+          action = np.random.choice(len(probs), p=probs)
+        else:
+          action = np.argmax(probs)
         return action, probs
 
     def step(self, time_step, is_evaluation=False):
