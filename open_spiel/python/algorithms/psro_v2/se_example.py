@@ -129,7 +129,7 @@ flags.DEFINE_bool("v2", False, "v2 of ARS which normalizes observations.")
 
 # General
 flags.DEFINE_string("root_result_folder",'root_result',"root directory of saved results")
-flags.DEFINE_bool("sbatch_run",False,"whether to redirect standard output to checkpoint directory")
+flags.DEFINE_bool("sbatch_run", False,"whether to redirect standard output to checkpoint directory")
 flags.DEFINE_integer("seed", None, "Seed.")
 flags.DEFINE_bool("local_launch", False, "Launch locally or not.")
 flags.DEFINE_bool("verbose", True, "Enables verbose printing and profiling.")
@@ -370,7 +370,6 @@ def gpsro_looper(env, oracle, oracle_list, agents, writer, quiesce=False, checkp
       sims_per_entry=FLAGS.sims_per_entry,
       number_policies_selected=FLAGS.number_policies_selected,
       meta_strategy_method=FLAGS.meta_strategy_method,
-      meta_strategy_method_frequency=FLAGS.meta_strategy_method_frequency,
       fast_oracle_period=FLAGS.fast_oracle_period,
       slow_oracle_period=FLAGS.slow_oracle_period,
       prd_iterations=50000,
@@ -480,10 +479,12 @@ def main(argv):
     os.makedirs(FLAGS.root_result_folder)
 
   checkpoint_dir = 'se_'+FLAGS.game_name+str(FLAGS.n_players)+'_sims_'+str(FLAGS.sims_per_entry)+'_it_'+str(FLAGS.gpsro_iterations)+'_ep_'+str(FLAGS.number_training_episodes)+'_or_'+FLAGS.oracle_type
+
   if FLAGS.meta_strategy_method_frequency:
     checkpoint_dir += '_msf_'+ str(FLAGS.meta_strategy_method_frequency) + '_msl_'+",".join(FLAGS.meta_strategy_method_li)
   else:
-    checkpoint_dir += '_ms_'+str(FLAGS.meta_strategy_method)
+    checkpoint_dir += '_ms_' + str(FLAGS.meta_strategy_method)
+
   if FLAGS.switch_fast_slow:
     checkpoint_dir += '_sfs_'+'_fp_'+str(FLAGS.fast_oracle_period)+'_sp_'+str(FLAGS.slow_oracle_period) + '_arslr_'+str(FLAGS.ars_learning_rate)+'_arsn_'+str(FLAGS.noise)+'_arsnd_'+str(FLAGS.num_directions)+'_arsbd_'+str(FLAGS.num_best_directions)+'_epars_'+str(FLAGS.number_training_episodes_ars)
 
