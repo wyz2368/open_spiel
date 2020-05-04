@@ -232,6 +232,8 @@ class AbstractMetaTrainer(object):
       else:
         self._heuristic_selector = pure_exp(self._num_heuristic, gamma)
 
+      self._heuristic_selector.arm_pulled = self._heuristic_list.index(self._meta_strategy_method)
+
   def _initialize_policy(self, initial_policies):
     return NotImplementedError(
         "initialize_policy not implemented. Initial policies passed as"
@@ -383,7 +385,7 @@ class AbstractMetaTrainer(object):
         self.reset_slow_oracle_counter()
 
     self.update_meta_strategies()  # Compute meta strategy (e.g. Nash)
-    self.logs.update_meta_probs(self._meta_strategy_probabilities)
+
     return train_reward_curve
 
   def switch_oracle(self):

@@ -43,5 +43,5 @@ class pure_exp(object):
         return self.arm_pulled
 
     def update_weights(self, reward):
-        self.weights[self.arm_pulled] = (1-self.gamma) * reward + self.gamma * self.weights[self.arm_pulled]
+        self.weights[self.arm_pulled] = (1 - self.gamma) * reward + self.gamma * self.weights[self.arm_pulled]
 

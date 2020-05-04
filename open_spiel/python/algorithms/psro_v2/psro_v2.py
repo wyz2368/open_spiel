@@ -512,26 +512,27 @@ class PSROSolver(abstract_meta_trainer.AbstractMetaTrainer):
       based on the base model.
       :return: str, the name of the new heuristic selected.
       """
-      base_model_index = self.logs.get_fast_iters()[-(self._fast_oracle_period+1)]
-      slow_model_index = self.logs.get_fast_iters()[-1]
+      if len(self.logs.get_fast_iters()) == 0:
+          # For the first iteration.
+          base_model_index = 1
+      else:
+        base_model_index = self.logs.get_fast_iters()[-(self._fast_oracle_period+1)] + 1
+      slow_model_index = self.logs.get_slow_iters()[-1] + 1
       meta_games = self.get_meta_game()
 
       if self._standard_regret:
         base_model_regrets = regret(meta_games, base_model_index)
         slow_model_regrets = regret(meta_games, slow_model_index)
-        base_model_nashconv = np.sum(base_model_regrets)
-        slow_model_nashconv = np.sum(slow_model_regrets)
       else:
-        _, _, regrets = strategy_regret(meta_games)
-        base_model_nashconv = 0
-        slow_model_nashconv = 0
-        for player in range(self._num_players):
-            base_model_nashconv += np.sum(regrets[player][:base_model_index] * self.logs.get_meta_probs()[player][:base_model_index])
-            slow_model_nashconv += np.sum(regrets[player][:slow_model_index] * self.logs.get_meta_probs()[player][:slow_model_index])
+        base_model_regrets = strategy_regret(meta_games, base_model_index)
+        slow_model_regrets = strategy_regret(meta_games, slow_model_index)
 
+      base_model_nashconv = np.sum(base_model_regrets)
+      slow_model_nashconv = np.sum(slow_model_regrets)
       delta_nashconv = slow_model_nashconv - base_model_nashconv
       self._heuristic_selector.update_weights(delta_nashconv)
       new_heuristic_index = self._heuristic_selector.sample()
+
       return self._heuristic_list[new_heuristic_index]
 
 
