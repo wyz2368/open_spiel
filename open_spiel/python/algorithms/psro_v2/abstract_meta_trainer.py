@@ -223,7 +223,6 @@ class AbstractMetaTrainer(object):
                          fast_oracle_period,
                          meta_strategies.META_STRATEGY_METHODS_SE,
                          heuristic_list)
-      self.logs.update_meta_probs(self._meta_strategy_probabilities)
 
       # Create weights of heuristics.
       self._exp3 = exp3
