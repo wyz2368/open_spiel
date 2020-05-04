@@ -135,11 +135,13 @@ flags.DEFINE_bool("local_launch", False, "Launch locally or not.")
 flags.DEFINE_bool("verbose", True, "Enables verbose printing and profiling.")
 flags.DEFINE_bool("log_train",True,"log training reward curve")
 
-# Strategy Exploration: switch between fast and slow oracle
-flags.DEFINE_integer("meta_strategy_method_frequency", 0 , "The frequency of updating meta-strategy method.") # 0 stands for keep to the first meta strategy
-flags.DEFINE_list("meta_strategy_method_li",'general_nash,sp',"list of meta strategy for swapping")
-flags.DEFINE_integer("fast_oracle_period", 5, "Number of iters using fast oracle in one period.") 
-flags.DEFINE_integer("slow_oracle_period", 1, "Number of iters using slow oracle in one period.")
+
+# Strategy Exploration
+flags.DEFINE_integer("fast_oracle_period", 5, "Number of iters using fast oracle in one period.")
+flags.DEFINE_integer("slow_oracle_period", 3, "Number of iters using slow oracle in one period.")
+flags.DEFINE_bool("exp3", False, "Using EXP3 to select heuristics.")
+flags.DEFINE_bool("standard_regret", False, "Using standard regret.")
+flags.DEFINE_float("evaluation_gamma", 0.0, "gamma for EXP3 and pure_exp.")
 flags.DEFINE_bool('switch_fast_slow',True,'run fast and slow oracle alternatively') # Only switching heuristics, not changing fast and slow oracle
 
 
@@ -181,7 +183,7 @@ def init_pg_responder(sess, env):
   ]
   for agent in agents:
     agent.freeze()
-  return oracle, agents
+  return oracle, agents, agent_kwargs
 
 
 def init_br_responder(env):
@@ -227,7 +229,7 @@ def init_dqn_responder(sess, env):
   ]
   for agent in agents:
     agent.freeze()
-  return oracle, agents
+  return oracle, agents, agent_kwargs
 
 def init_ars_responder(sess, env):
   """
@@ -240,7 +242,7 @@ def init_ars_responder(sess, env):
   num_actions = env.action_spec()["num_actions"]
   agent_class = rl_policy.ARSPolicy
   agent_kwargs = {
-    "session": sess,
+    "session": None,
     "info_state_size": info_state_size,
     "num_actions": num_actions,
     "learning_rate": FLAGS.ars_learning_rate,
@@ -253,6 +255,7 @@ def init_ars_responder(sess, env):
     env,
     agent_class,
     agent_kwargs,
+
     number_training_episodes=FLAGS.number_training_episodes_ars,
     self_play_proportion=FLAGS.self_play_proportion,
     sigma=FLAGS.sigma)
@@ -346,7 +349,8 @@ def save_at_termination(solver, file_for_meta_game):
     with open(file_for_meta_game,'wb') as f:
         pickle.dump(solver.get_meta_game(), f)
 
-def gpsro_looper(env, oracle, oracle_list, agents, writer, quiesce=False, checkpoint_dir=None, seed=None):
+
+def gpsro_looper(env, oracle, oracle_list, agents, writer, quiesce=False, checkpoint_dir=None, seed=None, heuristic_list=None):
   """Initializes and executes the GPSRO training loop."""
   sample_from_marginals = True  # TODO(somidshafiei) set False for alpharank
   training_strategy_selector = FLAGS.training_strategy_selector or strategy_selectors.probabilistic_strategy_selector
@@ -375,18 +379,25 @@ def gpsro_looper(env, oracle, oracle_list, agents, writer, quiesce=False, checkp
       sample_from_marginals=sample_from_marginals,
       symmetric_game=FLAGS.symmetric_game,
       oracle_list=oracle_list,
-      checkpoint_dir=checkpoint_dir)
+      checkpoint_dir=checkpoint_dir,
+      exp3=FLAGS.exp3,
+      standard_regret=FLAGS.standard_regret,
+      heuristic_list=heuristic_list,
+      gamma=FLAGS.exploration_gamma,
+  )
   
   last_meta_prob = [np.array([1]) for _ in range(FLAGS.n_players)]
   last_meta_game = g_psro_solver.get_meta_game()
-  #atexit.register(save_at_termination, solver=g_psro_solver, file_for_meta_game=checkpoint_dir+'/meta_game.pkl')
   start_time = time.time()
+
   for gpsro_iteration in range(1,FLAGS.gpsro_iterations+1):
     if FLAGS.verbose:
       print("\n===========================\n")
       print("Iteration : {}".format(gpsro_iteration))
       print("Time so far: {}".format(time.time() - start_time))
+
     #train_reward_curve = g_psro_solver.iteration(seed=seed)
+    # iteration function for strategy exploration
     train_reward_curve = g_psro_solver.se_iteration(seed=seed)
     meta_game = g_psro_solver.get_meta_game()
     meta_probabilities = g_psro_solver.get_meta_strategies()
@@ -403,11 +414,13 @@ def gpsro_looper(env, oracle, oracle_list, agents, writer, quiesce=False, checkp
     if env.game.get_type().dynamics == pyspiel.GameType.Dynamics.SEQUENTIAL:
       aggregator = policy_aggregator.PolicyAggregator(env.game)
       aggr_policies = aggregator.aggregate(range(FLAGS.n_players), policies, nash_meta_probabilities)
+
     exploitabilities, expl_per_player = exploitability.nash_conv(
         env.game, aggr_policies, return_only_nash_conv=False)
     for p in range(len(expl_per_player)):
       writer.add_scalar('player'+str(p)+'_exp',expl_per_player[p],gpsro_iteration)
     writer.add_scalar('exp',exploitabilities,gpsro_iteration)
+
     if FLAGS.verbose:
       print("Exploitabilities : {}".format(exploitabilities))
       print("Exploitabilities per player : {}".format(expl_per_player))
@@ -418,7 +431,7 @@ def gpsro_looper(env, oracle, oracle_list, agents, writer, quiesce=False, checkp
       writer.add_scalar('p'+str(p)+'_unique_p',len(cur_set),gpsro_iteration)
     
     ######### record meta_game into pkl
-    if gpsro_iteration % 10 ==0:
+    if gpsro_iteration % 10 == 0:
       save_at_termination(solver=g_psro_solver, file_for_meta_game=checkpoint_dir+'/meta_game.pkl')
    
     ######### analyze if this iteration found beneficial deviation
@@ -439,6 +452,7 @@ def gpsro_looper(env, oracle, oracle_list, agents, writer, quiesce=False, checkp
         last_slow_meta_prob, last_slow_meta_game = meta_probabilities, meta_game
       else:
         print('fast oracle ARS running')
+
     
     ######### record training curve to tensorboard
     if FLAGS.log_train and (gpsro_iteration<=10 or gpsro_iteration%5==0):
@@ -465,6 +479,7 @@ def main(argv):
 
   if not os.path.exists(FLAGS.root_result_folder):
     os.makedirs(FLAGS.root_result_folder)
+
   checkpoint_dir = 'se_'+FLAGS.game_name+str(FLAGS.n_players)+'_sims_'+str(FLAGS.sims_per_entry)+'_it_'+str(FLAGS.gpsro_iterations)+'_ep_'+str(FLAGS.number_training_episodes)+'_or_'+FLAGS.oracle_type
   if FLAGS.meta_strategy_method_frequency:
     checkpoint_dir += '_msf_'+ str(FLAGS.meta_strategy_method_frequency) + '_msl_'+",".join(FLAGS.meta_strategy_method_li)
@@ -472,6 +487,7 @@ def main(argv):
     checkpoint_dir += '_ms_'+str(FLAGS.meta_strategy_method)
   if FLAGS.switch_fast_slow:
     checkpoint_dir += '_sfs_'+'_fp_'+str(FLAGS.fast_oracle_period)+'_sp_'+str(FLAGS.slow_oracle_period) + '_arslr_'+str(FLAGS.ars_learning_rate)+'_arsn_'+str(FLAGS.noise)+'_arsnd_'+str(FLAGS.num_directions)+'_arsbd_'+str(FLAGS.num_best_directions)+'_epars_'+str(FLAGS.number_training_episodes_ars)
+
   if FLAGS.oracle_type == 'BR':
     oracle_flag_str = ''
   else:
@@ -486,31 +502,43 @@ def main(argv):
   writer = SummaryWriter(logdir=checkpoint_dir+'/log')
   if FLAGS.sbatch_run:
     sys.stdout = open(checkpoint_dir+'/stdout.txt','w+')
-  
-  # Initialize oracle and agents
-  oracle_list = [[],[]]
+
   # Initialize oracle and agents
   with tf.Session() as sess:
     if FLAGS.oracle_type == "DQN":
-      slow_oracle, agents = init_dqn_responder(sess, env)
+      slow_oracle, agents, agent_kwargs = init_dqn_responder(sess, env)
     elif FLAGS.oracle_type == "PG":
-      slow_oracle, agents = init_pg_responder(sess, env)
+      slow_oracle, agents, agent_kwargs = init_pg_responder(sess, env)
     elif FLAGS.oracle_type == "BR":
       slow_oracle, agents = init_br_responder(env)
+      agent_kwargs = None
     elif FLAGS.oracle_type == "ARS":
       slow_oracle, agents = init_ars_responder(sess, env)
+      agent_kwargs = None
+
     sess.run(tf.global_variables_initializer())
     
     if FLAGS.switch_fast_slow:
       fast_oracle, agents = init_ars_responder(sess=None, env=env)
-
+      oracle_list = [[], []]
       oracle_list[0].append(slow_oracle)
       oracle_list[0].append(fast_oracle)
       oracle_list[1] = [FLAGS.oracle_type,'ARS']
     else:
       oracle_list = None
 
-    gpsro_looper(env, slow_oracle, oracle_list ,agents, writer, quiesce=FLAGS.quiesce, checkpoint_dir=checkpoint_dir, seed=seed)
+    heuristic_list = ["general_nash", "uniform", "sp"]
+
+    gpsro_looper(env,
+                 slow_oracle,
+                 oracle_list,
+                 agents,
+                 writer,
+                 quiesce=FLAGS.quiesce,
+                 checkpoint_dir=checkpoint_dir,
+                 seed=seed,
+                 heuristic_list=heuristic_list)
+
 
   writer.close()
 

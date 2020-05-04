@@ -24,6 +24,7 @@ from open_spiel.python.algorithms.psro_v2 import meta_strategies
 from open_spiel.python.algorithms.psro_v2 import strategy_selectors
 from open_spiel.python.algorithms.psro_v2 import utils
 from open_spiel.python.algorithms.psro_v2.eval_utils import SElogs
+from open_spiel.python.algorithms.psro_v2.exploration import pure_exp, Exp3
 
 _DEFAULT_STRATEGY_SELECTION_METHOD = "probabilistic"
 _DEFAULT_META_STRATEGY_METHOD = "prd"
@@ -104,14 +105,16 @@ class AbstractMetaTrainer(object):
                oracle,
                initial_policies=None,
                meta_strategy_method=_DEFAULT_META_STRATEGY_METHOD,
-               meta_strategy_method_frequency = 1,
-               meta_strategy_li=None,
                fast_oracle_period=5,
-               slow_oracle_period=1,
+               slow_oracle_period=3,
                training_strategy_selector=_DEFAULT_STRATEGY_SELECTION_METHOD,
                symmetric_game=False,
                number_policies_selected=1,
                oracle_list=None,
+               exp3=False,
+               standard_regret=False,
+               heuristic_list=None,
+               gamma=0.0,
                **kwargs):
     """Abstract Initialization for meta trainers.
 
@@ -129,7 +132,6 @@ class AbstractMetaTrainer(object):
                 games.
               - "prd": Projected Replicator Dynamics, as described in Lanctot et
                 Al.
-      meta_strategy_method_frequency: The frequency of updating meta-strategy method.
       fast_oracle_period: Number of iters using fast oracle in one period.
       slow_oracle_period: Number of iters using slow oracle in one period.
       training_strategy_selector: A callable or a string. If a callable, takes
@@ -155,7 +157,11 @@ class AbstractMetaTrainer(object):
         oracle [1] and a slow oracle [0]. Second element is a list with the name of
         the two oracles. Have to design it this way because rl_policy does not
         reveal the class name in the rl_factory
-     
+      exp3: bool, if run exp3 for strategy exploration.
+      standard_regret: bool, if use standard regret definition or strategy regret.
+      heuristic_list: a list of name of heuristic (meta-strategy).
+      gamma: float, gamma for functions like exp3.
+
       **kwargs: kwargs for meta strategy computation and training strategy
         selection
     """
@@ -200,8 +206,13 @@ class AbstractMetaTrainer(object):
 
     # Mode = fast 1 or slow 0
     if oracle_list is not None:
+      # 0: slow oracle 1: fast_oracle
       self._mode = 0
-      self._oracles = oracle_list[0] # mind self._oracle is the oracle in use
+      self._standard_regret = standard_regret
+      self._oracles = oracle_list[0]
+      self._heuristic_list = heuristic_list
+      self._num_heuristic = len(self._heuristic_list)
+      #TODO: What does the next line mean?
       self._oracles_name = oracle_list[1]
 
       self._slow_oracle_period = slow_oracle_period
@@ -214,7 +225,17 @@ class AbstractMetaTrainer(object):
       # Create logs for strategy exploration (SE).
       self.logs = SElogs(slow_oracle_period,
                          fast_oracle_period,
-                         meta_strategies.META_STRATEGY_METHODS_SE)
+                         meta_strategies.META_STRATEGY_METHODS_SE,
+                         heuristic_list)
+
+      # Create weights of heuristics.
+      self._exp3 = exp3
+      if exp3:
+        self._heuristic_selector = Exp3(self._num_heuristic, gamma)
+      else:
+        self._heuristic_selector = pure_exp(self._num_heuristic, gamma)
+
+      self._heuristic_selector.arm_pulled = self._heuristic_list.index(self._meta_strategy_method)
 
   def _initialize_policy(self, initial_policies):
     return NotImplementedError(
@@ -349,11 +370,6 @@ class AbstractMetaTrainer(object):
     train_reward_curve = self.update_agents()  # Generate new, Best Response agents via oracle.
     self.update_empirical_gamestate(seed=seed)  # Update gamestate matrix.
 
-    period = 1 if not hasattr(self,'_mode') else self._slow_oracle_period + self._fast_oracle_period
-    if self._meta_method_frequency!=0 and \
-        self._iterations % (self._meta_method_frequency * period) == 0 and \
-            self._iterations != (self._meta_method_frequency * period):
-      self.evaluate_and_pick_meta_method()
 
     # Switch fast 1 and slow 0 oracle.
     if hasattr(self,'_mode'):
@@ -363,6 +379,7 @@ class AbstractMetaTrainer(object):
         if self._fast_oracle_counter == 0:
           self.switch_oracle()
           self.reset_fast_oracle_counter()
+          self.evaluate_and_pick_meta_method()
       else:
         self.logs.update_slow_iters(self._iterations)
         self._slow_oracle_counter -= 1
@@ -371,6 +388,7 @@ class AbstractMetaTrainer(object):
           self.reset_slow_oracle_counter()
 
     self.update_meta_strategies()  # Compute meta strategy (e.g. Nash)
+
     return train_reward_curve
 
   def switch_oracle(self):
