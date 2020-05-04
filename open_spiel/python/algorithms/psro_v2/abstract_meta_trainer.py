@@ -412,13 +412,10 @@ class AbstractMetaTrainer(object):
     :return:
     """
     # Evaluation
-    # new_meta_str_method = self.evaluate_meta_method()
-    if len(self._meta_strategy_method_li) > 1:
-      self.update_meta_strategy_method(self._meta_strategy_method_li[0])
-      self._meta_strategy_method_li = self._meta_strategy_method_li[1:]+self._meta_strategy_method_li[:1]
+    new_meta_str_method = self.evaluate_meta_method()
 
     # Update
-    # self.update_meta_strategy_method(new_meta_str_method)
+    self.update_meta_strategy_method(new_meta_str_method)
 
   def evaluate_meta_method(self):
     raise NotImplementedError

@@ -369,7 +369,6 @@ def gpsro_looper(env, oracle, oracle_list, agents, writer, quiesce=False, checkp
       rectifier=FLAGS.rectifier,
       sims_per_entry=FLAGS.sims_per_entry,
       number_policies_selected=FLAGS.number_policies_selected,
-      meta_strategy_li=FLAGS.meta_strategy_method_li,
       meta_strategy_method=FLAGS.meta_strategy_method,
       meta_strategy_method_frequency=FLAGS.meta_strategy_method_frequency,
       fast_oracle_period=FLAGS.fast_oracle_period,
