@@ -200,9 +200,6 @@ class AbstractMetaTrainer(object):
     self._initialize_game_state()
     self.update_meta_strategies()
     
-    # For switching heurisitcs. 0 means do not switch heuristics
-    self._meta_method_frequency = meta_strategy_method_frequency
-    self._meta_strategy_method_li = meta_strategy_li if meta_strategy_li else [self._meta_strategy_method_name]
 
     # Mode = fast 1 or slow 0
     if oracle_list is not None:
