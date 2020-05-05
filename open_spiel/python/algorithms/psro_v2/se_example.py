@@ -405,7 +405,7 @@ def gpsro_looper(env, oracle, oracle_list, agents, writer, quiesce=False, checkp
 
     if FLAGS.verbose:
       print("Meta game : {}".format(meta_game))
-      print("{} Probabilities : {}".format(g_psro_solver._meta_strategy_method_name,meta_probabilities))
+      print("{} Probabilities : {}".format(g_psro_solver._meta_strategy_method_name, meta_probabilities))
       print("Nash Probabilities : {}".format(nash_meta_probabilities))
 
     # The following lines only work for sequential games for the moment.
@@ -417,8 +417,8 @@ def gpsro_looper(env, oracle, oracle_list, agents, writer, quiesce=False, checkp
     exploitabilities, expl_per_player = exploitability.nash_conv(
         env.game, aggr_policies, return_only_nash_conv=False)
     for p in range(len(expl_per_player)):
-      writer.add_scalar('player'+str(p)+'_exp',expl_per_player[p],gpsro_iteration)
-    writer.add_scalar('exp',exploitabilities,gpsro_iteration)
+      writer.add_scalar('player'+str(p)+'_exp', expl_per_player[p],gpsro_iteration)
+    writer.add_scalar('exp', exploitabilities, gpsro_iteration)
 
     if FLAGS.verbose:
       print("Exploitabilities : {}".format(exploitabilities))
@@ -435,20 +435,20 @@ def gpsro_looper(env, oracle, oracle_list, agents, writer, quiesce=False, checkp
    
     ######### analyze if this iteration found beneficial deviation
     beneficial_deviation = print_beneficial_deviation_analysis(last_meta_game, meta_game, last_meta_prob, FLAGS.verbose)
-    last_meta_prob, last_meta_game = meta_probabilities, meta_game
+    last_meta_prob, last_meta_game = nash_meta_probabilities, meta_game
     #for p in range(len(beneficial_deviation)):
     #  writer.add_scalar('p'+str(p)+'_beneficial_dev',int(beneficial_deviation[p]),gpsro_iteration)
-    writer.add_scalar('beneficial_devs',sum(beneficial_deviation),gpsro_iteration)
+    writer.add_scalar('beneficial_devs', sum(beneficial_deviation), gpsro_iteration)
 
     ######### analyze if the fast oracle has found beneficial deviation from slow oracle
     if FLAGS.switch_fast_slow:
       period = FLAGS.fast_oracle_period + FLAGS.slow_oracle_period
       if gpsro_iteration % period == 0:
         beneficial_deviation = print_beneficial_deviation_analysis(last_slow_meta_game, meta_game, last_slow_meta_prob, verbose=False)
-        writer.add_scalar('fast_bef_dev_from_slow',sum(beneficial_deviation),gpsro_iteration)
+        writer.add_scalar('fast_bef_dev_from_slow', sum(beneficial_deviation),gpsro_iteration)
         print('fast oracle dev from slow', beneficial_deviation)
       elif gpsro_iteration % period <= FLAGS.slow_oracle_period:
-        last_slow_meta_prob, last_slow_meta_game = meta_probabilities, meta_game
+        last_slow_meta_prob, last_slow_meta_game = nash_meta_probabilities, meta_game
         print('slow oracle DQN running')
       else:
         print('fast oracle ARS running')
