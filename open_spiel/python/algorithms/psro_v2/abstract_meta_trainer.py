@@ -368,9 +368,8 @@ class AbstractMetaTrainer(object):
     self.update_empirical_gamestate(seed=seed)  # Update gamestate matrix.
 
     # Switch fast 1 and slow 0 oracle.
-    if hasattr(self,'_mode'):
+    if hasattr(self, '_mode'):
       if self._mode:
-        self.update_meta_strategy_method("general_nash")
         self.logs.update_fast_iters(self._iterations)
         self._fast_oracle_counter -= 1
         if self._fast_oracle_counter == 0:
@@ -383,6 +382,7 @@ class AbstractMetaTrainer(object):
         if self._slow_oracle_counter == 0:
           self.switch_oracle()
           self.reset_slow_oracle_counter()
+          self.update_meta_strategy_method("general_nash")
 
     self.update_meta_strategies()  # Compute meta strategy (e.g. Nash)
 

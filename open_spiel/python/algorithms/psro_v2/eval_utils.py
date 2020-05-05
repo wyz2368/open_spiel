@@ -111,7 +111,9 @@ def strategy_regret(meta_games, subgame_index):
     num_players = len(meta_games)
 
     nash = nash_solver(meta_games, solver="gambit")
-    subgame_nash = nash_solver(meta_games[:subgame_index, :subgame_index], solver="gambit")
+    index = [slice(0, subgame_index) for _ in range(num_players)]
+    submeta_games = [subgame[tuple(index)] for subgame in meta_games]
+    subgame_nash = nash_solver(submeta_games, solver="gambit")
 
     regrets = []
 
