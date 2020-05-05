@@ -143,6 +143,7 @@ flags.DEFINE_bool("exp3", False, "Using EXP3 to select heuristics.")
 flags.DEFINE_bool("standard_regret", False, "Using standard regret.")
 flags.DEFINE_float("evaluation_gamma", 0.0, "gamma for EXP3 and pure_exp.")
 flags.DEFINE_bool('switch_fast_slow',True,'run fast and slow oracle alternatively') # Only switching heuristics, not changing fast and slow oracle
+flags.DEFINE_float("exploration_gamma",0.0,'gamma for heuristics selector like exp3')
 
 
 
@@ -306,7 +307,7 @@ def print_beneficial_deviation_analysis(last_meta_game, meta_game, last_meta_pro
       print('player '+str(p)+':',beneficial_deviation[p])
   return beneficial_deviation
 
-def print_policy_analysis(policies, game, verbose=False, pdb=False):
+def print_policy_analysis(policies, game, verbose=False):
   """Function printing policy diversity within game's known policies.
 
   Warning : only works with deterministic policies.
@@ -401,10 +402,10 @@ def gpsro_looper(env, oracle, oracle_list, agents, writer, quiesce=False, checkp
     meta_probabilities = g_psro_solver.get_meta_strategies()
     nash_meta_probabilities = g_psro_solver.get_nash_strategies()
     policies = g_psro_solver.get_policies()
-   
+
     if FLAGS.verbose:
       print("Meta game : {}".format(meta_game))
-      print("Probabilities : {}".format(meta_probabilities))
+      print("{} Probabilities : {}".format(g_psro_solver._meta_strategy_method_name,meta_probabilities))
       print("Nash Probabilities : {}".format(nash_meta_probabilities))
 
     # The following lines only work for sequential games for the moment.
@@ -446,8 +447,9 @@ def gpsro_looper(env, oracle, oracle_list, agents, writer, quiesce=False, checkp
         beneficial_deviation = print_beneficial_deviation_analysis(last_slow_meta_game, meta_game, last_slow_meta_prob, verbose=False)
         writer.add_scalar('fast_bef_dev_from_slow',sum(beneficial_deviation),gpsro_iteration)
         print('fast oracle dev from slow', beneficial_deviation)
-      elif gpsro_iteration % period == FLAGS.slow_oracle_period:
+      elif gpsro_iteration % period <= FLAGS.slow_oracle_period:
         last_slow_meta_prob, last_slow_meta_game = meta_probabilities, meta_game
+        print('slow oracle DQN running')
       else:
         print('fast oracle ARS running')
 
@@ -475,15 +477,14 @@ def main(argv):
   env = rl_environment.Environment(game,seed=seed)
   env.reset()
 
+  heuristic_list = ["general_nash_strategy", "uniform_strategy", "sp_strategy"]
+  
   if not os.path.exists(FLAGS.root_result_folder):
     os.makedirs(FLAGS.root_result_folder)
-
+  
   checkpoint_dir = 'se_'+FLAGS.game_name+str(FLAGS.n_players)+'_sims_'+str(FLAGS.sims_per_entry)+'_it_'+str(FLAGS.gpsro_iterations)+'_ep_'+str(FLAGS.number_training_episodes)+'_or_'+FLAGS.oracle_type
 
-  if FLAGS.meta_strategy_method_frequency:
-    checkpoint_dir += '_msf_'+ str(FLAGS.meta_strategy_method_frequency) + '_msl_'+",".join(FLAGS.meta_strategy_method_li)
-  else:
-    checkpoint_dir += '_ms_' + str(FLAGS.meta_strategy_method)
+  checkpoint_dir += '_msl_'+",".join(heuristic_list)
 
   if FLAGS.switch_fast_slow:
     checkpoint_dir += '_sfs_'+'_fp_'+str(FLAGS.fast_oracle_period)+'_sp_'+str(FLAGS.slow_oracle_period) + '_arslr_'+str(FLAGS.ars_learning_rate)+'_arsn_'+str(FLAGS.noise)+'_arsnd_'+str(FLAGS.num_directions)+'_arsbd_'+str(FLAGS.num_best_directions)+'_epars_'+str(FLAGS.number_training_episodes_ars)
@@ -526,8 +527,6 @@ def main(argv):
       oracle_list[1] = [FLAGS.oracle_type,'ARS']
     else:
       oracle_list = None
-
-    heuristic_list = ["general_nash", "uniform", "sp"]
 
     gpsro_looper(env,
                  slow_oracle,
