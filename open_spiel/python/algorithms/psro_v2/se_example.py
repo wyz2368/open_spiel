@@ -142,8 +142,8 @@ flags.DEFINE_integer("slow_oracle_period", 3, "Number of iters using slow oracle
 flags.DEFINE_bool("exp3", False, "Using EXP3 to select heuristics.")
 flags.DEFINE_bool("standard_regret", False, "Using standard regret.")
 flags.DEFINE_float("evaluation_gamma", 0.0, "gamma for EXP3 and pure_exp.")
-flags.DEFINE_bool('switch_fast_slow',True,'run fast and slow oracle alternatively') # Only switching heuristics, not changing fast and slow oracle
-flags.DEFINE_float("exploration_gamma",0.0,'gamma for heuristics selector like exp3')
+flags.DEFINE_bool('switch_fast_slow', True,'run fast and slow oracle alternatively') # Only switching heuristics, not changing fast and slow oracle
+flags.DEFINE_float("exploration_gamma", 0.0,'gamma for heuristics selector like exp3')
 
 
 
@@ -208,7 +208,7 @@ def init_dqn_responder(sess, env):
       "num_actions": num_actions,
       "hidden_layers_sizes": [FLAGS.hidden_layer_size] * FLAGS.n_hidden_layers,
       "batch_size": FLAGS.batch_size,
-     "learning_rate": FLAGS.dqn_learning_rate,
+      "learning_rate": FLAGS.dqn_learning_rate,
       "update_target_network_every": FLAGS.update_target_network_every,
       "learn_every": FLAGS.learn_every,
       "optimizer_str": FLAGS.optimizer_str

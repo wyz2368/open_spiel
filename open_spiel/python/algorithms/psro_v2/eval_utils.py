@@ -60,7 +60,9 @@ def strategy_regret(meta_games, subgame_index, ne=None, subgame_ne=None):
     num_new_pol = np.shape(meta_games[0])[0] - subgame_index
 
     ne = nash_solver(meta_games, solver="gambit") if not ne else ne
-    subgame_ne = nash_solver(meta_games[:subgame_index, :subgame_index], solver="gambit") if not subgame_ne else subgame_ne
+    index = [list(np.arange(subgame_index)) for _ in range(num_players)]
+    submeta_games = [ele[np.ix_(*index)] for ele in meta_games]
+    subgame_ne = nash_solver(submeta_games, solver="gambit") if not subgame_ne else subgame_ne
     nash_prob_matrix = meta_strategies.general_get_joint_strategy_from_marginals(ne)
 
     regrets = []
