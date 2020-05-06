@@ -345,6 +345,8 @@ class AbstractMetaTrainer(object):
       print("Using {} as strategy method.".format(self._meta_strategy_method.__name__))
       self._meta_strategy_method_name = self._meta_strategy_method.__name__
 
+      self.update_meta_strategies()
+
   def get_meta_strategy_method(self):
     """
     Return the name and the function of current meta-strategy method.
@@ -370,7 +372,6 @@ class AbstractMetaTrainer(object):
     if hasattr(self, '_mode'):
       if self._mode and self._fast_oracle_counter == self._fast_oracle_period:
         self.update_meta_strategy_method("general_nash")
-        self.update_meta_strategies()
       elif not self._mode and self._slow_oracle_counter == self._slow_oracle_period and \
           self._iterations != 0: # start of slow oracle
         self.evaluate_and_pick_meta_method()
@@ -429,7 +430,6 @@ class AbstractMetaTrainer(object):
 
     # Update
     self.update_meta_strategy_method(new_meta_str_method)
-    self.update_meta_strategies()
 
   def evaluate_meta_method(self):
     raise NotImplementedError
