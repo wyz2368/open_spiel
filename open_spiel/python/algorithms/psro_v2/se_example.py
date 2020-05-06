@@ -75,7 +75,7 @@ flags.DEFINE_integer("gpsro_iterations", 150,
                      "Number of training steps for GPSRO.")
 flags.DEFINE_bool("symmetric_game", False, "Whether to consider the current "
                   "game as a symmetric game.")
-flags.DEFINE_bool("quiesce", False,"Whether to use quiece")
+flags.DEFINE_bool("quiesce", False, "Whether to use quiece")
 flags.DEFINE_bool("sparse_quiesce", False,"whether to use sparse matrix quiesce implementation")
 
 # Rectify options
