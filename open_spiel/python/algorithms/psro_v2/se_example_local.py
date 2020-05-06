@@ -67,7 +67,7 @@ flags.DEFINE_string("meta_strategy_method", "general_nash",
                     "Name of meta strategy computation method.")
 flags.DEFINE_integer("number_policies_selected", 1,
                      "Number of new strategies trained at each PSRO iteration.")
-flags.DEFINE_integer("sims_per_entry", 1000,
+flags.DEFINE_integer("sims_per_entry", 10,
                      ("Number of simulations to run to estimate each element"
                       "of the game outcome matrix."))
 
@@ -75,8 +75,8 @@ flags.DEFINE_integer("gpsro_iterations", 150,
                      "Number of training steps for GPSRO.")
 flags.DEFINE_bool("symmetric_game", False, "Whether to consider the current "
                   "game as a symmetric game.")
-flags.DEFINE_bool("quiesce", False,"Whether to use quiece")
-flags.DEFINE_bool("sparse_quiesce", False,"whether to use sparse matrix quiesce implementation")
+flags.DEFINE_bool("quiesce",False,"Whether to use quiece")
+flags.DEFINE_bool("sparse_quiesce",False,"whether to use sparse matrix quiesce implementation")
 
 # Rectify options
 flags.DEFINE_string("rectifier", "",
@@ -143,7 +143,7 @@ flags.DEFINE_bool("exp3", False, "Using EXP3 to select heuristics.")
 flags.DEFINE_bool("standard_regret", False, "Using standard regret.")
 flags.DEFINE_float("evaluation_gamma", 0.0, "gamma for EXP3 and pure_exp.")
 flags.DEFINE_bool('switch_fast_slow', True,'run fast and slow oracle alternatively') # Only switching heuristics, not changing fast and slow oracle
-flags.DEFINE_bool("switch_blocks", False, "Switching heuristic blocks.")
+flags.DEFINE_bool("switch_blocks", True, "Switching heuristic blocks.")
 
 
 
@@ -382,7 +382,7 @@ def gpsro_looper(env, oracle, oracle_list, agents, writer, quiesce=False, checkp
       exp3=FLAGS.exp3,
       standard_regret=FLAGS.standard_regret,
       heuristic_list=heuristic_list,
-      gamma=FLAGS.evaluation_gamma,
+      gamma=FLAGS.exploration_gamma,
   )
   
   last_meta_prob = [np.array([1]) for _ in range(FLAGS.n_players)]

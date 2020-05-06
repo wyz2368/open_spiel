@@ -233,7 +233,7 @@ class AbstractMetaTrainer(object):
         self._heuristic_selector = Exp3(self._num_heuristic, gamma)
       else:
         self._heuristic_selector = pure_exp(self._num_heuristic, gamma)
-      self._heuristic_selector.arm_pulled = self._heuristic_list.index(self._meta_strategy_method_name + '_strategy')
+      self._heuristic_selector.arm_pulled = self._heuristic_list.index(self._meta_strategy_method_name)
 
   def _initialize_policy(self, initial_policies):
     return NotImplementedError(
@@ -370,6 +370,7 @@ class AbstractMetaTrainer(object):
     if hasattr(self, '_mode'):
       if self._mode and self._fast_oracle_counter == self._fast_oracle_period:
         self.update_meta_strategy_method("general_nash")
+        self.update_meta_strategies()
       elif not self._mode and self._slow_oracle_counter == self._slow_oracle_period and \
           self._iterations != 0: # start of slow oracle
         self.evaluate_and_pick_meta_method()
@@ -377,11 +378,9 @@ class AbstractMetaTrainer(object):
 
     self._iterations += 1
 
-    self.update_meta_strategies()  # Compute meta strategy (e.g. Nash)
-
     train_reward_curve = self.update_agents()  # Generate new, Best Response agents via oracle.
     self.update_empirical_gamestate(seed=seed)  # Update gamestate matrix.
-
+    self.update_meta_strategies()  # Compute meta strategy (e.g. Nash)
     
     # after iteration done
     # Switch fast 1 and slow 0 oracle.
@@ -430,6 +429,7 @@ class AbstractMetaTrainer(object):
 
     # Update
     self.update_meta_strategy_method(new_meta_str_method)
+    self.update_meta_strategies()
 
   def evaluate_meta_method(self):
     raise NotImplementedError
