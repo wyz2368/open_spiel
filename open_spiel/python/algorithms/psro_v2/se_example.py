@@ -408,7 +408,7 @@ def gpsro_looper(env, oracle, oracle_list, agents, writer, quiesce=False, checkp
     policies = g_psro_solver.get_policies()
 
     if FLAGS.verbose:
-      print("Meta game : {}".format(meta_game))
+      # print("Meta game : {}".format(meta_game))
       print("{} Probabilities : {}".format(g_psro_solver._meta_strategy_method_name, meta_probabilities))
       print("Nash Probabilities : {}".format(nash_meta_probabilities))
 
