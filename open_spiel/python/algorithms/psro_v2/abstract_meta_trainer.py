@@ -458,7 +458,7 @@ class AbstractMetaTrainer(object):
 
     train_reward_curve = self.update_agents()  # Generate new, Best Response agents via oracle.
     self.update_empirical_gamestate(seed=seed)  # Update gamestate matrix.
-
+    self.update_meta_strategies()
 
     # after iteration done
     # Switch fast 1 and slow 0 oracle.

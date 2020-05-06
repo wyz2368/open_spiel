@@ -71,7 +71,7 @@ flags.DEFINE_integer("sims_per_entry", 10,
                      ("Number of simulations to run to estimate each element"
                       "of the game outcome matrix."))
 
-flags.DEFINE_integer("gpsro_iterations", 150,
+flags.DEFINE_integer("gpsro_iterations", 5,
                      "Number of training steps for GPSRO.")
 flags.DEFINE_bool("symmetric_game", False, "Whether to consider the current "
                   "game as a symmetric game.")
@@ -96,7 +96,7 @@ flags.DEFINE_string("training_strategy_selector", "probabilistic",
 # General (RL) agent parameters
 flags.DEFINE_string("oracle_type", "DQN", "Choices are DQN, PG (Policy "
                     "Gradient), BR (exact Best Response) or ARS(Augmented Random Search)")
-flags.DEFINE_integer("number_training_episodes", int(1e4), "Number training "
+flags.DEFINE_integer("number_training_episodes", int(1e2), "Number training "
                      "episodes per RL policy. Used for PG and DQN")
 flags.DEFINE_integer("number_training_episodes_ars", int(1e5), "Number training "
                      "episodes per RL policy. Used for PG and DQN")
@@ -137,10 +137,10 @@ flags.DEFINE_bool("log_train",True,"log training reward curve")
 
 
 # Strategy Exploration
-flags.DEFINE_integer("fast_oracle_period", 5, "Number of iters using fast oracle in one period.")
+flags.DEFINE_integer("fast_oracle_period", 1, "Number of iters using fast oracle in one period.")
 flags.DEFINE_integer("slow_oracle_period", 3, "Number of iters using slow oracle in one period.")
 flags.DEFINE_bool("exp3", False, "Using EXP3 to select heuristics.")
-flags.DEFINE_bool("standard_regret", False, "Using standard regret.")
+flags.DEFINE_bool("standard_regret", True, "Using standard regret.")
 flags.DEFINE_float("evaluation_gamma", 0.0, "gamma for EXP3 and pure_exp.")
 flags.DEFINE_bool('switch_fast_slow', True,'run fast and slow oracle alternatively') # Only switching heuristics, not changing fast and slow oracle
 flags.DEFINE_bool("switch_blocks", True, "Switching heuristic blocks.")
@@ -382,7 +382,7 @@ def gpsro_looper(env, oracle, oracle_list, agents, writer, quiesce=False, checkp
       exp3=FLAGS.exp3,
       standard_regret=FLAGS.standard_regret,
       heuristic_list=heuristic_list,
-      gamma=FLAGS.exploration_gamma,
+      gamma=FLAGS.evaluation_gamma,
   )
   
   last_meta_prob = [np.array([1]) for _ in range(FLAGS.n_players)]
