@@ -12,7 +12,7 @@ class Exp3(object):
         self.gamma = gamma
         self.arm_pulled = 0
 
-    def sample(self):
+    def sample(self, temerature=None):
         """
         Sample a new arm to pull.
         :return: int, index of arms.

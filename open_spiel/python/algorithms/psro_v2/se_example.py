@@ -143,7 +143,7 @@ flags.DEFINE_bool("exp3", False, "Using EXP3 to select heuristics.")
 flags.DEFINE_bool("standard_regret", False, "Using standard regret.")
 flags.DEFINE_float("evaluation_gamma", 0.0, "gamma for EXP3 and pure_exp.")
 flags.DEFINE_bool('switch_fast_slow', True,'run fast and slow oracle alternatively') # Only switching heuristics, not changing fast and slow oracle
-flags.DEFINE_float("exploration_gamma", 0.0,'gamma for heuristics selector like exp3')
+flags.DEFINE_bool("switch_blocks", False, "Switching heuristic blocks.")
 
 
 
@@ -397,8 +397,11 @@ def gpsro_looper(env, oracle, oracle_list, agents, writer, quiesce=False, checkp
 
     #train_reward_curve = g_psro_solver.iteration(seed=seed)
     # iteration function for strategy exploration
-    # train_reward_curve = g_psro_solver.se_iteration(seed=seed)
-    train_reward_curve = g_psro_solver.se_iteration_for_blocks(seed=seed)
+    if FLAGS.switch_blocks:
+        train_reward_curve = g_psro_solver.se_iteration_for_blocks(seed=seed)
+    else:
+        train_reward_curve = g_psro_solver.se_iteration(seed=seed)
+
     meta_game = g_psro_solver.get_meta_game()
     meta_probabilities = g_psro_solver.get_meta_strategies()
     nash_meta_probabilities = g_psro_solver.get_nash_strategies()

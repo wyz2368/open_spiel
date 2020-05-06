@@ -534,7 +534,7 @@ class PSROSolver(abstract_meta_trainer.AbstractMetaTrainer):
       slow_model_nashconv = np.sum(slow_model_regrets)
       delta_nashconv = base_model_nashconv - slow_model_nashconv
       self._heuristic_selector.update_weights(delta_nashconv)
-      new_heuristic_index = self._heuristic_selector.sample()
+      new_heuristic_index = self._heuristic_selector.sample(self._iterations)
 
       return self._heuristic_list[new_heuristic_index]
 
@@ -556,9 +556,9 @@ class PSROSolver(abstract_meta_trainer.AbstractMetaTrainer):
       else:
           delta_nashconv = self._block_nashconv[-1] - slow_model_nashconv
 
-      self._block_nashconv.append(delta_nashconv)
+      self._block_nashconv.append(slow_model_nashconv)
       self._heuristic_selector.update_weights(delta_nashconv)
-      new_heuristic_index = self._heuristic_selector.sample()
+      new_heuristic_index = self._heuristic_selector.sample(self._iterations)
 
       return self._heuristic_list[new_heuristic_index]
 
