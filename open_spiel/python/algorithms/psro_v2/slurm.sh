@@ -1,12 +1,10 @@
 #!/bin/bash
 
-#SBATCH --job-name=egta_kuhn_poker_dqn
-##SBATCH --job-name=egta_kuhn_poker_pg
-##SBATCH --job-name=egta_kuhn_poker_ars
+#SBATCH --job-name=egta_leduc_poker_blocks
 #SBATCH --mail-user=wangyzhsrg@aol.com
 #SBATCH --mail-type=BEGIN,END,FAIL
 #SBATCH --nodes=1
-#SBATCH --ntasks-per-node=5
+#SBATCH --ntasks-per-node=1
 #SBATCH --mem-per-cpu=7g
 #SBATCH --time=05-00:00:00
 #SBATCH --account=wellman1
