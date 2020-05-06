@@ -233,6 +233,7 @@ class AbstractMetaTrainer(object):
         self._heuristic_selector = Exp3(self._num_heuristic, gamma)
       else:
         self._heuristic_selector = pure_exp(self._num_heuristic, gamma)
+      #TODO:check here.
       self._heuristic_selector.arm_pulled = self._heuristic_list.index(self._meta_strategy_method_name)
 
   def _initialize_policy(self, initial_policies):

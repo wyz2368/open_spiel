@@ -397,7 +397,8 @@ def gpsro_looper(env, oracle, oracle_list, agents, writer, quiesce=False, checkp
 
     #train_reward_curve = g_psro_solver.iteration(seed=seed)
     # iteration function for strategy exploration
-    train_reward_curve = g_psro_solver.se_iteration(seed=seed)
+    # train_reward_curve = g_psro_solver.se_iteration(seed=seed)
+    train_reward_curve = g_psro_solver.se_iteration_for_blocks(seed=seed)
     meta_game = g_psro_solver.get_meta_game()
     meta_probabilities = g_psro_solver.get_meta_strategies()
     nash_meta_probabilities = g_psro_solver.get_nash_strategies()
