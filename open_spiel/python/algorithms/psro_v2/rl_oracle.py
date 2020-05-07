@@ -210,7 +210,6 @@ class RLOracle(optimization_oracle.AbstractOracle):
     episodes_per_player = [sum(episodes) for episodes in episodes_per_oracle]
     chosen_player = random_count_weighted_choice(episodes_per_player)
 
-    # TODO: What is the below doing?
     # Uniformly choose among the sampled player.
     agent_chosen_ind = np.random.randint(
         0, len(training_parameters[chosen_player]))
