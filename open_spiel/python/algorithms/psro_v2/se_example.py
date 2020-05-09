@@ -389,6 +389,8 @@ def gpsro_looper(env, oracle, oracle_list, agents, writer, quiesce=False, checkp
   last_meta_game = g_psro_solver.get_meta_game()
   start_time = time.time()
 
+  heuristic_print = []
+
   for gpsro_iteration in range(1,FLAGS.gpsro_iterations+1):
     if FLAGS.verbose:
       print("\n===========================\n")
@@ -399,6 +401,9 @@ def gpsro_looper(env, oracle, oracle_list, agents, writer, quiesce=False, checkp
     # iteration function for strategy exploration
     if FLAGS.switch_blocks:
         train_reward_curve = g_psro_solver.se_iteration_for_blocks(seed=seed)
+        for i, heuristic in enumerate(heuristic_list):
+            writer.add_scalar(heuristic, g_psro_solver._heuristic_selector.weights[i], gpsro_iteration)
+        print("Current selector weights:", g_psro_solver._heuristic_selector.weights)
     else:
         train_reward_curve = g_psro_solver.se_iteration(seed=seed)
 
@@ -411,6 +416,9 @@ def gpsro_looper(env, oracle, oracle_list, agents, writer, quiesce=False, checkp
       # print("Meta game : {}".format(meta_game))
       print("{} Probabilities : {}".format(g_psro_solver._meta_strategy_method_name, meta_probabilities))
       print("Nash Probabilities : {}".format(nash_meta_probabilities))
+      heuristic_print.append((gpsro_iteration + 1, g_psro_solver._meta_strategy_method_name))
+      print("Heuristics run:", heuristic_print)
+
 
     # The following lines only work for sequential games for the moment.
     ######### calculate exploitability then log it
@@ -458,11 +466,11 @@ def gpsro_looper(env, oracle, oracle_list, agents, writer, quiesce=False, checkp
         print('fast oracle ARS running')
 
     
-    ######### record training curve to tensorboard
-    if FLAGS.log_train and (gpsro_iteration<=10 or gpsro_iteration%5==0):
-      for p in range(len(train_reward_curve)):
-        for p_i in range(len(train_reward_curve[p])):
-          writer.add_scalar('player'+str(p)+'_'+str(gpsro_iteration),train_reward_curve[p][p_i],p_i)
+    # ######### record training curve to tensorboard
+    # if FLAGS.log_train and (gpsro_iteration<=10 or gpsro_iteration%5==0):
+    #   for p in range(len(train_reward_curve)):
+    #     for p_i in range(len(train_reward_curve[p])):
+    #       writer.add_scalar('player'+str(p)+'_'+str(gpsro_iteration),train_reward_curve[p][p_i],p_i)
     
 def main(argv):
   if len(argv) > 1:
