@@ -55,7 +55,7 @@ from open_spiel.python.algorithms.psro_v2 import strategy_selectors
 from open_spiel.python.algorithms.psro_v2.quiesce.quiesce import PSROQuiesceSolver
 from open_spiel.python.algorithms.psro_v2 import meta_strategies
 from open_spiel.python.algorithms.psro_v2.quiesce import quiesce_sparse
-from open_spiel.python.algorithms.psro_v2.eval_utils import kl_divergence, save_strategies
+from open_spiel.python.algorithms.psro_v2.eval_utils import smoothing_kl, save_strategies
 
 
 FLAGS = flags.FLAGS
@@ -420,14 +420,15 @@ def gpsro_looper(env, oracle, oracle_list, agents, writer, quiesce=False, checkp
       print("Nash Probabilities : {}".format(nash_meta_probabilities))
       heuristic_print.append((gpsro_iteration + 1, g_psro_solver._meta_strategy_method_name))
       print("Heuristics run:", heuristic_print)
-      for player in range(len(nash_meta_probabilities)):
-        kl_conv = 0
-        p = np.append(g_psro_solver._NE_list[player][-2], 0)
-        q = g_psro_solver._NE_list[player][-1]
-        kl = kl_divergence(p, q)
-        kl_conv += kl
-        writer.add_scalar("player_" + str(player), kl, gpsro_iteration)
-      writer.add_scalar("kl_conv", kl_conv, gpsro_iteration)
+      if gpsro_iteration >= 2:
+          for player in range(len(nash_meta_probabilities)):
+            kl_conv = 0
+            p = np.append(g_psro_solver._NE_list[-2][player], 0)
+            q = g_psro_solver._NE_list[-1][player]
+            kl = smoothing_kl(p, q)
+            kl_conv += kl
+            writer.add_scalar("player_" + str(player), kl, gpsro_iteration)
+          writer.add_scalar("kl_conv", kl_conv, gpsro_iteration)
 
     # The following lines only work for sequential games for the moment.
     ######### calculate exploitability then log it
