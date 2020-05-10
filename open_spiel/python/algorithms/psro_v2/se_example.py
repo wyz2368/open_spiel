@@ -55,6 +55,7 @@ from open_spiel.python.algorithms.psro_v2 import strategy_selectors
 from open_spiel.python.algorithms.psro_v2.quiesce.quiesce import PSROQuiesceSolver
 from open_spiel.python.algorithms.psro_v2 import meta_strategies
 from open_spiel.python.algorithms.psro_v2.quiesce import quiesce_sparse
+from open_spiel.python.algorithms.psro_v2.eval_utils import kl_divergence
 
 
 FLAGS = flags.FLAGS
@@ -144,6 +145,7 @@ flags.DEFINE_bool("standard_regret", False, "Using standard regret.")
 flags.DEFINE_float("evaluation_gamma", 0.0, "gamma for EXP3 and pure_exp.")
 flags.DEFINE_bool('switch_fast_slow', True,'run fast and slow oracle alternatively') # Only switching heuristics, not changing fast and slow oracle
 flags.DEFINE_bool("switch_blocks", False, "Switching heuristic blocks.")
+flags.DEFINE_string("heuristic_to_add", '',"Heuristic to be added to heuristic list.")
 
 
 
@@ -418,7 +420,14 @@ def gpsro_looper(env, oracle, oracle_list, agents, writer, quiesce=False, checkp
       print("Nash Probabilities : {}".format(nash_meta_probabilities))
       heuristic_print.append((gpsro_iteration + 1, g_psro_solver._meta_strategy_method_name))
       print("Heuristics run:", heuristic_print)
-
+      for player in range(len(nash_meta_probabilities)):
+        kl_conv = 0
+        p = np.append(g_psro_solver._NE_list[player][-2], 0)
+        q = g_psro_solver._NE_list[player][-1]
+        kl = kl_divergence(p, q)
+        kl_conv += kl
+        writer.add_scalar("player_" + str(player), kl, gpsro_iteration)
+      writer.add_scalar("kl_conv", kl_conv, gpsro_iteration)
 
     # The following lines only work for sequential games for the moment.
     ######### calculate exploitability then log it
@@ -489,7 +498,14 @@ def main(argv):
   env = rl_environment.Environment(game,seed=seed)
   env.reset()
 
-  heuristic_list = ["general_nash_strategy", "uniform_strategy", "sp_strategy"]
+  heuristic_list = ["general_nash_strategy", "uniform_strategy"]
+  if FLAGS.heuristic_to_add == 'sp':
+      heuristic_list.append("self_play_strategy")
+  elif FLAGS.heuristic_to_add == 'weighted_ne':
+      heuristic_list.append("weighted_NE_strategy")
+  elif FLAGS.heuristic_to_add == 'prd':
+      heuristic_list.append("prd_strategy")
+
   
   if not os.path.exists(FLAGS.root_result_folder):
     os.makedirs(FLAGS.root_result_folder)
