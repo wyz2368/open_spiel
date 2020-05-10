@@ -1,7 +1,8 @@
 import numpy as np
 from open_spiel.python.algorithms.nash_solver.general_nash_solver import nash_solver
 from open_spiel.python.algorithms.psro_v2 import meta_strategies
-
+import pickle
+import os
 
 def regret(meta_games, subgame_index, subgame_ne=None):
     """
@@ -139,5 +140,63 @@ def smoothing(p, eps):
     return p
 
 
+def isExist(path):
+    """
+    Check if a path exists.
+    :param path: path to check.
+    :return: bool
+    """
+    return os.path.exists(path)
+
+def mkdir(path):
+    path = path.strip()
+    path = path.rstrip("\\")
+    isExists = os.path.exists(path)
+    if isExists:
+        raise ValueError(path + " already exists.")
+    else:
+        os.makedirs(path)
+        print(path + " has been created successfully.")
+
+def save_pkl(obj,path):
+    """
+    Pickle a object to path.
+    :param obj: object to be pickled.
+    :param path: path to save the object
+    """
+    with open(path,'wb') as f:
+        pickle.dump(obj,f)
+
+def load_pkl(path):
+    """
+    Load a pickled object from path
+    :param path: path to the pickled object.
+    :return: object
+    """
+    if not isExist(path):
+        raise ValueError(path + " does not exist.")
+    with open(path,'rb') as f:
+        result = pickle.load(f)
+    return result
+
+
 def kl_divergence(p, q):
     return np.sum(np.where(p != 0, p * np.log(p / q), 0))
+
+def save_strategies(solver, checkpoint_dir):
+    """
+    Save all strategies.
+    """
+    num_players = solver._num_players
+    for player in range(num_players):
+        current_path = os.path.join(checkpoint_dir, 'strategies/player_' + str(player) + "/")
+        if not isExist(current_path):
+            mkdir(current_path)
+        for i, policy in enumerate(solver._policies[player]):
+            if isExist(current_path + str(i) + '.pkl'):
+                continue
+            save_pkl(policy.get_weights(), current_path + str(i) + '.pkl')
+
+
+
+

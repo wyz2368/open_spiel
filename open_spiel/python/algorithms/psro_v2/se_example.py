@@ -55,7 +55,7 @@ from open_spiel.python.algorithms.psro_v2 import strategy_selectors
 from open_spiel.python.algorithms.psro_v2.quiesce.quiesce import PSROQuiesceSolver
 from open_spiel.python.algorithms.psro_v2 import meta_strategies
 from open_spiel.python.algorithms.psro_v2.quiesce import quiesce_sparse
-from open_spiel.python.algorithms.psro_v2.eval_utils import kl_divergence
+from open_spiel.python.algorithms.psro_v2.eval_utils import kl_divergence, save_strategies
 
 
 FLAGS = flags.FLAGS
@@ -453,6 +453,7 @@ def gpsro_looper(env, oracle, oracle_list, agents, writer, quiesce=False, checkp
     ######### record meta_game into pkl
     if gpsro_iteration % 10 == 0:
       save_at_termination(solver=g_psro_solver, file_for_meta_game=checkpoint_dir+'/meta_game.pkl')
+      save_strategies(solver=g_psro_solver, checkpoint_dir=checkpoint_dir)
    
     ######### analyze if this iteration found beneficial deviation
     beneficial_deviation = print_beneficial_deviation_analysis(last_meta_game, meta_game, last_meta_prob, FLAGS.verbose)
@@ -473,6 +474,7 @@ def gpsro_looper(env, oracle, oracle_list, agents, writer, quiesce=False, checkp
         print('slow oracle DQN running')
       else:
         print('fast oracle ARS running')
+
 
     
     # ######### record training curve to tensorboard
