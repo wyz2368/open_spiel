@@ -168,6 +168,11 @@ class BestResponsePolicy(openspiel_policy.Policy):
         self.best_response_action(state.information_state_string(player_id)): 1
     }
 
+  def get_weights(self):
+    return self._policy.get_weights()
+
+  def set_weights(self, variables):
+    self._policy.get_weights(variables)
 
 class CPPBestResponsePolicy(openspiel_policy.Policy):
   """Computes best response action_probabilities using open_spiel's C++ backend.
@@ -262,3 +267,9 @@ class CPPBestResponsePolicy(openspiel_policy.Policy):
       Noisy copy of best response.
     """
     return noisy_policy.NoisyPolicy(self, alpha, beta, self.all_states)
+
+  def get_weights(self):
+    return self._policy.get_weights()
+
+  def set_weights(self, variables):
+    self._policy.get_weights(variables)
