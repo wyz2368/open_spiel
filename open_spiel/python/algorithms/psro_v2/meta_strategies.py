@@ -255,9 +255,8 @@ def weighted_NE_strategy(solver, return_joint=False, checkpoint_dir=None, gamma=
   meta_games = solver.get_meta_game()
   num_players = len(meta_games)
   NE_list = solver._NE_list
-  print("NE_list:", NE_list, num_players)
   if len(NE_list) == 0:
-    return [np.array([1])] * num_players
+    return [np.array([1])] * num_players, None
 
   num_used_policies = len(NE_list[-1][0])
 
@@ -274,7 +273,7 @@ def weighted_NE_strategy(solver, return_joint=False, checkpoint_dir=None, gamma=
     result[player] += equilibria[player]
     result[player] /= np.sum(result[player])
 
-  return result
+  return result, None
 
 
 META_STRATEGY_METHODS = {
