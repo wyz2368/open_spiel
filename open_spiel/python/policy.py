@@ -313,6 +313,14 @@ class TabularPolicy(Policy):
         1 - alpha) * probability_array + alpha * noise_mask
     return copied_instance
 
+  def get_weights(self):
+    return self.action_probability_array
+
+
+  def set_weights(self, variables):
+    self.action_probability_array = variables
+
+
 
 class UniformRandomPolicy(Policy):
   """Policy where the action distribution is uniform over all legal actions.
