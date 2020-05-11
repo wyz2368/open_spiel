@@ -200,6 +200,11 @@ class AbstractMetaTrainer(object):
     self._initialize_game_state()
     self.update_meta_strategies()
     
+    # controls switch heuristics with pattern without changing oracle
+    self._switch_heuristic_regardless_of_oracle = kwargs.get('switch_heuristic_regardless_of_oracle',False)
+    if self._switch_heuristic_regardless_of_oracle:
+      self._heuristic_list = heuristic_list
+
     # Mode = fast 1 or slow 0
     if oracle_list is not None:
       # 0: slow oracle 1: fast_oracle
@@ -343,6 +348,7 @@ class AbstractMetaTrainer(object):
       self._meta_strategy_method = _process_string_or_callable(new_meta_str_method, meta_strategies.META_STRATEGY_METHODS)
       print("Using {} as strategy method.".format(self._meta_strategy_method.__name__))
       self._meta_strategy_method_name = self._meta_strategy_method.__name__
+      self.update_meta_strategies()  # Compute meta strategy (e.g. Nash)
 
   def get_meta_strategy_method(self):
     """
@@ -376,6 +382,9 @@ class AbstractMetaTrainer(object):
       else:
         pass
 
+    if self._switch_heuristic_regardless_of_oracle:
+      self.evaluate_and_pick_meta_method()
+
     self._iterations += 1
 
     train_reward_curve = self.update_agents()  # Generate new, Best Response agents via oracle.
@@ -398,8 +407,7 @@ class AbstractMetaTrainer(object):
           self.switch_oracle()
           self.reset_slow_oracle_counter()
           self._slow_model_nash = self.get_nash_strategies()
-
-
+    
     return train_reward_curve
 
   def switch_oracle(self):
@@ -425,11 +433,17 @@ class AbstractMetaTrainer(object):
     meta-strategy method.
     :return:
     """
-    # Evaluation
-    new_meta_str_method = self.evaluate_meta_method()
+    if self._switch_heuristic_regardless_of_oracle:
+      # switch heuristics 1x1
+      new_meta_str_method = self._heuristic_list.pop(0)
+      self.update_meta_strategy_method(new_meta_str_method)
+      self._heuristic_list.append(new_meta_str_method)
+    else:
+      # Evaluation
+      new_meta_str_method = self.evaluate_meta_method()
 
-    # Update
-    self.update_meta_strategy_method(new_meta_str_method)
+      # Update
+      self.update_meta_strategy_method(new_meta_str_method)
 
   def evaluate_meta_method(self):
     raise NotImplementedError

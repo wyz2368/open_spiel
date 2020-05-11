@@ -144,6 +144,8 @@ flags.DEFINE_bool("standard_regret", False, "Using standard regret.")
 flags.DEFINE_float("evaluation_gamma", 0.0, "gamma for EXP3 and pure_exp.")
 flags.DEFINE_bool('switch_fast_slow',True,'run fast and slow oracle alternatively') # Only switching heuristics, not changing fast and slow oracle
 flags.DEFINE_float("exploration_gamma",0.0,'gamma for heuristics selector like exp3')
+flags.DEFINE_list("heuristic_list",'general_nash_strategy,uniform_strategy,sp_strategy','heuristics to consider')
+flags.DEFINE_bool("switch_heuristic_regardless_of_oracle",False,'switch heuristics with DQN all alone') # This could not be true with switch_fsat_slow at the same time!
 
 
 
@@ -383,7 +385,7 @@ def gpsro_looper(env, oracle, oracle_list, agents, writer, quiesce=False, checkp
       standard_regret=FLAGS.standard_regret,
       heuristic_list=heuristic_list,
       gamma=FLAGS.exploration_gamma,
-  )
+      switch_heuristic_regardless_of_oracle=FLAGS.switch_heuristic_regardless_of_oracle)
   
   last_meta_prob = [np.array([1]) for _ in range(FLAGS.n_players)]
   last_meta_game = g_psro_solver.get_meta_game()
@@ -477,7 +479,7 @@ def main(argv):
   env = rl_environment.Environment(game,seed=seed)
   env.reset()
 
-  heuristic_list = ["general_nash_strategy", "uniform_strategy", "sp_strategy"]
+  heuristic_list = ["general_nash_strategy", "uniform_strategy", "sp_strategy"] if not FLAGS.heuristic_list else FLAGS.heuristic_list
   
   if not os.path.exists(FLAGS.root_result_folder):
     os.makedirs(FLAGS.root_result_folder)
@@ -488,6 +490,8 @@ def main(argv):
 
   if FLAGS.switch_fast_slow:
     checkpoint_dir += '_sfs_'+'_fp_'+str(FLAGS.fast_oracle_period)+'_sp_'+str(FLAGS.slow_oracle_period) + '_arslr_'+str(FLAGS.ars_learning_rate)+'_arsn_'+str(FLAGS.noise)+'_arsnd_'+str(FLAGS.num_directions)+'_arsbd_'+str(FLAGS.num_best_directions)+'_epars_'+str(FLAGS.number_training_episodes_ars)
+  elif FLAGS.switch_heuristic_regardless_of_oracle:
+    checkpoint_dir += '_switch_heuristics_'
 
   if FLAGS.oracle_type == 'BR':
     oracle_flag_str = ''
