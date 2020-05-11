@@ -271,6 +271,7 @@ class AbstractMetaTrainer(object):
     if self._iterations <= self.stopping_time:
       self._meta_strategy_probabilities = self._meta_strategy_method(self)
       if self.symmetric_game:
+        print("enter")
         self._meta_strategy_probabilities = [self._meta_strategy_probabilities[0]]
     else:
       for i, nash in enumerate(self._meta_strategy_probabilities):

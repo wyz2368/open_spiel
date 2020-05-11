@@ -257,7 +257,7 @@ def weighted_NE_strategy(solver, return_joint=False, checkpoint_dir=None, gamma=
   NE_list = solver._NE_list
   print("NE_list:", NE_list, num_players)
   if len(NE_list) == 0:
-    return [np.array([1.])] * num_players
+    return [np.array([1])] * num_players
 
   num_used_policies = len(NE_list[-1][0])
 
