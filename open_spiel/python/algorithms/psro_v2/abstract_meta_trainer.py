@@ -256,6 +256,7 @@ class AbstractMetaTrainer(object):
       seed: Seed for random BR noise generation.
     """
     self._iterations += 1
+    print("meta:", self._meta_strategy_probabilities)
     train_reward_curve = self.update_agents()  # Generate new, Best Response agents via oracle.
     self.update_empirical_gamestate(seed=seed)  # Update gamestate matrix.
     self.update_meta_strategies()#seed=seed)  # Compute meta strategy (e.g. Nash)

@@ -273,7 +273,6 @@ def weighted_NE_strategy(solver, return_joint=False, checkpoint_dir=None, gamma=
       result[player][:len(NE[player])] += NE[player] * gamma ** (num_used_policies - i)
     result[player] += equilibria[player]
     result[player] /= np.sum(result[player])
-    print("result:", result)
 
   return result
 
