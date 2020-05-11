@@ -56,6 +56,7 @@ from open_spiel.python.algorithms.psro_v2 import strategy_selectors
 from open_spiel.python.algorithms.psro_v2.quiesce.quiesce import PSROQuiesceSolver
 from open_spiel.python.algorithms.psro_v2 import meta_strategies
 from open_spiel.python.algorithms.psro_v2.quiesce import quiesce_sparse
+from open_spiel.python.algorithms.psro_v2.eval_utils import save_strategies
 
 
 FLAGS = flags.FLAGS
@@ -425,7 +426,7 @@ def gpsro_looper(env, oracle, agents, writer, quiesce=False, checkpoint_dir=None
     policies = g_psro_solver.get_policies()
    
     if FLAGS.verbose:
-      print("Meta game : {}".format(meta_game))
+      # print("Meta game : {}".format(meta_game))
       print("Probabilities : {}".format(meta_probabilities))
       print("Nash Probabilities : {}".format(nash_meta_probabilities))
 
@@ -445,6 +446,7 @@ def gpsro_looper(env, oracle, agents, writer, quiesce=False, checkpoint_dir=None
 
     if gpsro_iteration % 10 ==0:
       save_at_termination(solver=g_psro_solver, file_for_meta_game=checkpoint_dir+'/meta_game.pkl')
+      save_strategies(solver=g_psro_solver, checkpoint_dir=checkpoint_dir)
     
     beneficial_deviation = print_beneficial_deviation_analysis(last_meta_game, meta_game, last_meta_prob, FLAGS.verbose)
     last_meta_prob, last_meta_game = meta_probabilities, meta_game
@@ -452,10 +454,10 @@ def gpsro_looper(env, oracle, agents, writer, quiesce=False, checkpoint_dir=None
       writer.add_scalar('p'+str(p)+'_beneficial_dev',int(beneficial_deviation[p]),gpsro_iteration)
     writer.add_scalar('beneficial_devs',sum(beneficial_deviation),gpsro_iteration)
 
-    if FLAGS.log_train and (gpsro_iteration<=10 or gpsro_iteration%5==0):
-      for p in range(len(train_reward_curve)):
-        for p_i in range(len(train_reward_curve[p])):
-          writer.add_scalar('player'+str(p)+'_'+str(gpsro_iteration),train_reward_curve[p][p_i],p_i)
+    # if FLAGS.log_train and (gpsro_iteration<=10 or gpsro_iteration%5==0):
+    #   for p in range(len(train_reward_curve)):
+    #     for p_i in range(len(train_reward_curve[p])):
+    #       writer.add_scalar('player'+str(p)+'_'+str(gpsro_iteration),train_reward_curve[p][p_i],p_i)
     for p in range(len(expl_per_player)):
       writer.add_scalar('player'+str(p)+'_exp',expl_per_player[p],gpsro_iteration)
     writer.add_scalar('exp',exploitabilities,gpsro_iteration)
