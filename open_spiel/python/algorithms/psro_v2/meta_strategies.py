@@ -255,7 +255,10 @@ def weighted_NE_strategy(solver, return_joint=False, checkpoint_dir=None, gamma=
   meta_games = solver.get_meta_game()
   num_players = len(meta_games)
   NE_list = solver._NE_list
-  num_used_policies = len(NE_list[0])
+  if len(NE_list) == 0:
+    return [np.array([1.])] * num_players
+
+  num_used_policies = len(NE_list[-1][0])
 
   if not isinstance(meta_games, list):
     meta_games = [meta_games, -meta_games]

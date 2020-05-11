@@ -136,7 +136,7 @@ flags.DEFINE_bool("sbatch_run",False,"whether to redirect standard output to che
 flags.DEFINE_integer("seed", None, "Seed.")
 flags.DEFINE_bool("local_launch", False, "Launch locally or not.")
 flags.DEFINE_bool("verbose", True, "Enables verbose printing and profiling.")
-flags.DEFINE_bool("log_train", True,"log training reward curve")
+flags.DEFINE_bool("log_train", False,"log training reward curve")
 
 
 def init_pg_responder(sess, env):
