@@ -251,6 +251,31 @@ def prioritized_fictitious_play(solver, return_joint=False):
     """
   raise NotImplementedError
 
+def weighted_NE_strategy(solver, return_joint=False, checkpoint_dir=None, gamma=0.4):
+  meta_games = solver.get_meta_game()
+  num_players = len(meta_games)
+  NE_list = solver._NE_list
+  if len(NE_list) == 0:
+    return [np.array([1.])] * num_players
+
+  num_used_policies = len(NE_list[-1][0])
+
+  if not isinstance(meta_games, list):
+    meta_games = [meta_games, -meta_games]
+
+  num_strategies = len(meta_games[0])
+  equilibria = gs.nash_solver(meta_games, solver="gambit", mode="one", checkpoint_dir=checkpoint_dir)
+
+  result = [np.zeros(num_strategies)] * num_players
+  for player in range(num_players):
+    for i, NE in enumerate(NE_list):
+      result[player][:len(NE[player])] += NE[player] * gamma ** (num_used_policies - i)
+    result[player] += equilibria[player]
+    result[player] /= np.sum(result[player])
+
+  return result
+
+
 META_STRATEGY_METHODS = {
     "uniform_biased": uniform_biased_strategy,
     "uniform": uniform_strategy,
@@ -258,7 +283,9 @@ META_STRATEGY_METHODS = {
     "prd": prd_strategy,
     "general_nash": general_nash_strategy,
     "sp": self_play_strategy,
+    "weighted_ne": weighted_NE_strategy
 }
+
 
 # Meta-Strategy Methods for Strategy Exploration
 META_STRATEGY_METHODS_SE = {
@@ -266,4 +293,5 @@ META_STRATEGY_METHODS_SE = {
     "prd": prd_strategy,
     "general_nash": general_nash_strategy,
     "sp": self_play_strategy,
+    "weighted_ne": weighted_NE_strategy
 }

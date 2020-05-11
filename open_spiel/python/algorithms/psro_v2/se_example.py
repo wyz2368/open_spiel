@@ -55,6 +55,7 @@ from open_spiel.python.algorithms.psro_v2 import strategy_selectors
 from open_spiel.python.algorithms.psro_v2.quiesce.quiesce import PSROQuiesceSolver
 from open_spiel.python.algorithms.psro_v2 import meta_strategies
 from open_spiel.python.algorithms.psro_v2.quiesce import quiesce_sparse
+from open_spiel.python.algorithms.psro_v2.eval_utils import smoothing_kl, save_strategies
 
 
 FLAGS = flags.FLAGS
@@ -75,8 +76,8 @@ flags.DEFINE_integer("gpsro_iterations", 150,
                      "Number of training steps for GPSRO.")
 flags.DEFINE_bool("symmetric_game", False, "Whether to consider the current "
                   "game as a symmetric game.")
-flags.DEFINE_bool("quiesce",False,"Whether to use quiece")
-flags.DEFINE_bool("sparse_quiesce",False,"whether to use sparse matrix quiesce implementation")
+flags.DEFINE_bool("quiesce", False, "Whether to use quiece")
+flags.DEFINE_bool("sparse_quiesce", False,"whether to use sparse matrix quiesce implementation")
 
 # Rectify options
 flags.DEFINE_string("rectifier", "",
@@ -133,7 +134,7 @@ flags.DEFINE_bool("sbatch_run", False,"whether to redirect standard output to ch
 flags.DEFINE_integer("seed", None, "Seed.")
 flags.DEFINE_bool("local_launch", False, "Launch locally or not.")
 flags.DEFINE_bool("verbose", True, "Enables verbose printing and profiling.")
-flags.DEFINE_bool("log_train",True,"log training reward curve")
+flags.DEFINE_bool("log_train", False,"log training reward curve")
 
 
 # Strategy Exploration
@@ -142,11 +143,13 @@ flags.DEFINE_integer("slow_oracle_period", 3, "Number of iters using slow oracle
 flags.DEFINE_bool("exp3", False, "Using EXP3 to select heuristics.")
 flags.DEFINE_bool("standard_regret", False, "Using standard regret.")
 flags.DEFINE_float("evaluation_gamma", 0.0, "gamma for EXP3 and pure_exp.")
-flags.DEFINE_bool('switch_fast_slow',True,'run fast and slow oracle alternatively') # Only switching heuristics, not changing fast and slow oracle
-flags.DEFINE_float("exploration_gamma",0.0,'gamma for heuristics selector like exp3')
-flags.DEFINE_list("heuristic_list",'general_nash_strategy,uniform_strategy,sp_strategy','heuristics to consider')
-flags.DEFINE_bool("switch_heuristic_regardless_of_oracle",False,'switch heuristics with DQN all alone') # This could not be true with switch_fsat_slow at the same time!
 
+flags.DEFINE_bool('switch_fast_slow',True,'run fast and slow oracle alternatively') # Only switching heuristics, not changing fast and slow oracle
+flags.DEFINE_bool("switch_blocks", False, "Switching heuristic blocks.")
+flags.DEFINE_float("exploration_gamma",0.0,'gamma for heuristics selector like exp3')
+flags.DEFINE_list("heuristic_list",'general_nash_strategy,uniform_strategy','heuristics to consider')
+flags.DEFINE_list("heuristic_to_add", '',"Heuristic to be added to heuristic list.") # could contail 'sp_strategy,'
+flags.DEFINE_bool("switch_heuristic_regardless_of_oracle",False,'switch heuristics with DQN all alone') # This could not be true with switch_fsat_slow at the same time!
 
 
 def init_pg_responder(sess, env):
@@ -210,7 +213,7 @@ def init_dqn_responder(sess, env):
       "num_actions": num_actions,
       "hidden_layers_sizes": [FLAGS.hidden_layer_size] * FLAGS.n_hidden_layers,
       "batch_size": FLAGS.batch_size,
-     "learning_rate": FLAGS.dqn_learning_rate,
+      "learning_rate": FLAGS.dqn_learning_rate,
       "update_target_network_every": FLAGS.update_target_network_every,
       "learn_every": FLAGS.learn_every,
       "optimizer_str": FLAGS.optimizer_str
@@ -391,6 +394,8 @@ def gpsro_looper(env, oracle, oracle_list, agents, writer, quiesce=False, checkp
   last_meta_game = g_psro_solver.get_meta_game()
   start_time = time.time()
 
+  heuristic_print = []
+
   for gpsro_iteration in range(1,FLAGS.gpsro_iterations+1):
     if FLAGS.verbose:
       print("\n===========================\n")
@@ -399,16 +404,34 @@ def gpsro_looper(env, oracle, oracle_list, agents, writer, quiesce=False, checkp
 
     #train_reward_curve = g_psro_solver.iteration(seed=seed)
     # iteration function for strategy exploration
-    train_reward_curve = g_psro_solver.se_iteration(seed=seed)
+    if FLAGS.switch_blocks:
+        train_reward_curve = g_psro_solver.se_iteration_for_blocks(seed=seed)
+        for i, heuristic in enumerate(heuristic_list):
+            writer.add_scalar(heuristic, g_psro_solver._heuristic_selector.weights[i], gpsro_iteration)
+        print("Current selector weights:", g_psro_solver._heuristic_selector.weights)
+    else:
+        train_reward_curve = g_psro_solver.se_iteration(seed=seed)
+
     meta_game = g_psro_solver.get_meta_game()
     meta_probabilities = g_psro_solver.get_meta_strategies()
     nash_meta_probabilities = g_psro_solver.get_nash_strategies()
     policies = g_psro_solver.get_policies()
 
     if FLAGS.verbose:
-      print("Meta game : {}".format(meta_game))
+      # print("Meta game : {}".format(meta_game))
       print("{} Probabilities : {}".format(g_psro_solver._meta_strategy_method_name, meta_probabilities))
       print("Nash Probabilities : {}".format(nash_meta_probabilities))
+      heuristic_print.append((gpsro_iteration + 1, g_psro_solver._meta_strategy_method_name))
+      print("Heuristics run:", heuristic_print)
+      if gpsro_iteration >= 2:
+          for player in range(len(nash_meta_probabilities)):
+            kl_conv = 0
+            p = np.append(g_psro_solver._NE_list[-2][player], 0)
+            q = g_psro_solver._NE_list[-1][player]
+            kl = smoothing_kl(p, q)
+            kl_conv += kl
+            writer.add_scalar("player_" + str(player), kl, gpsro_iteration)
+          writer.add_scalar("kl_conv", kl_conv, gpsro_iteration)
 
     # The following lines only work for sequential games for the moment.
     ######### calculate exploitability then log it
@@ -434,6 +457,7 @@ def gpsro_looper(env, oracle, oracle_list, agents, writer, quiesce=False, checkp
     ######### record meta_game into pkl
     if gpsro_iteration % 10 == 0:
       save_at_termination(solver=g_psro_solver, file_for_meta_game=checkpoint_dir+'/meta_game.pkl')
+      save_strategies(solver=g_psro_solver, checkpoint_dir=checkpoint_dir)
    
     ######### analyze if this iteration found beneficial deviation
     beneficial_deviation = print_beneficial_deviation_analysis(last_meta_game, meta_game, last_meta_prob, FLAGS.verbose)
@@ -455,12 +479,13 @@ def gpsro_looper(env, oracle, oracle_list, agents, writer, quiesce=False, checkp
       else:
         print('fast oracle ARS running')
 
+
     
-    ######### record training curve to tensorboard
-    if FLAGS.log_train and (gpsro_iteration<=10 or gpsro_iteration%5==0):
-      for p in range(len(train_reward_curve)):
-        for p_i in range(len(train_reward_curve[p])):
-          writer.add_scalar('player'+str(p)+'_'+str(gpsro_iteration),train_reward_curve[p][p_i],p_i)
+    # ######### record training curve to tensorboard
+    # if FLAGS.log_train and (gpsro_iteration<=10 or gpsro_iteration%5==0):
+    #   for p in range(len(train_reward_curve)):
+    #     for p_i in range(len(train_reward_curve[p])):
+    #       writer.add_scalar('player'+str(p)+'_'+str(gpsro_iteration),train_reward_curve[p][p_i],p_i)
     
 def main(argv):
   if len(argv) > 1:
@@ -479,7 +504,13 @@ def main(argv):
   env = rl_environment.Environment(game,seed=seed)
   env.reset()
 
-  heuristic_list = ["general_nash_strategy", "uniform_strategy", "sp_strategy"] if not FLAGS.heuristic_list else FLAGS.heuristic_list
+  heuristic_list = ["general_nash_strategy", "uniform_strategy"] if not FLAGS.heuristic_list else FLAGS.heuristic_list
+  if 'sp' in FLAGS.heuristic_to_add:
+      heuristic_list.append("self_play_strategy")
+  if 'weighted_ne' in FLAGS.heuristic_to_add:
+      heuristic_list.append("weighted_NE_strategy")
+  if 'prd' in FLAGS.heuristic_to_add:
+      heuristic_list.append("prd_strategy")
   
   if not os.path.exists(FLAGS.root_result_folder):
     os.makedirs(FLAGS.root_result_folder)

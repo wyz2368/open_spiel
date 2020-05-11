@@ -193,12 +193,18 @@ class AbstractMetaTrainer(object):
     self._meta_strategy_method = meta_strategy_method
     self._kwargs = kwargs
 
+    # A list with NE of each iteration.
+    self._NE_list = []
+
     # For tuning ars.
     self.stopping_time = 100000
 
     self._initialize_policy(initial_policies)
     self._initialize_game_state()
     self.update_meta_strategies()
+    self.update_NE_list()
+
+
     
     # controls switch heuristics with pattern without changing oracle
     self._switch_heuristic_regardless_of_oracle = kwargs.get('switch_heuristic_regardless_of_oracle',False)
@@ -224,6 +230,7 @@ class AbstractMetaTrainer(object):
       self._fast_oracle_counter = fast_oracle_period
 
       self._base_model_nash = self.get_nash_strategies()
+      self._block_nashconv = []
 
       # Create logs for strategy exploration (SE).
       self.logs = SElogs(slow_oracle_period,
@@ -257,6 +264,7 @@ class AbstractMetaTrainer(object):
     train_reward_curve = self.update_agents()  # Generate new, Best Response agents via oracle.
     self.update_empirical_gamestate(seed=seed)  # Update gamestate matrix.
     self.update_meta_strategies()#seed=seed)  # Compute meta strategy (e.g. Nash)
+    self.update_NE_list()
     return train_reward_curve
 
   def update_meta_strategies(self):
@@ -350,6 +358,8 @@ class AbstractMetaTrainer(object):
       self._meta_strategy_method_name = self._meta_strategy_method.__name__
       self.update_meta_strategies()  # Compute meta strategy (e.g. Nash)
 
+      self.update_meta_strategies()
+
   def get_meta_strategy_method(self):
     """
     Return the name and the function of current meta-strategy method.
@@ -379,8 +389,6 @@ class AbstractMetaTrainer(object):
           self._iterations != 0: # start of slow oracle
         self.evaluate_and_pick_meta_method()
         self._base_model_nash = self.get_nash_strategies()
-      else:
-        pass
 
     if self._switch_heuristic_regardless_of_oracle:
       self.evaluate_and_pick_meta_method()
@@ -390,6 +398,7 @@ class AbstractMetaTrainer(object):
     train_reward_curve = self.update_agents()  # Generate new, Best Response agents via oracle.
     self.update_empirical_gamestate(seed=seed)  # Update gamestate matrix.
     self.update_meta_strategies()  # Compute meta strategy (e.g. Nash)
+    self.update_NE_list()
     
     # after iteration done
     # Switch fast 1 and slow 0 oracle.
@@ -407,7 +416,7 @@ class AbstractMetaTrainer(object):
           self.switch_oracle()
           self.reset_slow_oracle_counter()
           self._slow_model_nash = self.get_nash_strategies()
-    
+
     return train_reward_curve
 
   def switch_oracle(self):
@@ -447,3 +456,66 @@ class AbstractMetaTrainer(object):
 
   def evaluate_meta_method(self):
     raise NotImplementedError
+
+  ################################# For Heuristic Blocks ########################
+  def se_iteration_for_blocks(self, seed=None):
+    """Main trainer loop with strategy exploration.
+    Evaluate the performance of current meta-strategy method every _meta_method_frequency and update the
+    meta-strategy method.
+
+        Args:
+          seed: Seed for random BR noise generation.
+        """
+    # before iteration start verify the need to update meta strategy
+    if hasattr(self, '_mode'):
+      if self._mode and self._fast_oracle_counter == self._fast_oracle_period:
+        self.update_meta_strategy_method("general_nash")
+      elif not self._mode and self._slow_oracle_counter == self._slow_oracle_period and \
+              self._iterations != 0:  # start of slow oracle
+        self.evaluate_and_pick_meta_method_for_blocks()
+
+
+    self._iterations += 1
+
+    train_reward_curve = self.update_agents()  # Generate new, Best Response agents via oracle.
+    self.update_empirical_gamestate(seed=seed)  # Update gamestate matrix.
+    self.update_meta_strategies()
+    self.update_NE_list()
+
+    # after iteration done
+    # Switch fast 1 and slow 0 oracle.
+    if hasattr(self, '_mode'):
+      if self._mode:
+        self.logs.update_fast_iters(self._iterations)
+        self._fast_oracle_counter -= 1
+        if self._fast_oracle_counter == 0:
+          self._mode = 1 - self._mode
+          self.reset_fast_oracle_counter()
+      else:
+        self.logs.update_slow_iters(self._iterations)
+        self._slow_oracle_counter -= 1
+        if self._slow_oracle_counter == 0:
+          self._mode = 1 - self._mode
+          self.reset_slow_oracle_counter()
+          self._slow_model_nash = self.get_nash_strategies()
+
+    return train_reward_curve
+
+  def evaluate_meta_method_for_blocks(self):
+    raise NotImplementedError
+
+  def evaluate_and_pick_meta_method_for_blocks(self):
+    """
+    Evaluate the performance of current meta-strategy method and update the
+    meta-strategy method.
+    :return:
+    """
+    # Evaluation
+    new_meta_str_method = self.evaluate_meta_method_for_blocks()
+
+    # Update
+    self.update_meta_strategy_method(new_meta_str_method)
+
+  def update_NE_list(self):
+    self._NE_list.append(self.get_nash_strategies())
+

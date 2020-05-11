@@ -205,6 +205,9 @@ def do_gambit_analysis(meta_games, mode, timeout = 600, method="gnm", method_pur
     if not isExist(gambit_DIR) and not checkpoint_dir is None:
         mkdir(gambit_DIR)
 
+    if np.shape(meta_games[0]) == (1,1):
+        return [np.array([1.]), np.array([1.])]
+
     encode_gambit_file(meta_games, checkpoint_dir)
     while True:
         if mode == 'pure':

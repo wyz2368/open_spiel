@@ -12,7 +12,7 @@ class Exp3(object):
         self.gamma = gamma
         self.arm_pulled = 0
 
-    def sample(self):
+    def sample(self, temerature=None):
         """
         Sample a new arm to pull.
         :return: int, index of arms.
@@ -27,6 +27,8 @@ class Exp3(object):
         rewards[self.arm_pulled] = reward/self.probability_distribution[self.arm_pulled]
         self.weights *= np.exp(rewards * self.gamma / self.num_arms)
 
+def softmax(x, temperature=1/1.3):
+    return np.exp(x / temperature)/np.sum(np.exp(x / temperature))
 
 class pure_exp(object):
     def __init__(self,
@@ -37,11 +39,20 @@ class pure_exp(object):
         self.gamma = gamma
 
 
-    def sample(self):
-        self.probability_distribution = self.weights / np.sum(self.weights)
+    def sample(self, num_iters):
+        temperature = self.temperature_scheme(num_iters)
+        self.probability_distribution = softmax(self.weights, temperature=temperature)
         self.arm_pulled = np.random.choice(range(len(self.probability_distribution)), p=self.probability_distribution)
         return self.arm_pulled
 
     def update_weights(self, reward):
         self.weights[self.arm_pulled] = (1 - self.gamma) * reward + self.gamma * self.weights[self.arm_pulled]
 
+    def temperature_scheme(self, num_iters):
+        # Numbers are hyperparameters.
+        if num_iters < 20:
+            return 1
+        elif num_iters < 35:
+            return 5
+        else:
+            return 10

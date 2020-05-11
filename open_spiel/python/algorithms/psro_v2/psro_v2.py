@@ -518,6 +518,7 @@ class PSROSolver(abstract_meta_trainer.AbstractMetaTrainer):
       if len(self.logs.get_slow_iters()) == self._slow_oracle_period: #first evaluation
         base_model_index = 1
       else:
+        #TODO: check the correctness of the index.
         base_model_index = self.logs.get_slow_iters()[-self._slow_oracle_period]
       slow_model_index = self.logs.get_slow_iters()[-1] + 1
       meta_games = self.get_meta_game()
@@ -533,6 +534,51 @@ class PSROSolver(abstract_meta_trainer.AbstractMetaTrainer):
       slow_model_nashconv = np.sum(slow_model_regrets)
       delta_nashconv = base_model_nashconv - slow_model_nashconv
       self._heuristic_selector.update_weights(delta_nashconv)
-      new_heuristic_index = self._heuristic_selector.sample()
+      new_heuristic_index = self._heuristic_selector.sample(self._iterations)
 
       return self._heuristic_list[new_heuristic_index]
+
+
+  def evaluate_meta_method_for_blocks(self):
+      """
+      Evaluating heuristic blocks.
+      :return: str, the name of the new heuristic selected.
+      """
+      slow_model_index = self.logs.get_slow_iters()[-1] + 1
+      meta_games = self.get_meta_game()
+      slow_model_regrets = regret(meta_games, slow_model_index, self._slow_model_nash)
+      slow_model_nashconv = np.sum(slow_model_regrets)
+
+      if len(self._block_nashconv) == 0:
+          base_model_regrets = regret(meta_games, 1)
+          base_model_nashconv = np.sum(base_model_regrets)
+          delta_nashconv = base_model_nashconv - slow_model_nashconv
+      else:
+          delta_nashconv = self._block_nashconv[-1] - slow_model_nashconv
+
+      self._block_nashconv.append(slow_model_nashconv)
+      self._heuristic_selector.update_weights(delta_nashconv)
+      new_heuristic_index = self._heuristic_selector.sample(self._iterations)
+
+      return self._heuristic_list[new_heuristic_index]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

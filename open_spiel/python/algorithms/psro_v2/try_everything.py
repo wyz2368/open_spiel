@@ -1,10 +1,29 @@
 import numpy as np
 import copy
-from open_spiel.python.algorithms.psro_v2.eval_utils import strategy_regret
+import os
+# from  open_spiel.python.algorithms.psro_v2.eval_utils import regret, strategy_regret
+
+def kl_divergence(p, q):
+    return np.sum(np.where(p != 0, p * np.log(p / q), 0))
+
+def smoothing_kl(p, q, eps=0.001):
+    p = smoothing(p, eps)
+    q = smoothing(q, eps)
+    return np.sum(p * np.log(p / q))
 
 
-BOS_p1_meta_game = np.array([[3, 0], [0, 5]])
-BOS_p2_meta_game = np.array([[2, 0], [0, 5]])
-BOS_meta_games = [BOS_p1_meta_game, BOS_p2_meta_game]
+def smoothing(p, eps):
+    zeros_pos_p = np.where(p == 0)[0]
+    num_zeros = len(zeros_pos_p)
+    x = eps * num_zeros / (len(p) - num_zeros)
+    for i in range(len(p)):
+        if i in zeros_pos_p:
+            p[i] = eps
+        else:
+            p[i] -= x
+    return p
 
-print(strategy_regret(BOS_meta_games, 1))
+p = np.array([1.,0.])
+q = np.array([0.,1.])
+print(kl_divergence(p, q))
+print(smoothing_kl(p, q))

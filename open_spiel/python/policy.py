@@ -313,6 +313,13 @@ class TabularPolicy(Policy):
         1 - alpha) * probability_array + alpha * noise_mask
     return copied_instance
 
+  def get_weights(self):
+    return self.action_probability_array
+
+  def set_weights(self, variables):
+    self.action_probability_array = variables
+
+
 
 class UniformRandomPolicy(Policy):
   """Policy where the action distribution is uniform over all legal actions.
@@ -345,6 +352,12 @@ class UniformRandomPolicy(Policy):
     probability = 1 / len(legal_actions)
     return {action: probability for action in legal_actions}
 
+  def get_weights(self):
+    return 'uniform'
+
+  def set_weights(self, variables):
+    raise NotImplementedError
+
 
 class PolicyFromCallable(Policy):
   """For backwards-compatibility reasons, create a policy from a callable."""
@@ -361,6 +374,12 @@ class PolicyFromCallable(Policy):
   def action_probabilities(self, state, player_id=None):
     return dict(self._callable_policy(state))
 
+  def get_weights(self):
+    return self._callable_policy.get_weights()
+
+  def set_weights(self, variables):
+    raise NotImplementedError
+
 
 class FirstActionPolicy(Policy):
   """A policy that always takes the lowest-numbered legal action."""
@@ -372,6 +391,12 @@ class FirstActionPolicy(Policy):
   def action_probabilities(self, state, player_id=None):
     min_action = min(state.legal_actions())
     return {min_action: 1.0}
+
+  def get_weights(self):
+    return 'first_action'
+
+  def set_weights(self, variables):
+    raise NotImplementedError
 
 
 def tabular_policy_from_policy(game, policy):
