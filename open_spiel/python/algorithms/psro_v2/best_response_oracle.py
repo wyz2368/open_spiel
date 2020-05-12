@@ -151,6 +151,7 @@ class BestResponseOracle(optimization_oracle.AbstractOracle):
                   self.state_to_information_state,
                   self.best_response_processors[current_player])
           best_resp = self.best_responders[current_player]
+
           print("type:", type(best_resp))
         player_policies.append(best_resp)
       new_policies.append(player_policies)
