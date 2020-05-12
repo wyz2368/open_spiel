@@ -192,7 +192,7 @@ def save_strategies(solver, checkpoint_dir):
         current_path = os.path.join(checkpoint_dir, 'strategies/player_' + str(player) + "/")
         if not isExist(current_path):
             mkdir(current_path)
-        for i, policy in enumerate(solver._policies[player]):
+        for i, policy in enumerate(solver.get_policies()[player]):
             if isExist(current_path + str(i+1) + '.pkl'):
                 continue
             save_pkl(policy.get_weights(), current_path + str(i+1) + '.pkl')
