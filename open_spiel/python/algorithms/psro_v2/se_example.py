@@ -455,7 +455,7 @@ def gpsro_looper(env, oracle, oracle_list, agents, writer, quiesce=False, checkp
       writer.add_scalar('p'+str(p)+'_unique_p',len(cur_set),gpsro_iteration)
     
     ######### record meta_game into pkl
-    if gpsro_iteration % 10 == 0:
+    if gpsro_iteration % 5 == 0:
       save_at_termination(solver=g_psro_solver, file_for_meta_game=checkpoint_dir+'/meta_game.pkl')
       save_strategies(solver=g_psro_solver, checkpoint_dir=checkpoint_dir)
    
@@ -504,13 +504,21 @@ def main(argv):
   env = rl_environment.Environment(game,seed=seed)
   env.reset()
 
-  heuristic_list = ["general_nash_strategy", "uniform_strategy"] if not FLAGS.heuristic_list else FLAGS.heuristic_list
+  if FLAGS.heuristic_list:
+    heuristic_list = FLAGS.heuristic_list
+    if '_strategy' in heuristic_list[0]:
+      FLAGS.meta_strategy_method = heuristic_list[0][:heuristic_list[0].index('_strategy')]
+    else:
+      FLAGS.meta_strategy_method = heuristic_list[0]
+  else:
+    heuristic_list = ["general_nash_strategy", "uniform_strategy"] 
+  
   if 'sp' in FLAGS.heuristic_to_add:
-      heuristic_list.append("self_play_strategy")
+    heuristic_list.append("self_play_strategy")
   if 'weighted_ne' in FLAGS.heuristic_to_add:
-      heuristic_list.append("weighted_NE_strategy")
+    heuristic_list.append("weighted_NE_strategy")
   if 'prd' in FLAGS.heuristic_to_add:
-      heuristic_list.append("prd_strategy")
+    heuristic_list.append("prd_strategy")
   
   if not os.path.exists(FLAGS.root_result_folder):
     os.makedirs(FLAGS.root_result_folder)

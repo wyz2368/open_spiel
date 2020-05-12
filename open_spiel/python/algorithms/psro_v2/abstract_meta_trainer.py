@@ -443,10 +443,13 @@ class AbstractMetaTrainer(object):
     :return:
     """
     if self._switch_heuristic_regardless_of_oracle:
-      # switch heuristics 1x1
-      new_meta_str_method = self._heuristic_list.pop(0)
-      self.update_meta_strategy_method(new_meta_str_method)
-      self._heuristic_list.append(new_meta_str_method)
+      ## switch heuristics 1 alternatives
+      # new_meta_str_method = self._heuristic_list.pop(0)
+      # self.update_meta_strategy_method(new_meta_str_method)
+      # self._heuristic_list.append(new_meta_str_method)
+      # uniform 65 and dqn 40. Assume that heuristic_list is [uniform, general_nash]
+      if self._iterations == 65:
+        self.update_meta_strategy_method(self._heuristic_list[1])
     else:
       # Evaluation
       new_meta_str_method = self.evaluate_meta_method()
