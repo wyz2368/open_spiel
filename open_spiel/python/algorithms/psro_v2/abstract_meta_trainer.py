@@ -206,6 +206,11 @@ class AbstractMetaTrainer(object):
 
 
     
+    # controls switch heuristics with pattern without changing oracle
+    self._switch_heuristic_regardless_of_oracle = kwargs.get('switch_heuristic_regardless_of_oracle',False)
+    if self._switch_heuristic_regardless_of_oracle:
+      self._heuristic_list = heuristic_list
+
     # Mode = fast 1 or slow 0
     if oracle_list is not None:
       # 0: slow oracle 1: fast_oracle
@@ -351,6 +356,7 @@ class AbstractMetaTrainer(object):
       self._meta_strategy_method = _process_string_or_callable(new_meta_str_method, meta_strategies.META_STRATEGY_METHODS)
       print("Using {} as strategy method.".format(self._meta_strategy_method.__name__))
       self._meta_strategy_method_name = self._meta_strategy_method.__name__
+      self.update_meta_strategies()  # Compute meta strategy (e.g. Nash)
 
       self.update_meta_strategies()
 
@@ -383,6 +389,9 @@ class AbstractMetaTrainer(object):
           self._iterations != 0: # start of slow oracle
         self.evaluate_and_pick_meta_method()
         self._base_model_nash = self.get_nash_strategies()
+
+    if self._switch_heuristic_regardless_of_oracle:
+      self.evaluate_and_pick_meta_method()
 
     self._iterations += 1
 
@@ -433,11 +442,20 @@ class AbstractMetaTrainer(object):
     meta-strategy method.
     :return:
     """
-    # Evaluation
-    new_meta_str_method = self.evaluate_meta_method()
+    if self._switch_heuristic_regardless_of_oracle:
+      ## switch heuristics 1 alternatives
+      # new_meta_str_method = self._heuristic_list.pop(0)
+      # self.update_meta_strategy_method(new_meta_str_method)
+      # self._heuristic_list.append(new_meta_str_method)
+      # uniform 65 and dqn 40. Assume that heuristic_list is [uniform, general_nash]
+      if self._iterations == 65:
+        self.update_meta_strategy_method(self._heuristic_list[1])
+    else:
+      # Evaluation
+      new_meta_str_method = self.evaluate_meta_method()
 
-    # Update
-    self.update_meta_strategy_method(new_meta_str_method)
+      # Update
+      self.update_meta_strategy_method(new_meta_str_method)
 
   def evaluate_meta_method(self):
     raise NotImplementedError

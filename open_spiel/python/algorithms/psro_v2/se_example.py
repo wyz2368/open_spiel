@@ -143,10 +143,13 @@ flags.DEFINE_integer("slow_oracle_period", 3, "Number of iters using slow oracle
 flags.DEFINE_bool("exp3", False, "Using EXP3 to select heuristics.")
 flags.DEFINE_bool("standard_regret", False, "Using standard regret.")
 flags.DEFINE_float("evaluation_gamma", 0.0, "gamma for EXP3 and pure_exp.")
-flags.DEFINE_bool('switch_fast_slow', True,'run fast and slow oracle alternatively') # Only switching heuristics, not changing fast and slow oracle
-flags.DEFINE_bool("switch_blocks", False, "Switching heuristic blocks.")
-flags.DEFINE_string("heuristic_to_add", '',"Heuristic to be added to heuristic list.")
 
+flags.DEFINE_bool('switch_fast_slow',True,'run fast and slow oracle alternatively') # Only switching heuristics, not changing fast and slow oracle
+flags.DEFINE_bool("switch_blocks", False, "Switching heuristic blocks.")
+flags.DEFINE_float("exploration_gamma",0.0,'gamma for heuristics selector like exp3')
+flags.DEFINE_list("heuristic_list",'general_nash_strategy,uniform_strategy','heuristics to consider')
+flags.DEFINE_list("heuristic_to_add", '',"Heuristic to be added to heuristic list.") # could contail 'sp_strategy,'
+flags.DEFINE_bool("switch_heuristic_regardless_of_oracle",False,'switch heuristics with DQN all alone') # This could not be true with switch_fsat_slow at the same time!
 
 
 def init_pg_responder(sess, env):
@@ -384,8 +387,8 @@ def gpsro_looper(env, oracle, oracle_list, agents, writer, quiesce=False, checkp
       exp3=FLAGS.exp3,
       standard_regret=FLAGS.standard_regret,
       heuristic_list=heuristic_list,
-      gamma=FLAGS.evaluation_gamma,
-  )
+      gamma=FLAGS.exploration_gamma,
+      switch_heuristic_regardless_of_oracle=FLAGS.switch_heuristic_regardless_of_oracle)
   
   last_meta_prob = [np.array([1]) for _ in range(FLAGS.n_players)]
   last_meta_game = g_psro_solver.get_meta_game()
@@ -452,8 +455,7 @@ def gpsro_looper(env, oracle, oracle_list, agents, writer, quiesce=False, checkp
       writer.add_scalar('p'+str(p)+'_unique_p',len(cur_set),gpsro_iteration)
     
     ######### record meta_game into pkl
-    if gpsro_iteration % 10 == 0:
-      print(g_psro_solver.get_policies())
+    if gpsro_iteration % 5 == 0:
       save_at_termination(solver=g_psro_solver, file_for_meta_game=checkpoint_dir+'/meta_game.pkl')
       save_strategies(solver=g_psro_solver, checkpoint_dir=checkpoint_dir)
    
@@ -502,14 +504,21 @@ def main(argv):
   env = rl_environment.Environment(game,seed=seed)
   env.reset()
 
-  heuristic_list = ["general_nash_strategy", "uniform_strategy"]
-  if FLAGS.heuristic_to_add == 'sp':
-      heuristic_list.append("self_play_strategy")
-  elif FLAGS.heuristic_to_add == 'weighted_ne':
-      heuristic_list.append("weighted_NE_strategy")
-  elif FLAGS.heuristic_to_add == 'prd':
-      heuristic_list.append("prd_strategy")
-
+  if FLAGS.heuristic_list:
+    heuristic_list = FLAGS.heuristic_list
+    if '_strategy' in heuristic_list[0]:
+      FLAGS.meta_strategy_method = heuristic_list[0][:heuristic_list[0].index('_strategy')]
+    else:
+      FLAGS.meta_strategy_method = heuristic_list[0]
+  else:
+    heuristic_list = ["general_nash_strategy", "uniform_strategy"] 
+  
+  if 'sp' in FLAGS.heuristic_to_add:
+    heuristic_list.append("self_play_strategy")
+  if 'weighted_ne' in FLAGS.heuristic_to_add:
+    heuristic_list.append("weighted_NE_strategy")
+  if 'prd' in FLAGS.heuristic_to_add:
+    heuristic_list.append("prd_strategy")
   
   if not os.path.exists(FLAGS.root_result_folder):
     os.makedirs(FLAGS.root_result_folder)
@@ -520,6 +529,8 @@ def main(argv):
 
   if FLAGS.switch_fast_slow:
     checkpoint_dir += '_sfs_'+'_fp_'+str(FLAGS.fast_oracle_period)+'_sp_'+str(FLAGS.slow_oracle_period) + '_arslr_'+str(FLAGS.ars_learning_rate)+'_arsn_'+str(FLAGS.noise)+'_arsnd_'+str(FLAGS.num_directions)+'_arsbd_'+str(FLAGS.num_best_directions)+'_epars_'+str(FLAGS.number_training_episodes_ars)
+  elif FLAGS.switch_heuristic_regardless_of_oracle:
+    checkpoint_dir += '_switch_heuristics_'
 
   if FLAGS.oracle_type == 'BR':
     oracle_flag_str = ''

@@ -1,5 +1,6 @@
 import numpy as np
 from open_spiel.python.algorithms.nash_solver.general_nash_solver import nash_solver
+import itertools
 from open_spiel.python.algorithms.psro_v2 import meta_strategies
 import pickle
 import os
@@ -76,6 +77,59 @@ def strategy_regret(meta_games, subgame_index, ne=None, subgame_ne=None):
         regrets.append(ne_payoff-subgame_payoff)
 
     return regrets
+
+def sample_episode(env, agents):
+    """
+    sample pure strategy payoff in an env
+    Params:
+        agents : a list of length num_player
+        env    : open_spiel environment
+    Returns:
+        a list of length num_player containing players' strategies
+    """
+    time_step = env.reset()
+    cumulative_rewards = 0.0
+    while not time_step.last():
+      if time_step.is_simultaneous_move():
+        action_list = []
+        for agent in agents:
+          output = agent.step(time_step, is_evaluation=True)
+          action_list.append(output.action)
+        time_step = env.step(action_list)
+        cumulative_rewards += np.array(time_step.rewards)
+      else:
+        player_id = time_step.observations["current_player"]
+        agent_output = agents[player_id].step(time_step, is_evaluation=False)
+        action_list = [agent_output.action]
+        time_step = env.step(action_list)
+        cumulative_rewards += np.array(time_step.rewards)
+
+    return cumulative_rewards
+
+def rollout(env, strategies, strategy_support, sims_per_entry=1000):
+    """
+    Evaluate player's mixed strategy with support in env.
+    Params:
+        env              : an open_spiel env
+        strategies       : list of list, each list containing a player's strategy
+        strategy_support : mixed_strategy support probability vector
+        sims_per_entry   : number of episodes for each pure strategy profile to sample
+    Return:
+        a list of players' payoff
+    """
+    num_players = len(strategies)
+    num_strategies = [len(ele) for ele in strategies]
+    prob_matrix = meta_strategies.general_get_joint_strategy_from_marginals(strategy_support)
+    payoff_tensor = np.zeros([num_players]+num_strategies)
+
+    for ind in itertools.product(*[np.arange(ele) for ele in num_strategies]):
+        strat = [strategies[i][ind[i]] for i in range(num_players)]
+        pure_payoff = np.zeros(num_players)
+        for _ in range(sims_per_entry):
+            pure_payoff += sample_episode(env, strat)
+        payoff_tensor[tuple([...]+list(ind))] = pure_payoff/sims_per_entry
+
+    return [np.sum(payoff_tensor[i]*prob_matrix) for i in range(num_players)]
 
 
 class SElogs(object):

@@ -76,12 +76,15 @@ ORIGIN = os.path.dirname(os.path.realpath(__file__)) + '/base_slurm.sh'
 MODULE1 = "module load python3.6-anaconda/5.2.0"
 MODULE2 = "cd $(dirname $(dirname '${SLURM_SUBMIT_DIR}'))"
 OUTPUT = "#SBATCH --output="
-#COMMAND = "python ../se_example.py --game_name=leduc_poker --oracle_type=DQN --quiesce=False --gpsro_iterations=150 --sbatch_run=True --log_train=False --number_training_episodes=10000 --root_result_folder=root_result_un --meta_strategy_method_frequency=1 --meta_strategy_method_li=general_nash,uniform --switch_fast_slow=False"
-#COMMAND = "python ../psro_v2_example.py --game_name=kuhn_poker --quiesce=False --gpsro_iterations=100 --sbatch_run=True --log_train=False --root_result_folder=root_result_dqn"
-COMMAND = "python ../tuning_ars.py --game_name=leduc_poker --quiesce=False --gpsro_iterations=10000 --sbatch_run=True --log_train=False --root_result_folder=root_result_tune_ars --number_training_episodes=300000"
+# dqn and ars switching, does not swap heuristics
+#COMMAND = "python ../se_example.py --game_name=leduc_poker --quiesce=False --gpsro_iterations=200 --sbatch_run=True --log_train=False --number_training_episodes=10000 --number_training_episodes_ars=300000 --root_result_folder=root_result_ars_dqn --heuristic_list=general_nash_strategy --fast_oracle_period=3 --slow_oracle_period=1 --switch_fast_slow=True"
+# switch heuristic without switching oracle in fixed pattern
+COMMAND = "python ../se_example.py --game_name=leduc_poker --quiesce=False --gpsro_iterations=150 --sbatch_run=True --log_train=False --number_training_episodes=10000 --root_result_folder=root_result_uni_refute --heuristic_list=uniform_strategy,general_nash_strategy --switch_fast_slow=False --switch_heuristic_regardless_of_oracle=True"
+#COMMAND = "python ../psro_v2_example.py --game_name=leduc_poker --quiesce=False --gpsro_iterations=100 --sbatch_run=True --log_train=False --root_result_folder=root_result_prd_dqn --meta_strategy_method=prd"
+#COMMAND = "python ../tuning_ars.py --game_name=leduc_poker --quiesce=False --gpsro_iterations=10000 --sbatch_run=True --log_train=False --root_result_folder=root_result_tune_ars --number_training_episodes=300000"
 #COMMAND = "python ../psro_v2_example.py --game_name=goofspiel --quiesce=False --gpsro_iterations=150 --sbatch_run=True --log_train=False --root_result_folder=root_result"
 
-def bash_factory(dir_name='scripts80', num_files=10, grid_search_flag=True):
+def bash_factory(dir_name='scripts_uni_refute', num_files=10, grid_search_flag=True):
     bash_path = os.path.dirname(os.path.realpath(__file__)) + '/' + dir_name + '/'
     if os.path.exists(bash_path):
         shutil.rmtree(bash_path, ignore_errors=True)
@@ -92,18 +95,11 @@ def bash_factory(dir_name='scripts80', num_files=10, grid_search_flag=True):
         shutil.rmtree(output_path, ignore_errors=True)
     else:
         mkdir(output_path)
-#    param_dict = {'num_directions':[20,40],#,60,80],
-#                  'num_best_directions':[20,40],
-#                  'ars_learning_rate': [0.03,0.07],
-#                  'noise': [0.3,0.5],
-#                  'number_training_episodes':[10000,100000,300000]}
 
-#                  'ars_learning_rate': [0.01,0.03,0.07,0.1,0.3],
-#                  'noise': [0.01,0.03,0.07,0.1,0.3,0.5]}
-#    param_dict = {'seed':[np.random.randint(low=0,high=1e5) for _ in range(10)]}
+    param_dict = {'seed':[np.random.randint(low=0,high=1e5) for _ in range(10)]}
 
-    param_dict = {'num_directions':[80],
-        'iter_stop_dqn':[2,4,6,8,10,15,20,25,30]}
+#    param_dict = {'num_directions':[80],
+#        'iter_stop_dqn':[2,4,6,8,10,15,20,25,30]}
 #    param_dict = {'game_param':['num_cards=5','num_cards=9','num_cards=13']}
     
     if grid_search_flag:
