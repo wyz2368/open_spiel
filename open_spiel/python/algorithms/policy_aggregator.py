@@ -88,6 +88,12 @@ class PolicyFunction(policy.Policy):
       player_id = state.current_player()
     return self._policies[player_id][state_key]
 
+  def get_weights(self):
+    return self._policies
+
+  def set_weights(self, variables):
+    self._policies = variables
+
 
 class PolicyPool(object):
   """Transforms a list of list of policies (One list per player) to callable."""

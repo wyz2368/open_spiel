@@ -164,7 +164,7 @@ def nash_strategy(solver, return_joint=False, checkpoint_dir=None):
     joint_strategies = get_joint_strategy_from_marginals(result)
     return result, joint_strategies
 
-#TODO: Test this sovler with PSRO.
+
 def general_nash_strategy(solver, return_joint=False, NE_solver="gambit", mode='one', game=None, checkpoint_dir=None):
   """Returns nash distribution on meta game matrix.
 
@@ -256,7 +256,7 @@ def weighted_NE_strategy(solver, return_joint=False, checkpoint_dir=None, gamma=
   num_players = len(meta_games)
   NE_list = solver._NE_list
   if len(NE_list) == 0:
-    return [np.array([1.])] * num_players
+    return [np.array([1])] * num_players, None
 
   num_used_policies = len(NE_list[-1][0])
 
@@ -273,7 +273,7 @@ def weighted_NE_strategy(solver, return_joint=False, checkpoint_dir=None, gamma=
     result[player] += equilibria[player]
     result[player] /= np.sum(result[player])
 
-  return result
+  return result, None
 
 
 META_STRATEGY_METHODS = {
