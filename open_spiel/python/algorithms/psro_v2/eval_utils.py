@@ -197,6 +197,3 @@ def save_strategies(solver, checkpoint_dir):
                 continue
             save_pkl(policy.get_weights(), current_path + str(i+1) + '.pkl')
 
-
-
-

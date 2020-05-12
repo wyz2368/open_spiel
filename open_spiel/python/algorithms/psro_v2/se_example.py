@@ -452,7 +452,7 @@ def gpsro_looper(env, oracle, oracle_list, agents, writer, quiesce=False, checkp
       writer.add_scalar('p'+str(p)+'_unique_p',len(cur_set),gpsro_iteration)
     
     ######### record meta_game into pkl
-    if gpsro_iteration % 3 == 0:
+    if gpsro_iteration % 10 == 0:
       print(g_psro_solver.get_policies())
       save_at_termination(solver=g_psro_solver, file_for_meta_game=checkpoint_dir+'/meta_game.pkl')
       save_strategies(solver=g_psro_solver, checkpoint_dir=checkpoint_dir)
