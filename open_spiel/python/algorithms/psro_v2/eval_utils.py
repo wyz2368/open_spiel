@@ -183,6 +183,7 @@ def smoothing_kl(p, q, eps=0.001):
 
 
 def smoothing(p, eps):
+    p = np.array(p, dtype=np.float)
     zeros_pos_p = np.where(p == 0)[0]
     num_zeros = len(zeros_pos_p)
     x = eps * num_zeros / (len(p) - num_zeros)

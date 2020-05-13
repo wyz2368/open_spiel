@@ -3,28 +3,30 @@ import copy
 import os
 # from  open_spiel.python.algorithms.psro_v2.eval_utils import regret, strategy_regret
 
-def weighted_NE_strategy(checkpoint_dir=None, gamma=0.4):
-  BOS_p1_meta_game = np.array([[3, 0], [0, 2]])
-  BOS_p2_meta_game = np.array([[2, 0], [0, 3]])
-  meta_games = [BOS_p1_meta_game, BOS_p2_meta_game]
-  num_players = len(meta_games)
-  NE_list = [[np.array([1]), np.array([1])]]
-  if len(NE_list) == 0:
-    return [np.array([1.])] * num_players
+def smoothing_kl(p, q, eps=0.001):
+  p = smoothing(p, eps)
+  q = smoothing(q, eps)
+  return np.sum(p * np.log(p / q))
 
-  num_used_policies = len(NE_list[-1][0])
 
-  num_strategies = len(meta_games[0])
-  equilibria = [np.array([0., 1.]), np.array([0., 1.])]
+def smoothing(p, eps):
+  p = np.array(p, dtype=np.float)
+  zeros_pos_p = np.where(p == 0)[0]
+  num_zeros = len(zeros_pos_p)
+  x = eps * num_zeros / (len(p) - num_zeros)
+  for i in range(len(p)):
+    if i in zeros_pos_p:
+      p[i] = eps
+    else:
+      p[i] -= x
+  return p
 
-  result = [np.zeros(num_strategies)] * num_players
-  for player in range(num_players):
-    for i, NE in enumerate(NE_list):
-      print(gamma ** (num_used_policies - i))
-      result[player][:len(NE[player])] += NE[player] * gamma ** (num_used_policies - i)
-    result[player] += equilibria[player]
-    result[player] /= np.sum(result[player])
+def kl_divergence(p, q):
+  return np.sum(np.where(p != 0, p * np.log(p / q), 0))
 
-  return result
 
-print([np.array([1.])] * 2)
+p = np.array([0,0,0,1])
+q = np.array([1,0,0,0])
+
+# print(kl_divergence(p, q))
+print(smoothing_kl(p, q))

@@ -373,6 +373,8 @@ class AbstractMetaTrainer(object):
   def reset_slow_oracle_counter(self):
     self._slow_oracle_counter = self._slow_oracle_period
 
+
+  #TODO: Write specifically by Gary.
   def se_iteration(self, seed=None):
     """Main trainer loop with strategy exploration.
     Evaluate the performance of current meta-strategy method every _meta_method_frequency and update the
