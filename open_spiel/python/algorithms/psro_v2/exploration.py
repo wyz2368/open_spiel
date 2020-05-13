@@ -1,4 +1,5 @@
 import numpy as np
+from open_spiel.python.algorithms.psro_v2.eval_utils import smoothing_kl
 
 class Exp3(object):
     """
@@ -6,11 +7,20 @@ class Exp3(object):
     """
     def __init__(self,
                  num_arms,
-                 gamma=0.0):
+                 num_players,
+                 gamma=0.0,
+                 kl_coef=1,
+                 abs_value=False,
+                 kl_regularization=False
+                 ):
         self.weights = np.ones(num_arms)
         self.num_arms = num_arms
+        self.num_players = num_players
         self.gamma = gamma
         self.arm_pulled = 0
+        self.abs_value = abs_value
+        self.kl_regularization = kl_regularization
+        self.kl_coef = kl_coef
 
     def sample(self, temerature=None):
         """
@@ -33,11 +43,23 @@ def softmax(x, temperature=1/1.3):
 class pure_exp(object):
     def __init__(self,
                  num_arms,
-                 gamma=0.0):
+                 num_players,
+                 gamma=0.0,
+                 slow_period=None,
+                 fast_period=None,
+                 kl_coef=0.1,
+                 abs_value=False,
+                 kl_regularization=False):
         self.weights = np.ones(num_arms) * 100
         self.num_arms = num_arms
+        self.num_players = num_players
         self.gamma = gamma
-
+        self.arm_pulled = 0
+        self.abs_value = abs_value
+        self.kl_regularization = kl_regularization
+        self.kl_coef = kl_coef
+        self.slow_period = slow_period
+        self.fast_period = fast_period
 
     def sample(self, num_iters):
         temperature = self.temperature_scheme(num_iters)
@@ -45,7 +67,12 @@ class pure_exp(object):
         self.arm_pulled = np.random.choice(range(len(self.probability_distribution)), p=self.probability_distribution)
         return self.arm_pulled
 
-    def update_weights(self, reward):
+    def update_weights(self, reward, NE_list):
+        if self.abs_value:
+            reward = abs(reward)
+        if self.kl_regularization:
+            kl_conv = self.calculate_kl(NE_list)
+            reward += self.kl_coef * kl_conv
         self.weights[self.arm_pulled] = (1 - self.gamma) * reward + self.gamma * self.weights[self.arm_pulled]
 
     def temperature_scheme(self, num_iters):
@@ -56,3 +83,15 @@ class pure_exp(object):
             return 5
         else:
             return 10
+
+    def calculate_kl(self, NE_list):
+        if len(NE_list) <= 2 * (self.slow_period + self.fast_period):
+            return 0
+        kl_conv = 0
+        for player in range(self.num_players):
+            p = NE_list[-(2 + self.slow_period + self.fast_period)][player]
+            q = NE_list[-2][player]
+            p = np.append(p, [0] * (len(q)-len(p)))
+            kl = smoothing_kl(p, q)
+            kl_conv += kl
+        return kl_conv

@@ -25,8 +25,5 @@ def kl_divergence(p, q):
   return np.sum(np.where(p != 0, p * np.log(p / q), 0))
 
 
-p = np.array([0,0,0,1])
-q = np.array([1,0,0,0])
-
-# print(kl_divergence(p, q))
-print(smoothing_kl(p, q))
+a = np.array([1])
+print(np.append(a, [0,0,0]))
