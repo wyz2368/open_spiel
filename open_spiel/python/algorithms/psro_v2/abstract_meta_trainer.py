@@ -25,6 +25,8 @@ from open_spiel.python.algorithms.psro_v2 import strategy_selectors
 from open_spiel.python.algorithms.psro_v2 import utils
 from open_spiel.python.algorithms.psro_v2.eval_utils import SElogs
 from open_spiel.python.algorithms.psro_v2.exploration import pure_exp, Exp3
+import functools
+print = functools.partial(print, flush=True)
 
 _DEFAULT_STRATEGY_SELECTION_METHOD = "probabilistic"
 _DEFAULT_META_STRATEGY_METHOD = "prd"
@@ -394,10 +396,14 @@ class AbstractMetaTrainer(object):
       self.evaluate_and_pick_meta_method()
 
     self._iterations += 1
-
+    
+    print("started se iteration")
     train_reward_curve = self.update_agents()  # Generate new, Best Response agents via oracle.
+    print("finished update agent")
     self.update_empirical_gamestate(seed=seed)  # Update gamestate matrix.
+    print("finished update empirical game")
     self.update_meta_strategies()  # Compute meta strategy (e.g. Nash)
+    print("finished update meta_strategies")
     self.update_NE_list()
     
     # after iteration done
@@ -444,12 +450,12 @@ class AbstractMetaTrainer(object):
     """
     if self._switch_heuristic_regardless_of_oracle:
       ## switch heuristics 1 alternatives
-      # new_meta_str_method = self._heuristic_list.pop(0)
-      # self.update_meta_strategy_method(new_meta_str_method)
-      # self._heuristic_list.append(new_meta_str_method)
-      # uniform 65 and dqn 40. Assume that heuristic_list is [uniform, general_nash]
-      if self._iterations == 65:
-        self.update_meta_strategy_method(self._heuristic_list[1])
+      new_meta_str_method = self._heuristic_list.pop(0)
+      self.update_meta_strategy_method(new_meta_str_method)
+      self._heuristic_list.append(new_meta_str_method)
+      ## uniform 65 and dqn 40. Assume that heuristic_list is [uniform, general_nash]
+      #if self._iterations == 65:
+      #  self.update_meta_strategy_method(self._heuristic_list[1])
     else:
       # Evaluation
       new_meta_str_method = self.evaluate_meta_method()

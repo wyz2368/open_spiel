@@ -151,7 +151,6 @@ flags.DEFINE_list("heuristic_list",'general_nash_strategy,uniform_strategy','heu
 flags.DEFINE_list("heuristic_to_add", '',"Heuristic to be added to heuristic list.") # could contail 'sp_strategy,'
 flags.DEFINE_bool("switch_heuristic_regardless_of_oracle",False,'switch heuristics with DQN all alone') # This could not be true with switch_fsat_slow at the same time!
 
-
 def init_pg_responder(sess, env):
   """Initializes the Policy Gradient-based responder and agents."""
   info_state_size = env.observation_spec()["info_state"][0]
@@ -189,6 +188,7 @@ def init_pg_responder(sess, env):
   ]
   for agent in agents:
     agent.freeze()
+  agent_kwargs["policy_class"] = "PG"
   return oracle, agents, agent_kwargs
 
 
@@ -198,7 +198,9 @@ def init_br_responder(env):
   oracle = best_response_oracle.BestResponseOracle(
       game=env.game, policy=random_policy)
   agents = [random_policy.__copy__() for _ in range(FLAGS.n_players)]
-  return oracle, agents
+  agent_kwargs = {}
+  agent_kwargs["policy_class"] = "BR"
+  return oracle, agents, agent_kwargs
 
 
 def init_dqn_responder(sess, env):
@@ -213,7 +215,7 @@ def init_dqn_responder(sess, env):
       "num_actions": num_actions,
       "hidden_layers_sizes": [FLAGS.hidden_layer_size] * FLAGS.n_hidden_layers,
       "batch_size": FLAGS.batch_size,
-      "learning_rate": FLAGS.dqn_learning_rate,
+     "learning_rate": FLAGS.dqn_learning_rate,
       "update_target_network_every": FLAGS.update_target_network_every,
       "learn_every": FLAGS.learn_every,
       "optimizer_str": FLAGS.optimizer_str
@@ -235,6 +237,7 @@ def init_dqn_responder(sess, env):
   ]
   for agent in agents:
     agent.freeze()
+  agent_kwargs["policy_class"] = "DQN"
   return oracle, agents, agent_kwargs
 
 def init_ars_responder(sess, env):
@@ -254,15 +257,13 @@ def init_ars_responder(sess, env):
     "learning_rate": FLAGS.ars_learning_rate,
     "nb_directions": FLAGS.num_directions,
     "nb_best_directions": FLAGS.num_directions,
-    "noise": FLAGS.noise,
-    "v2": FLAGS.v2
+    "noise": FLAGS.noise
   }
   oracle = rl_oracle.RLOracle(
     env,
     agent_class,
     agent_kwargs,
-
-    number_training_episodes=FLAGS.number_training_episodes_ars,
+    number_training_episodes=FLAGS.number_training_episodes,
     self_play_proportion=FLAGS.self_play_proportion,
     sigma=FLAGS.sigma)
 
@@ -275,7 +276,8 @@ def init_ars_responder(sess, env):
   ]
   for agent in agents:
     agent.freeze()
-  return oracle, agents
+  agent_kwargs["policy_class"] = "ARS"
+  return oracle, agents, agent_kwargs
 
 
 def print_beneficial_deviation_analysis(last_meta_game, meta_game, last_meta_prob, verbose=False):
@@ -498,9 +500,25 @@ def main(argv):
   np.random.seed(seed)
   random.seed(seed)
   tf.set_random_seed(seed)
-  game = pyspiel.load_game_as_turn_based(FLAGS.game_name,
-                                         {"players": pyspiel.GameParameter(
-                                             FLAGS.n_players)})
+
+  checkpoint_dir = FLAGS.game_name
+  if FLAGS.game_name in ['laser_tag']: # games where parameter does not have num_players
+    game_param = {'zero_sum': pyspiel.GameParameter(False)}
+    game_param_raw = {'zero_sum': False}
+  else:
+    game_param_raw = {"players": FLAGS.n_players}
+  if FLAGS.game_param is not None:
+    for ele in FLAGS.game_param:
+      ele_li = ele.split("=")
+      game_param_raw[ele_li[0]] = int(ele_li[1])
+      checkpoint_dir += '_'+ele_li[0]+'_'+ele_li[1]
+    checkpoint_dir += '_'
+
+  game_param = {}
+  for key, val in game_param_raw.items():
+    game_param[key] = pyspiel.GameParameter(val)
+  game = pyspiel.load_game_as_turn_based(FLAGS.game_name, game_param)
+
   env = rl_environment.Environment(game,seed=seed)
   env.reset()
 
@@ -523,7 +541,7 @@ def main(argv):
   if not os.path.exists(FLAGS.root_result_folder):
     os.makedirs(FLAGS.root_result_folder)
   
-  checkpoint_dir = 'se_'+FLAGS.game_name+str(FLAGS.n_players)+'_sims_'+str(FLAGS.sims_per_entry)+'_it_'+str(FLAGS.gpsro_iterations)+'_ep_'+str(FLAGS.number_training_episodes)+'_or_'+FLAGS.oracle_type
+  checkpoint_dir += '_sims_'+str(FLAGS.sims_per_entry)+'_it_'+str(FLAGS.gpsro_iterations)+'_ep_'+str(FLAGS.number_training_episodes)+'_or_'+FLAGS.oracle_type
 
   checkpoint_dir += '_msl_'+",".join(heuristic_list)
 
@@ -547,20 +565,28 @@ def main(argv):
   if FLAGS.sbatch_run:
     sys.stdout = open(checkpoint_dir+'/stdout.txt','w+')
 
+  env_kawrgs = {"game_name":FLAGS.game_name, "param": game_param_raw}
+  strategy_path = os.path.join(checkpoint_dir, 'strategies')
+  if not isExist(strategy_path):
+    mkdir(strategy_path)
+  save_pkl(env_kwargs, strategy_path+'/env.pkl')
+
   # Initialize oracle and agents
   with tf.Session() as sess:
     if FLAGS.oracle_type == "DQN":
-      slow_oracle, agents, agent_kwargs = init_dqn_responder(sess, env)
+      oracle, agents, agent_kwargs = init_dqn_responder(sess, env)
     elif FLAGS.oracle_type == "PG":
-      slow_oracle, agents, agent_kwargs = init_pg_responder(sess, env)
+      oracle, agents, agent_kwargs = init_pg_responder(sess, env)
     elif FLAGS.oracle_type == "BR":
-      slow_oracle, agents = init_br_responder(env)
-      agent_kwargs = None
+      oracle, agents, agent_kwargs = init_br_responder(env)
     elif FLAGS.oracle_type == "ARS":
-      slow_oracle, agents = init_ars_responder(sess, env)
-      agent_kwargs = None
+      oracle, agents, agent_kwargs = init_ars_responder(sess, env)
+    elif FLAGS.oracle_type == "ARS_parallel":
+      oracle, agents, agent_kwargs = init_ars_parallel_responder(sess, env)
+    # sess.run(tf.global_variables_initializer())
+    save_pkl(agent_kwargs, strategy_path+'/kwargs.pkl')
 
-    sess.run(tf.global_variables_initializer())
+    #sess.run(tf.global_variables_initializer())
     
     if FLAGS.switch_fast_slow:
       fast_oracle, agents = init_ars_responder(sess=None, env=env)

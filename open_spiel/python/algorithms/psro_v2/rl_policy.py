@@ -76,8 +76,13 @@ def rl_policy_factory(rl_class):
       ) else rl_environment.StepType.MID
 
       self._obs["current_player"] = cur_player
-      self._obs["info_state"][cur_player] = (
-          state.information_state_tensor(cur_player))
+      try:
+        self._obs["info_state"][cur_player] = (
+            state.information_state_tensor(cur_player))
+      except: # when information_state_tensor unimplemented but exist
+        self._obs["info_state"][cur_player] = (
+            state.observation_tensor(cur_player))
+
       self._obs["legal_actions"][cur_player] = legal_actions
 
       # pylint: disable=protected-access

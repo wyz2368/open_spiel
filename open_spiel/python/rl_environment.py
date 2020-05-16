@@ -192,13 +192,15 @@ class Environment(object):
       else:
         observation_type = ObservationType.OBSERVATION
 
-    # Check the requested observation type is supported.
-    if observation_type == ObservationType.OBSERVATION:
-      if not self._game.get_type().provides_observation_tensor:
-        raise ValueError("observation_tensor not supported by " + game)
-    elif observation_type == ObservationType.INFORMATION_STATE:
-      if not self._game.get_type().provides_information_state_tensor:
-        raise ValueError("information_state_tensor not supported by " + game)
+    ## Check the requested observation type is supported.
+    ## laser tag's state provides observation_tensor, yet here turn_based_simultaneous game
+    ## says it does not support observation_tensor
+    #if observation_type == ObservationType.OBSERVATION:
+    #  if not self._game.get_type().provides_observation_tensor:
+    #    raise ValueError("observation_tensor not supported by " + game)
+    #elif observation_type == ObservationType.INFORMATION_STATE:
+    #  if not self._game.get_type().provides_information_state_tensor:
+    #    raise ValueError("information_state_tensor not supported by " + game)
     self._use_observation = (observation_type == ObservationType.OBSERVATION)
 
   def seed(self, seed=None):
