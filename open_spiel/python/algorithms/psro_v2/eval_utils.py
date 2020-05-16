@@ -1,12 +1,15 @@
-from open_spiel.python.algorithms.nash_solver.general_nash_solver import nash_solver
-from open_spiel.python.algorithms.psro_v2 import meta_strategies
-from open_spiel.python.algorithms.psro_v2 import rl_policy
+
 from open_spiel.python import policy
+from open_spiel.python.algorithms.psro_v2 import rl_policy
+from open_spiel.python.algorithms.psro_v2 import meta_strategies
+from open_spiel.python.algorithms.nash_solver.general_nash_solver import nash_solver
+
 import pandas as pd
 import numpy as np
 import itertools
 import pickle
 import os
+import tensorflow.compat.v1 as tf
 
 #def regret(meta_games, subgame_index, subgame_ne=None):
 #    """
@@ -127,7 +130,7 @@ def strategy_regret(meta_games, subgame_index, ne=None, subgame_ne=None):
 
     return regrets
 
-def sample_episodes(env, agents, number_epsiodes=1):
+def sample_episodes(env, agents, number_episodes=1):
     """
     sample pure strategy payoff in an env
     Params:
@@ -428,7 +431,9 @@ def load_strategy(strategy_type, strategy_kwargs, env, player_id, strategy_weigh
     Load Strategies. If initialization required, initialize
     """
     if strategy_type == "BR":
-        agent_class = policy.TabularPolicy(env.game)
+        agent = policy.TabularPolicy(env.game)
+        agent.set_weight(strategy_weight)
+        return agent
     elif strategy_type == "ARS":
         agent_class = rl_policy.ARSPolicy
     elif strategy_type == "DQN":
@@ -440,8 +445,13 @@ def load_strategy(strategy_type, strategy_kwargs, env, player_id, strategy_weigh
     else:
         raise NotImplementedError
 
+    if "ARS" in strategy_type:
+        strategy_kwargs["session"] = None
+    else:
+        strategy_kwargs["session"] =  tf.Session()
+    
     agent = agent_class(env, player_id, **strategy_kwargs)
-    agent.set_weight(strategy_weight)
+    agent.set_weights(strategy_weight)
     agent.freeze()
 
     return agent

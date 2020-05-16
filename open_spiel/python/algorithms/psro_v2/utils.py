@@ -17,6 +17,7 @@
 
 import random
 import numpy as np
+import tensorflow.compat.v1 as tf
 
 from open_spiel.python.algorithms import get_all_states
 from open_spiel.python.algorithms import policy_aggregator
@@ -24,6 +25,10 @@ from open_spiel.python.algorithms import policy_aggregator_joint
 from open_spiel.python.egt import alpharank
 from open_spiel.python.egt import utils as alpharank_utils
 
+def set_seed(seed):
+  np.random.seed(seed)
+  random.seed(seed)
+  tf.set_random_seed(seed)
 
 def empty_list_generator(number_dimensions):
   result = []

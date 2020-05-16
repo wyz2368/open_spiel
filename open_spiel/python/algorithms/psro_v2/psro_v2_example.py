@@ -54,10 +54,10 @@ from open_spiel.python.algorithms.psro_v2 import rl_oracle
 from open_spiel.python.algorithms.psro_v2 import rl_policy
 from open_spiel.python.algorithms.psro_v2 import strategy_selectors
 from open_spiel.python.algorithms.psro_v2.quiesce.quiesce import PSROQuiesceSolver
-from open_spiel.python.algorithms.psro_v2.eval_utils import save_pkl
 from open_spiel.python.algorithms.psro_v2 import meta_strategies
 from open_spiel.python.algorithms.psro_v2.quiesce import quiesce_sparse
-from open_spiel.python.algorithms.psro_v2.eval_utils import save_strategies, save_nash
+from open_spiel.python.algorithms.psro_v2.utils import set_seed
+from open_spiel.python.algorithms.psro_v2.eval_utils import save_strategies, save_nash, save_pkl
 
 
 FLAGS = flags.FLAGS
@@ -492,11 +492,8 @@ def main(argv):
     seed = np.random.randint(low=0, high=1e5)
   else:
     seed = FLAGS.seed
-  np.random.seed(seed)
-  random.seed(seed)
-
-  tf.set_random_seed(seed)
-
+  set_seed(seed)
+  
   checkpoint_dir = FLAGS.game_name
   if FLAGS.game_name in ['laser_tag']: # games where parameter does not have num_players
     game_param = {'zero_sum': pyspiel.GameParameter(False)}

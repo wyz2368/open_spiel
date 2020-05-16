@@ -56,7 +56,8 @@ from open_spiel.python.algorithms.psro_v2.quiesce.quiesce import PSROQuiesceSolv
 from open_spiel.python.algorithms.psro_v2 import meta_strategies
 from open_spiel.python.algorithms.psro_v2.eval_utils import save_pkl
 from open_spiel.python.algorithms.psro_v2.quiesce import quiesce_sparse
-from open_spiel.python.algorithms.psro_v2.eval_utils import smoothing_kl, save_strategies
+from open_spiel.python.algorithms.psro_v2.utils import set_seed
+from open_spiel.python.algorithms.psro_v2.eval_utils import smoothing_kl, save_nash, save_strategies, save_pkl
 
 
 FLAGS = flags.FLAGS
@@ -137,6 +138,7 @@ flags.DEFINE_integer("seed", None, "Seed.")
 flags.DEFINE_bool("local_launch", False, "Launch locally or not.")
 flags.DEFINE_bool("verbose", True, "Enables verbose printing and profiling.")
 flags.DEFINE_bool("log_train", False,"log training reward curve")
+flags.DEFINE_bool("compute_exact_br",True,"compute and log exp with exact br. If false, than use combined game at the last iteration to evaluate")
 
 
 # Strategy Exploration
@@ -444,25 +446,30 @@ def gpsro_looper(env, oracle, oracle_list, agents, writer, quiesce=False, checkp
           writer.add_scalar("kl_conv", kl_conv, gpsro_iteration)
 
     # The following lines only work for sequential games for the moment.
-    ######### calculate exploitability then log it
-    if env.game.get_type().dynamics == pyspiel.GameType.Dynamics.SEQUENTIAL:
-      aggregator = policy_aggregator.PolicyAggregator(env.game)
-      aggr_policies = aggregator.aggregate(range(FLAGS.n_players), policies, nash_meta_probabilities)
+    if FLAGS.compute_exact_br: #simple extensive form calculate best response
+      ######### calculate exploitability then log it
+      if env.game.get_type().dynamics == pyspiel.GameType.Dynamics.SEQUENTIAL:
+        aggregator = policy_aggregator.PolicyAggregator(env.game)
+        aggr_policies = aggregator.aggregate(range(FLAGS.n_players), policies, nash_meta_probabilities)
 
-    exploitabilities, expl_per_player = exploitability.nash_conv(
-        env.game, aggr_policies, return_only_nash_conv=False)
-    for p in range(len(expl_per_player)):
-      writer.add_scalar('player'+str(p)+'_exp', expl_per_player[p],gpsro_iteration)
-    writer.add_scalar('exp', exploitabilities, gpsro_iteration)
+      exploitabilities, expl_per_player = exploitability.nash_conv(
+          env.game, aggr_policies, return_only_nash_conv=False)
+      for p in range(len(expl_per_player)):
+        writer.add_scalar('player'+str(p)+'_exp', expl_per_player[p],gpsro_iteration)
+      writer.add_scalar('exp', exploitabilities, gpsro_iteration)
 
-    if FLAGS.verbose:
-      print("Exploitabilities : {}".format(exploitabilities))
-      print("Exploitabilities per player : {}".format(expl_per_player))
-    
-    ######### analyze unique policy
-    unique_policies = print_policy_analysis(policies, env.game, FLAGS.verbose)
-    for p, cur_set in enumerate(unique_policies):
-      writer.add_scalar('p'+str(p)+'_unique_p',len(cur_set),gpsro_iteration)
+      if FLAGS.verbose:
+        print("Exploitabilities : {}".format(exploitabilities))
+        print("Exploitabilities per player : {}".format(expl_per_player))
+      
+      ######### analyze unique policy
+      unique_policies = print_policy_analysis(policies, env.game, FLAGS.verbose)
+      for p, cur_set in enumerate(unique_policies):
+        writer.add_scalar('p'+str(p)+'_unique_p',len(cur_set),gpsro_iteration)
+
+    else: # use combined game to evaluate exp, thus nash_ne for every iteration should be saved
+      save_nash(nash_meta_probabilities, gpsro_iteration, checkpoint_dir)
+       
     
     ######### record meta_game into pkl
     if gpsro_iteration % 5 == 0:
@@ -505,9 +512,7 @@ def main(argv):
     seed = np.random.randint(low=0, high=1e5)
   else:
     seed = FLAGS.seed
-  np.random.seed(seed)
-  random.seed(seed)
-  tf.set_random_seed(seed)
+  set_seed(seed)
 
   checkpoint_dir = 'se1_'+FLAGS.game_name
   if FLAGS.game_name in ['laser_tag']: # games where parameter does not have num_players
