@@ -264,8 +264,11 @@ class AbstractMetaTrainer(object):
     """
     self._iterations += 1
     train_reward_curve = self.update_agents()  # Generate new, Best Response agents via oracle.
+    print("after training policy")
     self.update_empirical_gamestate(seed=seed)  # Update gamestate matrix.
+    print("finished update empirical gamestate")
     self.update_meta_strategies()#seed=seed)  # Compute meta strategy (e.g. Nash)
+    print("finished update meta strategies")
     self.update_NE_list()
     return train_reward_curve
 

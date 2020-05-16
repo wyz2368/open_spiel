@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-for file in ./scripts_uni_refute/*
+for file in ./scripts_laser_tag/*
 do
   sbatch "$file"
   sleep 2

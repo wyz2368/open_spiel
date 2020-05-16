@@ -54,6 +54,7 @@ from open_spiel.python.algorithms.psro_v2 import rl_oracle
 from open_spiel.python.algorithms.psro_v2 import rl_policy
 from open_spiel.python.algorithms.psro_v2 import strategy_selectors
 from open_spiel.python.algorithms.psro_v2.quiesce.quiesce import PSROQuiesceSolver
+from open_spiel.python.algorithms.psro_v2.eval_utils import save_pkl
 from open_spiel.python.algorithms.psro_v2 import meta_strategies
 from open_spiel.python.algorithms.psro_v2.quiesce import quiesce_sparse
 from open_spiel.python.algorithms.psro_v2.eval_utils import save_strategies, save_nash
@@ -177,6 +178,8 @@ def init_pg_responder(sess, env):
   ]
   for agent in agents:
     agent.freeze()
+
+  agent_kwargs.pop("session")
   agent_kwargs["policy_class"] = "PG"
   return oracle, agents, agent_kwargs
 
@@ -226,6 +229,8 @@ def init_dqn_responder(sess, env):
   ]
   for agent in agents:
     agent.freeze()
+
+  agent_kwargs.pop("session")
   agent_kwargs["policy_class"] = "DQN"
   return oracle, agents, agent_kwargs
 
@@ -265,6 +270,8 @@ def init_ars_responder(sess, env):
   ]
   for agent in agents:
     agent.freeze()
+
+  agent_kwargs.pop("session")
   agent_kwargs["policy_class"] = "ARS"
   return oracle, agents, agent_kwargs
 
@@ -454,13 +461,13 @@ def gpsro_looper(env, oracle, agents, writer, quiesce=False, checkpoint_dir=None
       if FLAGS.verbose:
         print("Exploitabilities : {}".format(exploitabilities))
         print("Exploitabilities per player : {}".format(expl_per_player))
+
+      unique_policies = print_policy_analysis(policies, env.game, FLAGS.verbose)
+      for p, cur_set in enumerate(unique_policies):
+        writer.add_scalar('p'+str(p)+'_unique_p',len(cur_set),gpsro_iteration)
+
     else: # use combined game to evaluate exp, thus nash_ne for every iteration should be saved
       save_nash(nash_meta_probabilities, gpsro_iteration, checkpoint_dir)
-
-
-    unique_policies = print_policy_analysis(policies, env.game, FLAGS.verbose)
-    for p, cur_set in enumerate(unique_policies):
-      writer.add_scalar('p'+str(p)+'_unique_p',len(cur_set),gpsro_iteration)
 
     if gpsro_iteration % 5 ==0:
       save_at_termination(solver=g_psro_solver, file_for_meta_game=checkpoint_dir+'/meta_game.pkl')
@@ -532,10 +539,10 @@ def main(argv):
   if FLAGS.sbatch_run:
     sys.stdout = open(checkpoint_dir+'/stdout.txt','w+')
 
-  env_kawrgs = {"game_name":FLAGS.game_name, "param": game_param_raw}
+  env_kwargs = {"game_name":FLAGS.game_name, "param": game_param_raw}
   strategy_path = os.path.join(checkpoint_dir, 'strategies')
-  if not isExist(strategy_path):
-    mkdir(strategy_path)
+  if not os.path.exists(strategy_path):
+    os.makedirs(strategy_path)
   save_pkl(env_kwargs, strategy_path+'/env.pkl')
 
   # Initialize oracle and agents

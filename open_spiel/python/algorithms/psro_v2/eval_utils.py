@@ -240,7 +240,7 @@ def calculate_combined_game(strat_and_meta_game_li, combined_game_save_path, sim
     for runs in range(num_runs):
         meta_game_start_index = strategy_num[:runs].sum(axis=0)
         meta_game_end_index = strategy_num[:runs+1].sum(axis=0)
-        index = [slice(meta_game_start_index[j],meta_game_end_index[j]:1) \
+        index = [slice(meta_game_start_index[j],meta_game_end_index[j],1) \
             for j in range(num_player)]
         for p in range(num_player):
             combined_game[index] = meta_games[i]
@@ -439,8 +439,9 @@ def load_strategy(strategy_type, strategy_kwargs, env, player_id, strategy_weigh
         agent_class = rl_policy.ARSPolicy_parallel
     else:
         raise NotImplementedError
-  agent = agent_class(env, player_id, **strategy_kwargs)
-  agent.set_weight(strategy_weight)
-  agent.freeze()
 
-  return agent
+    agent = agent_class(env, player_id, **strategy_kwargs)
+    agent.set_weight(strategy_weight)
+    agent.freeze()
+
+    return agent

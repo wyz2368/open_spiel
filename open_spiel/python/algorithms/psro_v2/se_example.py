@@ -54,6 +54,7 @@ from open_spiel.python.algorithms.psro_v2 import rl_policy
 from open_spiel.python.algorithms.psro_v2 import strategy_selectors
 from open_spiel.python.algorithms.psro_v2.quiesce.quiesce import PSROQuiesceSolver
 from open_spiel.python.algorithms.psro_v2 import meta_strategies
+from open_spiel.python.algorithms.psro_v2.eval_utils import save_pkl
 from open_spiel.python.algorithms.psro_v2.quiesce import quiesce_sparse
 from open_spiel.python.algorithms.psro_v2.eval_utils import smoothing_kl, save_strategies
 
@@ -62,6 +63,7 @@ FLAGS = flags.FLAGS
 # Game-related
 flags.DEFINE_string("game_name", "kuhn_poker", "Game name.")
 flags.DEFINE_integer("n_players", 2, "The number of players.")
+flags.DEFINE_list("game_param",None,"game parameters") #game_param=v=1,"vmodule=a=0,b=2"
 
 # PSRO related
 flags.DEFINE_string("meta_strategy_method", "general_nash",
@@ -188,6 +190,8 @@ def init_pg_responder(sess, env):
   ]
   for agent in agents:
     agent.freeze()
+  
+  agent_kwargs.pop("session")
   agent_kwargs["policy_class"] = "PG"
   return oracle, agents, agent_kwargs
 
@@ -237,6 +241,8 @@ def init_dqn_responder(sess, env):
   ]
   for agent in agents:
     agent.freeze()
+
+  agent_kwargs.pop("session")
   agent_kwargs["policy_class"] = "DQN"
   return oracle, agents, agent_kwargs
 
@@ -276,6 +282,8 @@ def init_ars_responder(sess, env):
   ]
   for agent in agents:
     agent.freeze()
+
+  agent_kwargs.pop("session")
   agent_kwargs["policy_class"] = "ARS"
   return oracle, agents, agent_kwargs
 
@@ -501,7 +509,7 @@ def main(argv):
   random.seed(seed)
   tf.set_random_seed(seed)
 
-  checkpoint_dir = FLAGS.game_name
+  checkpoint_dir = 'se1_'+FLAGS.game_name
   if FLAGS.game_name in ['laser_tag']: # games where parameter does not have num_players
     game_param = {'zero_sum': pyspiel.GameParameter(False)}
     game_param_raw = {'zero_sum': False}
@@ -565,24 +573,24 @@ def main(argv):
   if FLAGS.sbatch_run:
     sys.stdout = open(checkpoint_dir+'/stdout.txt','w+')
 
-  env_kawrgs = {"game_name":FLAGS.game_name, "param": game_param_raw}
+  env_kwargs = {"game_name":FLAGS.game_name, "param": game_param_raw}
   strategy_path = os.path.join(checkpoint_dir, 'strategies')
-  if not isExist(strategy_path):
-    mkdir(strategy_path)
+  if not os.path.exists(strategy_path):
+    os.makedirs(strategy_path)
   save_pkl(env_kwargs, strategy_path+'/env.pkl')
 
   # Initialize oracle and agents
   with tf.Session() as sess:
     if FLAGS.oracle_type == "DQN":
-      oracle, agents, agent_kwargs = init_dqn_responder(sess, env)
+      slow_oracle, agents, agent_kwargs = init_dqn_responder(sess, env)
     elif FLAGS.oracle_type == "PG":
-      oracle, agents, agent_kwargs = init_pg_responder(sess, env)
+      slow_oracle, agents, agent_kwargs = init_pg_responder(sess, env)
     elif FLAGS.oracle_type == "BR":
-      oracle, agents, agent_kwargs = init_br_responder(env)
+      slow_oracle, agents, agent_kwargs = init_br_responder(env)
     elif FLAGS.oracle_type == "ARS":
-      oracle, agents, agent_kwargs = init_ars_responder(sess, env)
+      slow_oracle, agents, agent_kwargs = init_ars_responder(sess, env)
     elif FLAGS.oracle_type == "ARS_parallel":
-      oracle, agents, agent_kwargs = init_ars_parallel_responder(sess, env)
+      slow_oracle, agents, agent_kwargs = init_ars_parallel_responder(sess, env)
     # sess.run(tf.global_variables_initializer())
     save_pkl(agent_kwargs, strategy_path+'/kwargs.pkl')
 

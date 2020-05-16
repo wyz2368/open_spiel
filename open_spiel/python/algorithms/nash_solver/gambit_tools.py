@@ -188,7 +188,7 @@ def decode_gambit_file(meta_games, mode="all", max_num_nash=10, checkpoint_dir=N
         logging.info("mode is beyond all/pure/one.")
 
 
-def do_gambit_analysis(meta_games, mode, timeout = 600, method="gnm", method_pure_ne="enumpure", checkpoint_dir=None):
+def do_gambit_analysis(meta_games, mode, timeout = 600, method="lcp", method_pure_ne="enumpure", checkpoint_dir=None):
     """
     Combine encoder and decoder.
     :param meta_games: meta-games in PSRO.
@@ -204,9 +204,12 @@ def do_gambit_analysis(meta_games, mode, timeout = 600, method="gnm", method_pur
         gambit_DIR = checkpoint_dir + '/nfg'
     if not isExist(gambit_DIR) and not checkpoint_dir is None:
         mkdir(gambit_DIR)
-
-    if np.shape(meta_games[0]) == (1,1):
-        return [np.array([1.]), np.array([1.])]
+    
+    # When using gnm and player utility the same, oops for gambit occurs.
+    # The following line of codes is designed to help. But fails to catch it with gnm
+    # switch to lcp and things shall work
+    #if np.shape(meta_games[0]) == (1,1):
+    #    return [np.array([1.]), np.array([1.])]
 
     encode_gambit_file(meta_games, checkpoint_dir)
     while True:
