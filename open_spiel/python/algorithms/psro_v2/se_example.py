@@ -463,7 +463,7 @@ def gpsro_looper(env, oracle, oracle_list, agents, writer, quiesce=False, checkp
     ######### record meta_game into pkl
     if gpsro_iteration % 5 == 0:
       save_at_termination(solver=g_psro_solver, file_for_meta_game=checkpoint_dir+'/meta_game.pkl')
-      save_strategies(solver=g_psro_solver, checkpoint_dir=checkpoint_dir)
+      # save_strategies(solver=g_psro_solver, checkpoint_dir=checkpoint_dir)
    
     ######### analyze if this iteration found beneficial deviation
     beneficial_deviation = print_beneficial_deviation_analysis(last_meta_game, meta_game, last_meta_prob, FLAGS.verbose)
