@@ -38,7 +38,7 @@ flags.DEFINE_bool("evaluate_iters",False, "evaluate regret curve for all runs ag
 
 flags.DEFINE_integer("seed", None, "seed")
 flags.DEFINE_string("root_result_folder","","root result folder that contains the experiments runs to be calculated into combined game")
-flags.DEFINE_string("combine_game_path","","provide combined game pkl if there already is an existing comnbined game, in this case, only need to calculate exploitabilities of each run")
+flags.DEFINE_string("combined_game_path","","provide combined game pkl if there already is an existing combined game, in this case, only need to calculate exploitabilities of each run")
 flags.DEFINE_integer("sims_per_entry", 1000,
                      ("Number of simulations to run to estimate each element"
                       "of the game outcome matrix."))
@@ -142,16 +142,17 @@ def calculate_combined_game(checkpoint_dirs,
         index = [slice(meta_game_start_index[j],meta_game_end_index[j],1) \
             for j in range(num_player)]
         for p in range(num_player):
-            combined_game[runs][tuple(index)] = meta_games[runs][p]
-    
+            combined_game[p][tuple(index)] = meta_games[runs][p]
+
     # reshape strategies in terms of combined game
     strategies_combined = [list(itertools.chain.from_iterable(ele[p] for ele in strategies)) \
         for p in range(num_player)]
     # sample the missing entries
     it = np.nditer(combined_game[0],flags=['multi_index'])
+
     while not it.finished:
         index = it.multi_index
-        if not np.isnan(combined_game[0][index]):
+        if np.isnan(combined_game[0][index]):
             agents = [strategies_combined[p][index[p]] for p in range(num_player)]
             rewards = sample_episodes(env, agents, sims_per_entry)
             for p in range(num_player):
@@ -166,7 +167,7 @@ def calculate_combined_game(checkpoint_dirs,
 
 
 def calculate_regret_from_combined_game(ne_dir,
-                                        combined_game
+                                        combined_game,
                                         strat_start,
                                         strat_end,
                                         checkpoint_dir):
@@ -190,14 +191,14 @@ def calculate_regret_from_combined_game(ne_dir,
     max_gpsro_iter = strat_end - strat_start - 1
     for fi in os.listdir(ne_dir):
         gpsro_iter = int(fi.split('.pkl')[0])
-        if gpsro_iter > gpsro_iter:
+        if gpsro_iter > max_gpsro_iter:
             continue        
-        subgame_index = gpsro_iter + 1 + strat_start
+        subgame_index = gpsro_iter + strat_start
         eq = load_pkl(os.path.join(ne_dir, fi))
         # calculate regret
         regrets = regret(combined_game, subgame_index, subgame_ne=eq, start_index=strat_start)
         exploitability[0].append(sum(regrets))
-        exploitability[1].append(subgame_index)
+        exploitability[1].append(gpsro_iter)
     
     # exploitability[1] carries gpsro_iteration
     # sort exploitibility according to iteration
@@ -220,12 +221,12 @@ def calculate_iterations_regret_over_meta_game(checkpoint_dirs, combined_game):
     regret_curves = []
     current_index = 0
     for di in checkpoint_dirs:
-        snum = check_strategies_num_in_combined_game(di, True)
+        snum = check_strategies_num_in_combined_game(di, True)[0]
         ne_dir = os.path.join(di,"nash_prob")
         regret_curve = calculate_regret_from_combined_game(ne_dir,
                                                            combined_game,
                                                            current_index,
-                                                           current_index + snum,
+                                                           current_index + snum-1,
                                                            di)
         current_index += snum
         regret_curves.append(regret_curve)
@@ -243,15 +244,15 @@ def check_strategies_num_in_combined_game(checkpoint_dir,
         strats_ne    : list of list, index of ne support strategies for each player
     """
     meta_game = load_pkl(os.path.join(checkpoint_dir, "meta_game.pkl"))
-    gpsro_it = meta_game[0].shape[0][0]-1 # -1 because of the initial policy
-    strats_num = np.ones(len(meta_game))*(gpsro_it+1)
+    gpsro_it = meta_game[0].shape[0]-1 # -1 because of the initial policy
+    strats_num = np.ones(len(meta_game),dtype=int)*(gpsro_it+1)
     if only_return_strategy_length:
         return strats_num
 
     ne_folder = os.path.join(checkpoint_dir, "nash_prob")
     ne = load_pkl(os.path.join(ne_folder,str(gpsro_it)+".pkl"))
     strats_ne = [[i for i in range(len(ele)) if ele[i] > ZERO_THRESHOLD] for ele in ne]
-    strats_num_ne = np.array([len(ele) for ele in strats])
+    strats_num_ne = np.array([len(ele) for ele in strats_ne],dtype=int)
 
     return strats_num, strats_num_ne, strats_ne, ne
     
@@ -268,7 +269,7 @@ def calculate_final_ne_performance_over_meta_game(checkpoint_dirs,
         combined_game_only_contains_ne: combined game only contains nash equilibrium strategies of experiment runs or not
     """
     num_player = len(combined_game)
-    current_index = np.zeros(num_player)
+    current_index = np.zeros(num_player,dtype=int)
     exploitabilities = []
     for di in checkpoint_dirs:
         snum, snum_ne, stra_ne, ne = check_strategies_num_in_combined_game(di)
@@ -277,6 +278,7 @@ def calculate_final_ne_performance_over_meta_game(checkpoint_dirs,
             subgame_index = current_index + snum_ne
         else:
             subgame_index = current_index + snum
+
         exploitabilities.append(regret(combined_game,
                                        subgame_index,
                                        subgame_ne=ne,
@@ -295,9 +297,9 @@ def main(argv):
     checkpoint_dirs = [os.path.join(FLAGS.root_result_folder, x) \
         for x in os.listdir(FLAGS.root_result_folder) \
         if os.path.isdir(os.path.join(FLAGS.root_result_folder, x))]
-    
-        seed = FLAGS.seed if FLAGS.seed else np.random.randint(low=0, high=1e5)
-        set_seed(seed)
+
+    seed = FLAGS.seed if FLAGS.seed else np.random.randint(low=0, high=1e5)
+    set_seed(seed)
 
 
     # combined game supplied, no need to calculate again
@@ -306,7 +308,7 @@ def main(argv):
         assert len(dir_content)>1, "directory provided cannot make combined game"
              
         # calculate combined game
-        combined_game = calculate_combined_game(checkpoint_dirs,
+        combined_game,strat_num = calculate_combined_game(checkpoint_dirs,
                                                 FLAGS.root_result_folder,
                                                 only_combine_nash=FLAGS.only_combine_nash,
                                                 sims_per_entry=FLAGS.sims_per_entry,
@@ -315,6 +317,7 @@ def main(argv):
     else:
         combined_game = load_pkl(FLAGS.combined_game_path)
         combined_game_only_contains_ne = '_neonly_True' in FLAGS.combined_game_path
+        print("loaded combined game from", FLAGS.combined_game_path)
     
     if FLAGS.evaluate_nash:
         
@@ -322,8 +325,9 @@ def main(argv):
             combined_game,\
             combined_game_only_contains_ne=combined_game_only_contains_ne)
         
-        save_pkl(exp,os.path.join(FLAGS.root_result_folder,\
-            "nash_exp_neonly_"+combined_game_only_contains_ne+".pkl"))
+        path = os.path.join(FLAGS.root_result_folder, "nash_exp_neonly_"+str(combined_game_only_contains_ne)+".pkl")
+        save_pkl(exp, path)
+        print("final nash exp performance saved to",path)
     
     if FLAGS.evaluate_iters:
         assert not combined_game_only_contains_ne,\

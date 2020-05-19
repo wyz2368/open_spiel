@@ -11,58 +11,13 @@ import pickle
 import os
 import tensorflow.compat.v1 as tf
 
-#def regret(meta_games, subgame_index, subgame_ne=None, start_index=0):
-#    """
-#    Calculate the regret based on a complete payoff matrix for PSRO
-#    Assume all players have the same number of policies
-#    :param meta_games: meta_games in PSRO
-#    :param subgame_index: the subgame to evaluate. Redundant when subgame_ne is supplied. The index of last policy in subgame
-#    :param start_index: starting index for the subgame
-#    :param: subgame_ne: subgame nash equilibrium vector.
-#    :return: a list of regret, one for each player.
-#    """
-#    num_policy = np.shape(meta_games[0])[0]
-#    num_players = len(meta_games)
-#    if num_policy == subgame_index-start_index:
-#        print("The subgame is same as the full game. Return zero regret.")
-#        return np.zeros(num_players)
-#
-#    num_new_pol_back = num_policy - subgame_index
-#
-#    index = [list(np.arange(start_index,subgame_index)) for _ in range(num_players)]
-#    submeta_games = [ele[np.ix_(*index)] for ele in meta_games]
-#    nash = nash_solver(submeta_games, solver="gambit") if not subgame_ne else subgame_ne
-#    prob_matrix = meta_strategies.general_get_joint_strategy_from_marginals(nash)
-#    this_meta_prob = [np.concatenate([0 for _ in range(start_index)], nash[i], [0 for _ in range(num_new_pol_back)]) for i in range(num_players)]
-#
-#    nash_payoffs = []
-#    deviation_payoffs = []
-#
-#    for i in range(num_players): 
-#        ne_payoff = np.sum(submeta_games[i]*prob_matrix)
-#        # iterate through player's new policy
-#        dev_payoff = []
-#        for j in range(start_index + num_new_pol_back):
-#            dev_prob = this_meta_prob.copy()
-#            dev_prob[i] = np.zeros(num_policy)
-#            if j < start_index:
-#                dev_prob[i][j] = 1
-#            else:
-#                dev_prob[i][subgame_index+j] = 1
-#            new_prob_matrix = meta_strategies.general_get_joint_strategy_from_marginals(dev_prob)
-#            dev_payoff.append(np.sum(meta_games[i]*new_prob_matrix))
-#        deviation_payoffs.append(dev_payoff-ne_payoff)
-#        nash_payoffs.append(ne_payoff)
-#    
-#    regret = np.maximum(np.max(deviation_payoffs,axis=1),0)
-#    return regret
-
 def regret(meta_games, subgame_index, subgame_ne=None, start_index=0):
     """
     Calculate the regret based on a complete payoff matrix for PSRO
     In subgame, each player could have different number of strategies
     :param meta_games: meta_games in PSRO
     :param subgame_index: last policy index in subgame.
+                          subgame_index-start_index+1=number of policy
                           int/list. If int, players have same num of strategies
     :param start_index: starting index for the subgame.
                           int/list. If int, assume subgame in all num_players dimension
@@ -73,21 +28,20 @@ def regret(meta_games, subgame_index, subgame_ne=None, start_index=0):
     num_policy = np.array(np.shape(meta_games[0]))
     num_players = len(meta_games)
     subgame_index = np.ones(num_players,dtype=int)*subgame_index \
-        if isinstance(subgame_index,int) else subgame_index
-    start_index = np.ones(num_player,dtype=int)*start_index \
-        if isinstance(start_index,int) else start_index
-    if not sum(num_policy != subgame_index-start_index):
+        if np.isscalar(subgame_index) else subgame_index
+    start_index = np.ones(num_players,dtype=int)*start_index \
+        if np.isscalar(start_index) else start_index
+    if not sum(num_policy != subgame_index-start_index+1):
         print("The subgame is same as the full game. Return zero regret.")
         return np.zeros(num_players)
 
-    num_new_pol_back = num_policy - subgame_index
-
-    index = [list(np.arange(start_index[i],subgame_index[i])) for i in range(num_players)]
+    num_new_pol_back = num_policy - subgame_index - 1
+    index = [list(np.arange(start_index[i],subgame_index[i]+1)) for i in range(num_players)]
     submeta_games = [ele[np.ix_(*index)] for ele in meta_games]
+
     nash = nash_solver(submeta_games, solver="gambit") if not subgame_ne else subgame_ne
     prob_matrix = meta_strategies.general_get_joint_strategy_from_marginals(nash)
-    this_meta_prob = [np.concatenate([0 for _ in range(start_index[i])], nash[i], [0 for _ in range(num_new_pol_back[i])]) for i in range(num_players)]
-
+    this_meta_prob = [np.concatenate(([0 for _ in range(start_index[i])], nash[i], [0 for _ in range(num_new_pol_back[i])])) for i in range(num_players)]
     nash_payoffs = []
     deviation_payoffs = []
 
@@ -101,7 +55,7 @@ def regret(meta_games, subgame_index, subgame_ne=None, start_index=0):
             if j < start_index[i]:
                 dev_prob[i][j] = 1
             else:
-                dev_prob[i][subgame_index[i]+j] = 1
+                dev_prob[i][subgame_index[i]+j-start_index[i]+1] = 1
             new_prob_matrix = meta_strategies.general_get_joint_strategy_from_marginals(dev_prob)
             dev_payoff.append(np.sum(meta_games[i]*new_prob_matrix))
         deviation_payoffs.append(dev_payoff-ne_payoff)

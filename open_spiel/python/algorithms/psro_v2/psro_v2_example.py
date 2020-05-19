@@ -178,10 +178,10 @@ def init_pg_responder(sess, env):
   ]
   for agent in agents:
     agent.freeze()
-
-  agent_kwargs.pop("session")
-  agent_kwargs["policy_class"] = "PG"
-  return oracle, agents, agent_kwargs
+ 
+  agent_kwargs_save = {key:val for key,val in agent_kwargs.items() if key!="session" }
+  agent_kwargs_save["policy_class"] = "PG"
+  return oracle, agents, agent_kwargs_save
 
 
 def init_br_responder(env):
@@ -230,9 +230,10 @@ def init_dqn_responder(sess, env):
   for agent in agents:
     agent.freeze()
 
-  agent_kwargs.pop("session")
-  agent_kwargs["policy_class"] = "DQN"
-  return oracle, agents, agent_kwargs
+  agent_kwargs_save = {key:val for key,val in agent_kwargs.items() if key!="session" }
+  agent_kwargs_save["policy_class"] = "DQN"
+  return oracle, agents, agent_kwargs_save
+
 
 def init_ars_responder(sess, env):
   """
@@ -271,9 +272,10 @@ def init_ars_responder(sess, env):
   for agent in agents:
     agent.freeze()
 
-  agent_kwargs.pop("session")
-  agent_kwargs["policy_class"] = "ARS"
-  return oracle, agents, agent_kwargs
+  agent_kwargs_save = {key:val for key,val in agent_kwargs.items() if key!="session" }
+  agent_kwargs_save["policy_class"] = "ARS"
+  return oracle, agents, agent_kwargs_save
+
 
 def print_beneficial_deviation_analysis(last_meta_game, meta_game, last_meta_prob, verbose=False):
   """
