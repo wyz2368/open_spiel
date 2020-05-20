@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --job-name=egta_leduc_poker_blocks
+#SBATCH --job-name=br_abs_blocks
 #SBATCH --mail-user=wangyzhsrg@aol.com
 #SBATCH --mail-type=BEGIN,END,FAIL
 #SBATCH --nodes=1
