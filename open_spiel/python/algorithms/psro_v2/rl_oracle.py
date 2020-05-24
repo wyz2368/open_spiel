@@ -157,7 +157,7 @@ class RLOracle(optimization_oracle.AbstractOracle):
         cumulative_rewards += np.array(time_step.rewards)
       else:
         player_id = time_step.observations["current_player"]
-
+        # chance node will never appear here because env automatically push forward time steps until next decision node
         # is_evaluation is a boolean that, when False, lets policies train. The
         # setting of PSRO requires that all policies be static aside from those
         # being trained by the oracle. is_evaluation could be used to prevent

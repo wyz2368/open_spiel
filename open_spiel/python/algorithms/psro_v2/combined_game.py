@@ -45,6 +45,17 @@ flags.DEFINE_integer("sims_per_entry", 1000,
 
 ZERO_THRESHOLD = 0.001
 
+def load_env(strat_root_dir, env_file_name, seed=None):
+    env_kwargs = load_pkl(os.path.join(strat_root_dir, env_file_name))
+    env_kwargs_str = env_kwargs["game_name"]+"("
+    for k,v in env_kwargs["param"].items():
+      env_kwargs_str += k+"="+str(v)+","
+    env_kwargs_str = env_kwargs_str[:-1]+")"
+    game = pyspiel.load_game(env_kwargs_str)
+    env = rl_environment.Environment(game, seed=seed)
+    env.reset()
+    return env
+
 def calculate_combined_game(checkpoint_dirs,
                             combined_game_save_path,
                             only_combine_nash=True,
@@ -90,14 +101,8 @@ def calculate_combined_game(checkpoint_dirs,
 
         # initialize game & rl environment once
         if i == 0:
-            env_kwargs = load_pkl(os.path.join(strat_root_dir, env_file_name))
-            for k,v in env_kwargs["param"] .items():
-                env_kwargs["param"][k] = pyspiel.GameParameter(v)
-            game = pyspiel.load_game_as_turn_based(env_kwargs["game_name"], env_kwargs["param"])
-            env = rl_environment.Environment(game, seed=seed)
-            env.reset()
+            env = load_env(strat_root_dir, env_file_name, seed)
 
-        
         # load strategy kwargs: each run might have different strategy type and kwargs
         strategy_kwargs = load_pkl(os.path.join(strat_root_dir, strategy_kwarg_file_name))
         strategy_type = strategy_kwargs.pop("policy_class")
@@ -120,7 +125,7 @@ def calculate_combined_game(checkpoint_dirs,
                     for ele in nash_ne]
                 meta_games[i] = [ele[np.ix_(*none_zero_index)] for ele in meta_games[i]]
 
-            for weight_file in range(1,num_strategy+1): # traverse the weight file
+            for weight_file in range(1,num_strategy+1): # traverse the weight file, first strategy weight saved in 1.pkl instead of 0.pkl
                 if only_combine_nash and nash_ne[p][weight_file-1] < ZERO_THRESHOLD:
                     continue # only combine nash strategies
                 weight = load_pkl(os.path.join(strat_player_dir,str(weight_file)+'.pkl'))

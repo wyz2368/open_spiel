@@ -87,7 +87,7 @@ def sample_episode(state, policies):
     player = state.current_player()
     state_policy = policies[player](state)
     outcomes, probs = zip(*state_policy.items())
-
+ 
   state.apply_action(utils.random_choice(outcomes, probs))
   return sample_episode(state, policies)
 
@@ -294,7 +294,7 @@ class AbstractMetaTrainer(object):
                                " Seed passed as argument : {}".format(seed))
 
   def sample_episodes(self, policies, num_episodes):
-    """Samples episodes and averages their returns.
+    """Samples episodes and averages their returns, for evaluation purpose
 
     Args:
       policies: A list of policies representing the policies executed by each
@@ -452,11 +452,17 @@ class AbstractMetaTrainer(object):
     :return:
     """
     if self._switch_heuristic_regardless_of_oracle:
-      ## switch heuristics 1 alternatives
-      new_meta_str_method = self._heuristic_list.pop(0)
-      self.update_meta_strategy_method(new_meta_str_method)
-      self._heuristic_list.append(new_meta_str_method)
-      ## uniform 65 and dqn 40. Assume that heuristic_list is [uniform, general_nash]
+      ####### switch heuristics 1 alternatives in first 20 iterations
+      if self._iterations >=40 and self._iterations<=60:
+        new_meta_str_method = self._heuristic_list.pop(0)
+        self.update_meta_strategy_method(new_meta_str_method)
+        self._heuristic_list.append(new_meta_str_method)
+      elif self._iterations == 1 or self._iterations == 61:
+        self.update_meta_strategy_method("general_nash_strategy")
+      else:
+        pass
+
+      ####### uniform 65 and dqn 40. Assume that heuristic_list is [uniform, general_nash]
       #if self._iterations == 65:
       #  self.update_meta_strategy_method(self._heuristic_list[1])
     else:

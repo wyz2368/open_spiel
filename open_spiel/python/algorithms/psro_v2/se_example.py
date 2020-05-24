@@ -497,7 +497,6 @@ def gpsro_looper(env, oracle, oracle_list, agents, writer, quiesce=False, checkp
         print('fast oracle ARS running')
 
 
-    
     # ######### record training curve to tensorboard
     # if FLAGS.log_train and (gpsro_iteration<=10 or gpsro_iteration%5==0):
     #   for p in range(len(train_reward_curve)):

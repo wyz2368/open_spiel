@@ -107,6 +107,7 @@ flags.DEFINE_integer("batch_size", 32, "Batch size")
 flags.DEFINE_float("sigma", 0.0, "Policy copy noise (Gaussian Dropout term).")
 flags.DEFINE_string("optimizer_str", "adam", "'adam' or 'sgd'")
 flags.DEFINE_integer("n_hidden_layers", 4, "# of hidden layers")
+flags.DEFINE_float("discount_factor",0.999,"discount factor")
 
 # Policy Gradient Oracle related
 flags.DEFINE_string("loss_str", "qpg", "Name of loss used for BR training.")
@@ -160,7 +161,8 @@ def init_pg_responder(sess, env):
       "critic_learning_rate": FLAGS.critic_learning_rate,
       "pi_learning_rate": FLAGS.pi_learning_rate,
       "num_critic_before_pi": FLAGS.num_q_before_pi,
-      "optimizer_str": FLAGS.optimizer_str
+      "optimizer_str": FLAGS.optimizer_str,
+      "additional_discount_factor": FLAGS.discount_factor
   }
   oracle = rl_oracle.RLOracle(
       env,
@@ -210,7 +212,8 @@ def init_dqn_responder(sess, env):
      "learning_rate": FLAGS.dqn_learning_rate,
       "update_target_network_every": FLAGS.update_target_network_every,
       "learn_every": FLAGS.learn_every,
-      "optimizer_str": FLAGS.optimizer_str
+      "optimizer_str": FLAGS.optimizer_str,
+      "discount_factor": FLAGS.discount_factor
   }
   oracle = rl_oracle.RLOracle(
       env,
@@ -356,7 +359,7 @@ def init_ars_parallel_responder(sess, env):
 
 
 
-def print_policy_analysis(policies, game, verbose=False, pdb=False):
+def print_policy_analysis(policies, game, verbose=False):
   """Function printing policy diversity within game's known policies.
 
   Warning : only works with deterministic policies.
@@ -481,10 +484,10 @@ def gpsro_looper(env, oracle, agents, writer, quiesce=False, checkpoint_dir=None
       writer.add_scalar('p'+str(p)+'_beneficial_dev',int(beneficial_deviation[p]),gpsro_iteration)
     writer.add_scalar('beneficial_devs',sum(beneficial_deviation),gpsro_iteration)
 
-    # if FLAGS.log_train and (gpsro_iteration<=10 or gpsro_iteration%5==0):
-    #   for p in range(len(train_reward_curve)):
-    #     for p_i in range(len(train_reward_curve[p])):
-    #       writer.add_scalar('player'+str(p)+'_'+str(gpsro_iteration),train_reward_curve[p][p_i],p_i)
+    if FLAGS.log_train and (gpsro_iteration<=10 or gpsro_iteration%5==0):
+      for p in range(len(train_reward_curve)):
+        for p_i in range(len(train_reward_curve[p])):
+          writer.add_scalar('player'+str(p)+'_'+str(gpsro_iteration),train_reward_curve[p][p_i],p_i)
     
 def main(argv):
   if len(argv) > 1:
@@ -498,8 +501,10 @@ def main(argv):
   
   checkpoint_dir = FLAGS.game_name
   if FLAGS.game_name in ['laser_tag']: # games where parameter does not have num_players
-    game_param = {'zero_sum': pyspiel.GameParameter(False)}
+    #game_param = {'zero_sum': pyspiel.GameParameter(False)}
     game_param_raw = {'zero_sum': False}
+  elif FLAGS.game_name in ['markov_soccer']:
+    game_param_raw = {'horizon':20}
   else:
     game_param_raw = {"players": FLAGS.n_players}
   if FLAGS.game_param is not None:
@@ -509,10 +514,16 @@ def main(argv):
       checkpoint_dir += '_'+ele_li[0]+'_'+ele_li[1]
     checkpoint_dir += '_'
 
-  game_param = {}
-  for key, val in game_param_raw.items():
-    game_param[key] = pyspiel.GameParameter(val)
-  game = pyspiel.load_game_as_turn_based(FLAGS.game_name, game_param)
+  #game_param = {}
+  #for key, val in game_param_raw.items():
+  #  game_param[key] = pyspiel.GameParameter(val)
+  #game = pyspiel.load_game_as_turn_based(FLAGS.game_name, game_param)
+
+  game_param_str = FLAGS.game_name+"("
+  for key,val in game_param_raw.items():
+    game_param_str += key+"="+str(val)+","
+  game_param_str = game_param_str[:-1]+")"
+  game = pyspiel.load_game(game_param_str)
 
   env = rl_environment.Environment(game,seed=seed)
   env.reset()

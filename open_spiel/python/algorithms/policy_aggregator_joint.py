@@ -138,7 +138,7 @@ class JointPolicyAggregator(object):
     """
     aggr_policies = []
     self._joint_policies = joint_policies
-
+    
     # To do(pmuller): We should be able to do a single recursion.
     for pid in pids:
       aggr_policies.append(self._sub_aggregate(pid, weights))

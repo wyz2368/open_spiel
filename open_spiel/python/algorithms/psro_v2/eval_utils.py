@@ -111,19 +111,21 @@ def sample_episodes(env, agents, number_episodes=1):
       time_step = env.reset()
       cumulative_rewards = 0.0
       while not time_step.last():
-        if time_step.is_simultaneous_move():
+        state = env.get_state
+        if state.is_simultaneous_node():
           action_list = []
           for agent in agents:
             output = agent.step(time_step, is_evaluation=True)
             action_list.append(output.action)
-          time_step = env.step(action_list)
-          cumulative_rewards += np.array(time_step.rewards)
+        elif state.is_chance_node():
+          outcomes, probs = zip(*env.get_state.chance_outcomes())
+          action_list = utils.random_choice(outcomes, probs)
         else:
           player_id = time_step.observations["current_player"]
           agent_output = agents[player_id].step(time_step, is_evaluation=False)
           action_list = [agent_output.action]
-          time_step = env.step(action_list)
-          cumulative_rewards += np.array(time_step.rewards)
+        time_step = env.step(action_list)
+        cumulative_rewards += np.array(time_step.rewards)
 
     return cumulative_rewards/number_episodes
 

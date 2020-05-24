@@ -19,7 +19,7 @@ Treating RL Oracles as policies allows us to streamline their use with tabular
 policies and other policies in OpenSpiel, and freely mix populations using
 different types of oracles.
 """
-
+import numpy as np
 from open_spiel.python import policy
 from open_spiel.python import rl_environment
 from open_spiel.python.algorithms import dqn
@@ -69,17 +69,19 @@ def rl_policy_factory(rl_class):
       return time_step
 
     def action_probabilities(self, state, player_id=None, is_evaluation=True):
-      cur_player = state.current_player()
+      cur_player = state.current_player() if player_id is None else player_id
       legal_actions = state.legal_actions(cur_player)
-
+       
       step_type = rl_environment.StepType.LAST if state.is_terminal(
       ) else rl_environment.StepType.MID
 
       self._obs["current_player"] = cur_player
-      try:
+      if self.game.get_type().provides_information_state_tensor:
         self._obs["info_state"][cur_player] = (
             state.information_state_tensor(cur_player))
-      except: # when information_state_tensor unimplemented but exist
+      else: 
+        # when information_state_tensor unimplemented but exist
+        # For laser_tag or markov_soccer
         self._obs["info_state"][cur_player] = (
             state.observation_tensor(cur_player))
 
