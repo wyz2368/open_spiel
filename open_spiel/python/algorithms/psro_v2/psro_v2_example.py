@@ -431,8 +431,13 @@ def gpsro_looper(env, oracle, agents, writer, quiesce=False, checkpoint_dir=None
       print("Nash Probabilities : {}".format(nash_meta_probabilities))
 
     aggregator = policy_aggregator.PolicyAggregator(env.game)
+
+    ## Using NE-based NashConv
+    # aggr_policies = aggregator.aggregate(
+    #     range(FLAGS.n_players), policies, nash_meta_probabilities)
+    ## Using heuristic-based NashConv
     aggr_policies = aggregator.aggregate(
-        range(FLAGS.n_players), policies, nash_meta_probabilities)
+        range(FLAGS.n_players), policies, meta_probabilities)
 
     exploitabilities, expl_per_player = exploitability.nash_conv(
         env.game, aggr_policies, return_only_nash_conv=False)
@@ -456,8 +461,8 @@ def gpsro_looper(env, oracle, agents, writer, quiesce=False, checkpoint_dir=None
     #     for p_i in range(len(train_reward_curve[p])):
     #       writer.add_scalar('player'+str(p)+'_'+str(gpsro_iteration),train_reward_curve[p][p_i],p_i)
     for p in range(len(expl_per_player)):
-      writer.add_scalar('player'+str(p)+'_exp',expl_per_player[p],gpsro_iteration)
-    writer.add_scalar('exp', exploitabilities,gpsro_iteration)
+      writer.add_scalar('player'+str(p)+'_exp', expl_per_player[p], gpsro_iteration)
+    writer.add_scalar('exp', exploitabilities, gpsro_iteration)
     if FLAGS.verbose:
       print("Exploitabilities : {}".format(exploitabilities))
       print("Exploitabilities per player : {}".format(expl_per_player))
