@@ -36,6 +36,8 @@ def alpharank_filter(meta_games,
             meta_games[player] = np.delete(meta_games[player], filtered_idx, axis=dim)
         # filter policies.
         policies[player] = np.delete(policies[player], filtered_idx_list[player])
+        policies[player] = list(policies[player])
+
 
     print("Strategies filtered:")
     num_str_players = []
