@@ -277,7 +277,7 @@ class AbstractMetaTrainer(object):
     self.update_empirical_gamestate(seed=seed)  # Update gamestate matrix.
 
     # use alpharank to filter our transient strategies.
-    marginals = alpharank_strategy(self, return_joint=False)
+    marginals, _ = alpharank_strategy(self, return_joint=True)
     # self._meta_games, self._policies = alpharank_filter(self._meta_games, self._policies, marginals)
     print("marginals:", marginals)
 
