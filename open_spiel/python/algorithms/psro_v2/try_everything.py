@@ -3,27 +3,11 @@ import copy
 import os
 # from  open_spiel.python.algorithms.psro_v2.eval_utils import regret, strategy_regret
 
-def smoothing_kl(p, q, eps=0.001):
-  p = smoothing(p, eps)
-  q = smoothing(q, eps)
-  return np.sum(p * np.log(p / q))
-
-
-def smoothing(p, eps):
-  p = np.array(p, dtype=np.float)
-  zeros_pos_p = np.where(p == 0)[0]
-  num_zeros = len(zeros_pos_p)
-  x = eps * num_zeros / (len(p) - num_zeros)
-  for i in range(len(p)):
-    if i in zeros_pos_p:
-      p[i] = eps
-    else:
-      p[i] -= x
-  return p
-
-def kl_divergence(p, q):
-  return np.sum(np.where(p != 0, p * np.log(p / q), 0))
-
-
-a = np.array([1])
-print(np.append(a, [0,0,0]))
+meta_game = np.array([[1,2,3,4,5],
+                          [2,3,4,5,6],
+                          [3,4,5,6,7],
+                          [4,5,6,7,8],
+                          [5,6,7,8,9]])
+a = np.delete(meta_game, [0, 4], axis=0)
+a = np.delete(a, [0, 4], axis=1)
+print(a)

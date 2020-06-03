@@ -29,9 +29,10 @@ from open_spiel.python.egt import alpharank
 from open_spiel.python.egt import alpharank_visualizer
 from open_spiel.python.egt import utils
 import pyspiel
+import numpy as np
 
 
-def get_kuhn_poker_data(num_players=3):
+def get_kuhn_poker_data(num_players=2):
   """Returns the kuhn poker data for the number of players specified."""
   game = pyspiel.load_game('kuhn_poker',
                            {'players': pyspiel.GameParameter(num_players)})
@@ -49,6 +50,7 @@ def get_kuhn_poker_data(num_players=3):
 
   # Metagame utility matrices for each player
   payoff_tables = []
+  # print("meta_games", meta_games)
   for i in range(num_players):
     payoff_tables.append(meta_games[i])
   return payoff_tables
