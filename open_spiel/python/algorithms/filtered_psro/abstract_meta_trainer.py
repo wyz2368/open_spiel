@@ -278,7 +278,8 @@ class AbstractMetaTrainer(object):
 
     # use alpharank to filter our transient strategies.
     marginals = alpharank_strategy(self, return_joint=False)
-    self._meta_games, self._policies = alpharank_filter(self._meta_games, self._policies, marginals)
+    # self._meta_games, self._policies = alpharank_filter(self._meta_games, self._policies, marginals)
+    print("marginals:", marginals)
 
     self.update_meta_strategies()#seed=seed)  # Compute meta strategy (e.g. Nash)
     self.update_NE_list()

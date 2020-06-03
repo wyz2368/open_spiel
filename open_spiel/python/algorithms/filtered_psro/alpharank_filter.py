@@ -16,6 +16,7 @@ def alpharank_filter(meta_games,
     :param keep_dim: keep all players having the same number of strategies.
     :return:
     """
+    # TODO:add skip functionality.
     num_players = len(meta_games)
     filtered_idx_list = []
     for player in range(num_players):
