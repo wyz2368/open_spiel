@@ -3,7 +3,7 @@ import numpy as np
 def alpharank_filter(meta_games,
                      policies,
                      marginals,
-                     size_threshold=4,
+                     size_threshold=20,
                      keep_dim=True):
     """
     Use alpharank to filter out the transient strategies in the empirical game.
