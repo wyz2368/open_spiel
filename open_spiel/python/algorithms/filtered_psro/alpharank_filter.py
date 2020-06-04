@@ -3,32 +3,34 @@ import numpy as np
 def alpharank_filter(meta_games,
                      policies,
                      marginals,
-                     prob_threshold=0.005,
-                     size_threshold=None,
+                     size_threshold=4,
                      keep_dim=True):
     """
     Use alpharank to filter out the transient strategies in the empirical game.
     :param meta_games: PSRO meta_games
     :param policies: a list of list of strategies, one per player.
     :param marginals: a list of list of marginal alpharank distribution, one per player.
-    :param prob_threshold: threshold for strategies to be filtered out.
     :param size_threshold: maximum size for each meta game. (unused)
     :param keep_dim: keep all players having the same number of strategies.
     :return:
     """
     # TODO:add skip functionality.
+    num_str, _ = np.shape(meta_games[0])
+    if num_str <= size_threshold:
+        return meta_games, policies
     num_players = len(meta_games)
     filtered_idx_list = []
     for player in range(num_players):
-        filtered_idx_list.append(np.where(marginals[player] < prob_threshold)[0])
-        if keep_dim:
-            min_num_str_filtered = 1000
-            for idx in filtered_idx_list:
-                min_num_str_filtered = min(len(idx), min_num_str_filtered)
-            for i, idx in enumerate(filtered_idx_list):
-                if len(idx) > min_num_str_filtered:
-                    masses_strategy_pairs = sorted(zip(marginals[i][idx], idx))[:min_num_str_filtered]
-                    filtered_idx_list[i] = np.array(sorted([pair[1] for pair in masses_strategy_pairs]))
+        lowest_ranked_str = np.argmin(marginals[player])
+        filtered_idx_list.append([lowest_ranked_str])
+        # if keep_dim:
+        #     min_num_str_filtered = 1000
+        #     for idx in filtered_idx_list:
+        #         min_num_str_filtered = min(len(idx), min_num_str_filtered)
+        #     for i, idx in enumerate(filtered_idx_list):
+        #         if len(idx) > min_num_str_filtered:
+        #             masses_strategy_pairs = sorted(zip(marginals[i][idx], idx))[:min_num_str_filtered]
+        #             filtered_idx_list[i] = np.array(sorted([pair[1] for pair in masses_strategy_pairs]))
 
     for player in range(num_players):
         # filter meta_games.
