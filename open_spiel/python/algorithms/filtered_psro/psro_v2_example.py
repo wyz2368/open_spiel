@@ -411,7 +411,10 @@ def gpsro_looper(env, oracle, agents, writer, quiesce=False, checkpoint_dir=None
       prd_gamma=1e-10,
       sample_from_marginals=sample_from_marginals,
       symmetric_game=FLAGS.symmetric_game,
-      checkpoint_dir=checkpoint_dir)
+      checkpoint_dir=checkpoint_dir,
+      filtering_method=FLAGS.filtering_method,
+      strategy_set_size=FLAGS.strategy_set_size
+  )
   
   last_meta_prob = [np.array([1]) for _ in range(FLAGS.n_players)]
   last_meta_game = g_psro_solver.get_meta_game()

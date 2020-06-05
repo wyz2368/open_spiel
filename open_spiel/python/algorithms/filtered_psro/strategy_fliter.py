@@ -1,15 +1,15 @@
 import numpy as np
-from absl import flags
 
 from open_spiel.python.algorithms.psro_v2.utils import alpharank_strategy
 
-FLAGS = flags.FLAGS
-
-def strategy_filter(solver, method=FLAGS.filtering_method):
-    if method == "alpharank":
+def strategy_filter(solver):
+    if solver.method == "alpharank":
         marginals, _ = alpharank_strategy(solver, return_joint=True)
-        return alpharank_filter(solver._meta_games, solver._policies, marginals)
-    elif method == "trace":
+        return alpharank_filter(solver._meta_games,
+                                solver._policies,
+                                marginals,
+                                solver.strategy_set_size)
+    elif solver.method == "trace":
         raise NotImplementedError
     else:
         return solver._meta_games, solver._policies
@@ -18,7 +18,7 @@ def strategy_filter(solver, method=FLAGS.filtering_method):
 def alpharank_filter(meta_games,
                      policies,
                      marginals,
-                     size_threshold=FLAGS.strategy_set_size):
+                     size_threshold):
     """
     Use alpharank to filter out the transient strategies in the empirical game.
     :param meta_games: PSRO meta_games

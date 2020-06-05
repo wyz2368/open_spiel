@@ -119,6 +119,8 @@ class AbstractMetaTrainer(object):
                gamma=0.0,
                abs_value=False,
                kl_reg=False,
+               filtering_method=None,
+               strategy_set_size=None,
                **kwargs):
     """Abstract Initialization for meta trainers.
 
@@ -208,8 +210,10 @@ class AbstractMetaTrainer(object):
     self.update_meta_strategies()
     self.update_NE_list()
 
+    # filtering
+    self.filtering_method = filtering_method
+    self.strategy_set_size=strategy_set_size
 
-    
     # controls switch heuristics with pattern without changing oracle
     self._switch_heuristic_regardless_of_oracle = kwargs.get('switch_heuristic_regardless_of_oracle',False)
     if self._switch_heuristic_regardless_of_oracle:
@@ -275,7 +279,7 @@ class AbstractMetaTrainer(object):
     self._iterations += 1
     train_reward_curve = self.update_agents()  # Generate new, Best Response agents via oracle.
     self.update_empirical_gamestate(seed=seed)  # Update gamestate matrix.
-    self._meta_games, self._policies = strategy_filter(self)
+    self._meta_games, self._policies = strategy_filter(self, )
 
     self.update_meta_strategies()#seed=seed)  # Compute meta strategy (e.g. Nash)
     self.update_NE_list()
