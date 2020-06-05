@@ -26,7 +26,7 @@ from open_spiel.python.algorithms.psro_v2 import utils
 from open_spiel.python.algorithms.psro_v2.eval_utils import SElogs
 from open_spiel.python.algorithms.psro_v2.exploration import pure_exp, Exp3
 from open_spiel.python.algorithms.filtered_psro.alpharank_filter import alpharank_filter
-from open_spiel.python.algorithms.psro_v2.utils import alpharank_strategy
+from open_spiel.python.algorithms.filtered_psro.strategy_fliter import strategy_filter
 
 _DEFAULT_STRATEGY_SELECTION_METHOD = "probabilistic"
 _DEFAULT_META_STRATEGY_METHOD = "prd"
@@ -275,11 +275,7 @@ class AbstractMetaTrainer(object):
     self._iterations += 1
     train_reward_curve = self.update_agents()  # Generate new, Best Response agents via oracle.
     self.update_empirical_gamestate(seed=seed)  # Update gamestate matrix.
-
-    # use alpharank to filter our transient strategies.
-    marginals, _ = alpharank_strategy(self, return_joint=True)
-    self._meta_games, self._policies = alpharank_filter(self._meta_games, self._policies, marginals)
-    # print("marginals:", marginals)
+    self._meta_games, self._policies = strategy_filter(self)
 
     self.update_meta_strategies()#seed=seed)  # Compute meta strategy (e.g. Nash)
     self.update_NE_list()

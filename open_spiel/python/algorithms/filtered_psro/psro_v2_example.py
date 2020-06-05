@@ -129,7 +129,6 @@ flags.DEFINE_float("noise", 0.03, "Coefficient of Gaussian noise.")
 #ARS_parallel
 flags.DEFINE_integer("num_workers", 4, "Number of workers for parallel ars.")
 
-
 # General
 flags.DEFINE_string("root_result_folder",'root_result',"root directory of saved results")
 flags.DEFINE_bool("sbatch_run",False,"whether to redirect standard output to checkpoint directory")
@@ -137,6 +136,10 @@ flags.DEFINE_integer("seed", None, "Seed.")
 flags.DEFINE_bool("local_launch", False, "Launch locally or not.")
 flags.DEFINE_bool("verbose", True, "Enables verbose printing and profiling.")
 flags.DEFINE_bool("log_train", False,"log training reward curve")
+
+# Strategy filtering
+flags.DEFINE_string("filtering_method", 'alpharank', "Algorithm to filter out strategies.")
+flags.DEFINE_integer("strategy_set_size", 30, "The maximum number of strategies for each player.")
 
 
 def init_pg_responder(sess, env):
