@@ -3,13 +3,13 @@ import numpy as np
 from open_spiel.python.algorithms.psro_v2.utils import alpharank_strategy
 
 def strategy_filter(solver):
-    if solver.method == "alpharank":
+    if solver.filtering_method == "alpharank":
         marginals, _ = alpharank_strategy(solver, return_joint=True)
         return alpharank_filter(solver._meta_games,
                                 solver._policies,
                                 marginals,
                                 solver.strategy_set_size)
-    elif solver.method == "trace":
+    elif solver.filtering_method == "trace":
         raise NotImplementedError
     else:
         return solver._meta_games, solver._policies
