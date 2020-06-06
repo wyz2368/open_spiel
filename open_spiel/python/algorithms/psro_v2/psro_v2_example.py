@@ -121,6 +121,7 @@ flags.DEFINE_float("dqn_learning_rate", 1e-2, "DQN learning rate.")
 flags.DEFINE_integer("update_target_network_every", 500, "Update target "
                      "network every [X] steps")
 flags.DEFINE_integer("learn_every", 10, "Learn every [X] steps.")
+flags.DEFINE_integer("epsilon_decay_duration",3000000,"dqn decay")
 
 #ARS
 flags.DEFINE_float("ars_learning_rate", 0.02, "ARS learning rate.")
@@ -213,7 +214,8 @@ def init_dqn_responder(sess, env):
       "update_target_network_every": FLAGS.update_target_network_every,
       "learn_every": FLAGS.learn_every,
       "optimizer_str": FLAGS.optimizer_str,
-      "discount_factor": FLAGS.discount_factor
+      "discount_factor": FLAGS.discount_factor,
+      "epsilon_decay_duration":FLAGS.epsilon_decay_duration
   }
   oracle = rl_oracle.RLOracle(
       env,

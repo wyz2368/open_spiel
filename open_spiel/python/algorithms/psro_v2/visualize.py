@@ -22,8 +22,9 @@ FLAGS = flags.FLAGS
 
 # rollout related flags
 flags.DEFINE_bool("rollout_record", True, "rollout game and record")
-flags.DEFINE_list("checkpoint_dir_list","","root directories that contains strategies ")
-flags.DEFINE_list("number_iters_at_each_dir","","the nash equilibrium of which iteration to rollout for each directory")
+flags.DEFINE_string("checkpoint_dir","","root directories that contains strategies ")
+flags.DEFINE_integer("number_iters_start",1,"start iter to rollout")
+flags.DEFINE_integer("number_iters_end",1,"end iter to rollout")
 flags.DEFINE_bool("rollout_nash",True,"rollout nash strategies or not")
 
 # visualization related flags
@@ -197,7 +198,7 @@ def rollout_and_record(di, it, rollout_nash=True, sims_per_entry=100):
   env, strats, strats_prob = load_env_strategies(di+"/strategies",
                                                  it,rollout_nash,
                                                  di+"/nash_prob")
-  fi_path = os.path.join(di,str(it)+'_rollout_nash_'+str(rollout_nash)+'.txt')
+  fi_path = os.path.join(di+'/rollout',str(it)+'_rollout_nash_'+str(rollout_nash)+'.txt')
   fi = open(fi_path,'w')
   for _ in range(sims_per_entry):
     agents = sample_strategy(strats, strats_prob, probs_are_marginal=True)
@@ -232,9 +233,11 @@ def main(argv):
     raise app.UsageError("Too many command-line arguments.")
 
   if FLAGS.rollout_record:
-    assert len(FLAGS.checkpoint_dir_list) == len(FLAGS.number_iters_at_each_dir)  
-    number_iters_at_each_dir = [int(x) for x in FLAGS.number_iters_at_each_dir]
-    for directory,it in zip(FLAGS.checkpoint_dir_list,number_iters_at_each_dir):
+    number_iters_at_each_dir = list(range(FLAGS.number_iters_start,FLAGS.number_iters_end))
+    directory = FLAGS.checkpoint_dir
+    if not os.path.exists(directory+'/rollout'):
+      os.makedirs(directory+'/rollout')
+    for it in number_iters_at_each_dir:
       rollout_and_record(directory, it, FLAGS.rollout_nash)
 
   if FLAGS.visualize:
@@ -242,8 +245,6 @@ def main(argv):
     pygame.font.init()
     display =  pygame.display.set_mode((FLAGS.width,FLAGS.height),pygame.HWSURFACE|pygame.DOUBLEBUF)
     display.fill(GREY)
-    import pdb
-    pdb.set_trace()
     for fi in FLAGS.list_of_rollout_txt:
       visualize(fi, display, markov_soccer=FLAGS.markov_soccer)
     

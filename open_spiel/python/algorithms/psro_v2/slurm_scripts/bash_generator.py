@@ -82,10 +82,10 @@ OUTPUT = "#SBATCH --output="
 #COMMAND = "python ../se_example.py --game_name=leduc_poker --quiesce=False --gpsro_iterations=60 --sbatch_run=True --log_train=False --number_training_episodes=10000 --root_result_folder=root_result_third20 --heuristic_list=uniform_strategy,general_nash_strategy --switch_fast_slow=False --switch_heuristic_regardless_of_oracle=True"
 #COMMAND = "python ../psro_v2_example.py --game_name=leduc_poker --quiesce=False --gpsro_iterations=100 --sbatch_run=True --log_train=False --root_result_folder=root_result_prd_dqn --meta_strategy_method=prd"
 #COMMAND = "python ../tuning_ars.py --game_name=leduc_poker --quiesce=False --gpsro_iterations=10000 --sbatch_run=True --log_train=False --root_result_folder=root_result_tune_ars --number_training_episodes=300000"
-COMMAND = "python ../psro_v2_example.py --game_name=markov_soccer --quiesce=False --gpsro_iterations=100 --sbatch_run=True --log_train=True --root_result_folder=root_result --compute_exact_br=False --sims_per_entry=1000"
+COMMAND = "python ../psro_v2_example.py --game_name=markov_soccer --quiesce=False --gpsro_iterations=100 --sbatch_run=True --log_train=True --root_result_folder=root_result_markov --compute_exact_br=False --sims_per_entry=1000"
 #COMMAND = "python ../psro_v2_example.py --game_name=laser_tag --quiesce=False --gpsro_iterations=150 --sbatch_run=True --log_train=False --root_result_folder=root_result_laser_tag --game_param='horizon=40' --number_training_episodes=10000 --compute_exact_br=False --sims_per_entry=200"
 
-def bash_factory(dir_name='scripts_markov', num_files=10, grid_search_flag=True):
+def bash_factory(dir_name='scripts_markov_soccer', num_files=10, grid_search_flag=True):
     bash_path = os.path.dirname(os.path.realpath(__file__)) + '/' + dir_name + '/'
     if os.path.exists(bash_path):
         shutil.rmtree(bash_path, ignore_errors=True)

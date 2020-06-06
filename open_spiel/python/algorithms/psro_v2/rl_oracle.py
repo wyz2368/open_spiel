@@ -148,6 +148,7 @@ class RLOracle(optimization_oracle.AbstractOracle):
     time_step = self._env.reset()
     cumulative_rewards = 0.0
     while not time_step.last():
+      test_state = self._env.get_state
       if time_step.is_simultaneous_move():
         action_list = []
         for agent in agents:

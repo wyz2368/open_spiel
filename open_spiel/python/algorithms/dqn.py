@@ -108,7 +108,7 @@ class DQN(rl_agent.AbstractAgent):
                min_buffer_size_to_learn=1000,
                epsilon_start=1.0,
                epsilon_end=0.1,
-               epsilon_decay_duration=int(1e6),
+               epsilon_decay_duration=int(3e6),
                optimizer_str="sgd",
                loss_str="mse"):
     """Initialize the DQN agent."""
