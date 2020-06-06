@@ -1,0 +1,9 @@
+117576:C 25 Apr 2020 21:38:28.640 # oO0OoO0OoO0Oo Redis is starting oO0OoO0OoO0Oo
+117576:C 25 Apr 2020 21:38:28.640 # Redis version=5.0.3, bits=64, commit=00000000, modified=0, pid=117576, just started
+117576:C 25 Apr 2020 21:38:28.640 # Configuration loaded
+117576:M 25 Apr 2020 21:38:28.641 # WARNING: The TCP backlog setting of 511 cannot be enforced because /proc/sys/net/core/somaxconn is set to the lower value of 128.
+117576:M 25 Apr 2020 21:38:28.641 # Server initialized
+117576:M 25 Apr 2020 21:38:28.641 # WARNING overcommit_memory is set to 0! Background save may fail under low memory condition. To fix this issue add 'vm.overcommit_memory = 1' to /etc/sysctl.conf and then reboot or run the command 'sysctl vm.overcommit_memory=1' for this to take effect.
+117576:signal-handler (1587865130) Received SIGTERM scheduling shutdown...
+117576:M 25 Apr 2020 21:38:50.828 # User requested shutdown...
+117576:M 25 Apr 2020 21:38:50.828 # Redis is now ready to exit, bye bye...

@@ -17,6 +17,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "open_spiel/spiel.h"
@@ -116,8 +117,7 @@ class TurnBasedSimultaneousGame : public Game {
   std::shared_ptr<const Game> game_;
 };
 
-// Equivalent loader functions that return back the transformed game.
-// Important: takes ownership of the game that is passed in.
+// Return back a transformed clone of the game.
 std::shared_ptr<const Game> ConvertToTurnBased(const Game& game);
 
 // These are equivalent to LoadGame but converts the game to turn-based if it is

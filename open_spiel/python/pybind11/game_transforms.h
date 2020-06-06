@@ -12,21 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef OPEN_SPIEL_QUERY_H_
-#define OPEN_SPIEL_QUERY_H_
+#ifndef OPEN_SPIEL_GAME_TRANSFORMS_PYSPIEL_H_
+#define OPEN_SPIEL_GAME_TRANSFORMS_PYSPIEL_H_
 
-#include "open_spiel/spiel.h"
+#include "pybind11/include/pybind11/pybind11.h"
 
-// A query API to get game-specific properties.
-
+// Initialze the Python interface for game transforms.
 namespace open_spiel {
-namespace query {
+void init_pyspiel_game_transforms(::pybind11::module &m);
+}
 
-// Negotiation
-std::vector<int> NegotiationItemPool(const State& state);
-std::vector<int> NegotiationAgentUtils(const State& state, int player);
-
-}  // namespace query
-}  // namespace open_spiel
-
-#endif  // OPEN_SPIEL_QUERY_H_
+#endif  // OPEN_SPIEL_GAME_TRANSFORMS_PYSPIEL_H_

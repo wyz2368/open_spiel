@@ -1,0 +1,94 @@
+Exception in thread Thread-1:
+Traceback (most recent call last):
+  File "/sw/arcts/centos7/python3.6-anaconda/5.2.0/lib/python3.6/threading.py", line 916, in _bootstrap_inner
+    self.run()
+  File "/home/qmaai/.local/lib/python3.6/site-packages/ray/dashboard/dashboard.py", line 764, in run
+    for x in p.listen():
+  File "/home/qmaai/.local/lib/python3.6/site-packages/redis/client.py", line 3553, in listen
+    response = self.handle_message(self.parse_response(block=True))
+  File "/home/qmaai/.local/lib/python3.6/site-packages/redis/client.py", line 3453, in parse_response
+    response = self._execute(conn, conn.read_response)
+  File "/home/qmaai/.local/lib/python3.6/site-packages/redis/client.py", line 3427, in _execute
+    return command(*args, **kwargs)
+  File "/home/qmaai/.local/lib/python3.6/site-packages/redis/connection.py", line 734, in read_response
+    response = self._parser.read_response()
+  File "/home/qmaai/.local/lib/python3.6/site-packages/redis/connection.py", line 316, in read_response
+    response = self._buffer.readline()
+  File "/home/qmaai/.local/lib/python3.6/site-packages/redis/connection.py", line 248, in readline
+    self._read_from_socket()
+  File "/home/qmaai/.local/lib/python3.6/site-packages/redis/connection.py", line 193, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+
+Traceback (most recent call last):
+  File "/home/qmaai/.local/lib/python3.6/site-packages/ray/dashboard/dashboard.py", line 932, in run
+    node_manager_pb2.GetNodeStatsRequest(), timeout=2)
+  File "/home/qmaai/.local/lib/python3.6/site-packages/grpc/_channel.py", line 690, in __call__
+    return _end_unary_response_blocking(state, call, False, None)
+  File "/home/qmaai/.local/lib/python3.6/site-packages/grpc/_channel.py", line 592, in _end_unary_response_blocking
+    raise _Rendezvous(state, None, None, deadline)
+grpc._channel._Rendezvous: <_Rendezvous of RPC that terminated with:
+	status = StatusCode.UNAVAILABLE
+	details = "Socket closed"
+	debug_error_string = "{"created":"@1587865131.390871602","description":"Error received from peer ipv4:10.164.8.103:45878","file":"src/core/lib/surface/call.cc","file_line":1055,"grpc_message":"Socket closed","grpc_status":14}"
+>
+Traceback (most recent call last):
+  File "/home/qmaai/.local/lib/python3.6/site-packages/ray/dashboard/dashboard.py", line 932, in run
+    node_manager_pb2.GetNodeStatsRequest(), timeout=2)
+  File "/home/qmaai/.local/lib/python3.6/site-packages/grpc/_channel.py", line 690, in __call__
+    return _end_unary_response_blocking(state, call, False, None)
+  File "/home/qmaai/.local/lib/python3.6/site-packages/grpc/_channel.py", line 592, in _end_unary_response_blocking
+    raise _Rendezvous(state, None, None, deadline)
+grpc._channel._Rendezvous: <_Rendezvous of RPC that terminated with:
+	status = StatusCode.UNAVAILABLE
+	details = "Socket closed"
+	debug_error_string = "{"created":"@1587865131.390871602","description":"Error received from peer ipv4:10.164.8.103:45878","file":"src/core/lib/surface/call.cc","file_line":1055,"grpc_message":"Socket closed","grpc_status":14}"
+>
+Exception in thread Thread-2:
+Traceback (most recent call last):
+  File "/home/qmaai/.local/lib/python3.6/site-packages/redis/connection.py", line 1191, in get_connection
+    if connection.can_read():
+  File "/home/qmaai/.local/lib/python3.6/site-packages/redis/connection.py", line 729, in can_read
+    return self._parser.can_read(timeout)
+  File "/home/qmaai/.local/lib/python3.6/site-packages/redis/connection.py", line 313, in can_read
+    return self._buffer and self._buffer.can_read(timeout)
+  File "/home/qmaai/.local/lib/python3.6/site-packages/redis/connection.py", line 223, in can_read
+    raise_on_timeout=False)
+  File "/home/qmaai/.local/lib/python3.6/site-packages/redis/connection.py", line 193, in _read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/qmaai/.local/lib/python3.6/site-packages/redis/connection.py", line 552, in connect
+    sock = self._connect()
+  File "/home/qmaai/.local/lib/python3.6/site-packages/redis/connection.py", line 609, in _connect
+    raise err
+  File "/home/qmaai/.local/lib/python3.6/site-packages/redis/connection.py", line 597, in _connect
+    sock.connect(socket_address)
+ConnectionRefusedError: [Errno 111] Connection refused
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/sw/arcts/centos7/python3.6-anaconda/5.2.0/lib/python3.6/threading.py", line 916, in _bootstrap_inner
+    self.run()
+  File "/home/qmaai/.local/lib/python3.6/site-packages/ray/dashboard/dashboard.py", line 946, in run
+    self._update_nodes()
+  File "/home/qmaai/.local/lib/python3.6/site-packages/ray/dashboard/dashboard.py", line 835, in _update_nodes
+    self.nodes = ray.nodes()
+  File "/home/qmaai/.local/lib/python3.6/site-packages/ray/state.py", line 1088, in nodes
+    return state.client_table()
+  File "/home/qmaai/.local/lib/python3.6/site-packages/ray/state.py", line 459, in client_table
+    client_table = _parse_client_table(self.redis_client)
+  File "/home/qmaai/.local/lib/python3.6/site-packages/ray/state.py", line 31, in _parse_client_table
+    NIL_CLIENT_ID)
+  File "/home/qmaai/.local/lib/python3.6/site-packages/redis/client.py", line 875, in execute_command
+    conn = self.connection or pool.get_connection(command_name, **options)
+  File "/home/qmaai/.local/lib/python3.6/site-packages/redis/connection.py", line 1195, in get_connection
+    connection.connect()
+  File "/home/qmaai/.local/lib/python3.6/site-packages/redis/connection.py", line 557, in connect
+    raise ConnectionError(self._error_message(e))
+redis.exceptions.ConnectionError: Error 111 connecting to 10.164.8.103:20672. Connection refused.
+

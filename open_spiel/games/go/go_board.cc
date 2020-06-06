@@ -17,14 +17,34 @@
 #include <iomanip>
 
 #include "open_spiel/abseil-cpp/absl/random/uniform_int_distribution.h"
+#include "open_spiel/abseil-cpp/absl/strings/str_cat.h"
 #include "open_spiel/games/chess/chess_common.h"
 #include "open_spiel/spiel_utils.h"
-#include "open_spiel/abseil-cpp/absl/strings/str_cat.h"
 
 namespace open_spiel {
 namespace go {
 
 namespace {
+
+// 8 adjacent directions.
+//
+//   405
+//   1 2
+//   637
+//
+// The order is important because it is used to index 3x3 patterns!
+//
+inline constexpr std::array<int, 9> Dir8 = {{
+    kVirtualBoardSize,  // new line
+    -1,                 // new line
+    +1,                 // new line
+    -static_cast<int>(kVirtualBoardSize),
+    +static_cast<int>(kVirtualBoardSize) - 1,
+    +static_cast<int>(kVirtualBoardSize) + 1,
+    -static_cast<int>(kVirtualBoardSize) - 1,
+    -static_cast<int>(kVirtualBoardSize) + 1,
+    0  // Dummy element.
+}};
 
 // Calls f for all 4 direct neighbours of p.
 // f should have type void f(VirtualPoint n), but is passed as a template so we
@@ -65,7 +85,7 @@ char GoColorToChar(GoColor c) {
     case GoColor::kGuard:
       return '#';
     default:
-      SpielFatalError(absl::StrCat("Unknown color ", c));
+      SpielFatalError(absl::StrCat("Unknown color ", c, " in GoColorToChar."));
       return '!';
   }
 }
@@ -83,6 +103,18 @@ std::string MoveAsAscii(VirtualPoint p, GoColor c) {
 }
 
 }  // namespace
+
+Neighbours4::Neighbours4(const VirtualPoint p)
+    : dir_(static_cast<VirtualPoint>(0)), p_(p) {}
+
+Neighbours4& Neighbours4::operator++() {
+  ++dir_;
+  return *this;
+}
+
+const VirtualPoint Neighbours4::operator*() const { return p_ + Dir8[dir_]; }
+
+Neighbours4::operator bool() const { return dir_ < 4; }
 
 std::pair<int, int> VirtualPointTo2DPoint(VirtualPoint p) {
   if (p == kInvalidPoint || p == kVirtualPass) return std::make_pair(-1, -1);
@@ -155,7 +187,7 @@ GoColor OppColor(GoColor c) {
     case GoColor::kGuard:
       return c;
     default:
-      SpielFatalError("Unknown color.");
+      SpielFatalError(absl::StrCat("Unknown color ", c, " in OppColor."));
       return c;
   }
 }
@@ -175,7 +207,8 @@ std::string GoColorToString(GoColor c) {
     case GoColor::kGuard:
       return "GUARD";
     default:
-      SpielFatalError("Unknown color.");
+      SpielFatalError(
+          absl::StrCat("Unknown color ", c, " in GoColorToString."));
       return "This will never return.";
   }
 }
@@ -260,6 +293,12 @@ bool GoBoard::PlayMove(VirtualPoint p, GoColor c) {
     return true;
   }
 
+  if (board_[p].color != GoColor::kEmpty) {
+    SpielFatalError(absl::StrCat("Trying to play the move ", GoColorToString(c),
+                                 ": ", VirtualPointToString(p), " (", p,
+                                 ") but the cell is already filled with ",
+                                 GoColorToString(board_[p].color)));
+  }
   SPIEL_CHECK_EQ(GoColor::kEmpty, board_[p].color);
 
   // Preparation for ko checking.
@@ -285,6 +324,23 @@ bool GoBoard::PlayMove(VirtualPoint p, GoColor c) {
   SPIEL_CHECK_GT(chain(p).num_pseudo_liberties, 0);
 
   return true;
+}
+
+VirtualPoint GoBoard::SingleLiberty(VirtualPoint p) const {
+  VirtualPoint head = ChainHead(p);
+  VirtualPoint liberty = chain(p).single_liberty();
+
+  // Check it is really a liberty.
+  SPIEL_CHECK_TRUE(IsInBoardArea(liberty));
+  SPIEL_CHECK_TRUE(IsEmpty(liberty));
+
+  // Make sure the liberty actually borders the group.
+  for (auto n = Neighbours4(liberty); n; ++n) {
+    if (ChainHead(*n) == head) return liberty;
+  }
+
+  SpielFatalError(
+      absl::StrCat("liberty", liberty, " does not actually border group ", p));
 }
 
 void GoBoard::SetStone(VirtualPoint p, GoColor c) {
@@ -477,6 +533,27 @@ void GoBoard::Chain::remove_liberty(VirtualPoint p) {
       static_cast<uint32_t>(p) * static_cast<uint32_t>(p);
 }
 
+VirtualPoint GoBoard::Chain::single_liberty() const {
+  SPIEL_CHECK_TRUE(in_atari());
+  // A point is in Atari if it has only a single liberty, i.e. all pseudo
+  // liberties are for the same point.
+  // This is true exactly when
+  //  liberty_vertex_sum**2 == liberty_vertex_sum_squared * num_pseudo_liberties
+  // Since all pseudo liberties are for the same point, this is equivalent to
+  // (taking n = num_pseudo_liberties):
+  //   (n * p)**2 = (n * p**2) * n
+  // Thus to obtain p, we simple need to divide out the number of pseudo
+  // liberties.
+  SPIEL_CHECK_EQ(liberty_vertex_sum % num_pseudo_liberties, 0);
+  return static_cast<VirtualPoint>(liberty_vertex_sum / num_pseudo_liberties);
+}
+
+std::string GoBoard::ToString() {
+  std::ostringstream stream;
+  stream << *this;
+  return stream.str();
+}
+
 std::ostream& operator<<(std::ostream& os, const GoBoard& board) {
   os << "\n";
   for (int row = board.board_size() - 1; row >= 0; --row) {
@@ -594,6 +671,39 @@ float TrompTaylorScore(const GoBoard& board, float komi, int handicap) {
     score -= handicap;
   }
   return score;
+}
+
+GoBoard CreateBoard(const std::string& initial_stones) {
+  GoBoard board(19);
+
+  int row = 0;
+  for (const auto& line : absl::StrSplit(initial_stones, '\n')) {
+    int col = 0;
+    bool stones_started = false;
+    for (const auto& c : line) {
+      if (c == ' ') {
+        if (stones_started) {
+          SpielFatalError(
+              "Whitespace is only allowed at the start of "
+              "the line. To represent empty intersections, "
+              "use +");
+        }
+        continue;
+      } else if (c == 'X') {
+        stones_started = true;
+        SPIEL_CHECK_TRUE(board.PlayMove(VirtualPointFrom2DPoint({row, col}),
+                                        GoColor::kBlack));
+      } else if (c == 'O') {
+        stones_started = true;
+        SPIEL_CHECK_TRUE(board.PlayMove(VirtualPointFrom2DPoint({row, col}),
+                                        GoColor::kWhite));
+      }
+      col++;
+    }
+    row++;
+  }
+
+  return board;
 }
 
 }  // namespace go

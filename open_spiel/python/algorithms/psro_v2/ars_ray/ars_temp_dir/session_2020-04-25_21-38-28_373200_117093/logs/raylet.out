@@ -1,0 +1,43 @@
+I0425 21:38:31.540694 117592 stats.h:62] Succeeded to initialize stats: exporter address is 127.0.0.1:8888
+I0425 21:38:31.549497 117592 redis_gcs_client.cc:171] RedisGcsClient Connected.
+I0425 21:38:31.553329 117592 grpc_server.cc:64] ObjectManager server started, listening on port 38839.
+I0425 21:38:31.615175 117592 grpc_server.cc:64] NodeManager server started, listening on port 45878.
+I0425 21:38:50.442483 117592 node_manager.cc:599] Owner process 0100ffffffffffffffffffffffffffffffffffff died, killing leased worker faa26c48b384f3d4df322e80e71f51696861b53c
+I0425 21:38:50.442746 117592 node_manager.cc:599] Owner process 0100ffffffffffffffffffffffffffffffffffff died, killing leased worker 4bae5013b1b3ea861ce2ce2a5e3a1eff1268c5aa
+I0425 21:38:50.442760 117592 node_manager.cc:599] Owner process 0100ffffffffffffffffffffffffffffffffffff died, killing leased worker 54a62c0541ac3929a2cabc261da496157cc1f07a
+I0425 21:38:50.442768 117592 node_manager.cc:599] Owner process 0100ffffffffffffffffffffffffffffffffffff died, killing leased worker fa05d733ff540a798f1c4142d598fa67863e77b4
+W0425 21:38:50.442785 117592 node_manager.cc:3264] Worker 0100ffffffffffffffffffffffffffffffffffff failed. Unpinning object 45b95b1c8bd3a9c4ffffffff010000c801000000
+I0425 21:38:50.614262 117592 main.cc:199] Raylet received SIGTERM, shutting down...
+I0425 21:38:50.614382 117592 redis_gcs_client.cc:179] RedisGcsClient Disconnected.
+E0425 21:38:50.628906 117592 process.cc:265] Failed to wait for process 117638 with error system:10: No child processes
+E0425 21:38:50.673321 117592 process.cc:265] Failed to wait for process 117659 with error system:10: No child processes
+E0425 21:38:50.673360 117592 process.cc:265] Failed to wait for process 117656 with error system:10: No child processes
+E0425 21:38:50.673372 117592 process.cc:265] Failed to wait for process 117639 with error system:10: No child processes
+E0425 21:38:50.674926 117592 process.cc:265] Failed to wait for process 117664 with error system:10: No child processes
+E0425 21:38:50.674937 117592 process.cc:265] Failed to wait for process 117658 with error system:10: No child processes
+E0425 21:38:50.674950 117592 process.cc:265] Failed to wait for process 117642 with error system:10: No child processes
+E0425 21:38:50.674962 117592 process.cc:265] Failed to wait for process 117668 with error system:10: No child processes
+E0425 21:38:50.674974 117592 process.cc:265] Failed to wait for process 117667 with error system:10: No child processes
+E0425 21:38:50.674986 117592 process.cc:265] Failed to wait for process 117662 with error system:10: No child processes
+E0425 21:38:50.674998 117592 process.cc:265] Failed to wait for process 117661 with error system:10: No child processes
+E0425 21:38:50.675010 117592 process.cc:265] Failed to wait for process 117650 with error system:10: No child processes
+E0425 21:38:50.675022 117592 process.cc:265] Failed to wait for process 117669 with error system:10: No child processes
+E0425 21:38:50.675034 117592 process.cc:265] Failed to wait for process 117646 with error system:10: No child processes
+E0425 21:38:50.675047 117592 process.cc:265] Failed to wait for process 117657 with error system:10: No child processes
+E0425 21:38:50.675058 117592 process.cc:265] Failed to wait for process 117643 with error system:10: No child processes
+E0425 21:38:50.675069 117592 process.cc:265] Failed to wait for process 117666 with error system:10: No child processes
+E0425 21:38:50.675081 117592 process.cc:265] Failed to wait for process 117655 with error system:10: No child processes
+E0425 21:38:50.675096 117592 process.cc:265] Failed to wait for process 117660 with error system:10: No child processes
+E0425 21:38:50.675107 117592 process.cc:265] Failed to wait for process 117637 with error system:10: No child processes
+E0425 21:38:50.675118 117592 process.cc:265] Failed to wait for process 117649 with error system:10: No child processes
+E0425 21:38:50.675130 117592 process.cc:265] Failed to wait for process 117645 with error system:10: No child processes
+E0425 21:38:50.675143 117592 process.cc:265] Failed to wait for process 117651 with error system:10: No child processes
+E0425 21:38:50.675158 117592 process.cc:265] Failed to wait for process 117665 with error system:10: No child processes
+E0425 21:38:50.675169 117592 process.cc:265] Failed to wait for process 117644 with error system:10: No child processes
+E0425 21:38:50.675181 117592 process.cc:265] Failed to wait for process 117648 with error system:10: No child processes
+E0425 21:38:50.680550 117592 process.cc:265] Failed to wait for process 117636 with error system:10: No child processes
+E0425 21:38:50.684669 117592 process.cc:265] Failed to wait for process 117641 with error system:10: No child processes
+E0425 21:38:50.689841 117592 process.cc:265] Failed to wait for process 117654 with error system:10: No child processes
+E0425 21:38:50.689863 117592 process.cc:265] Failed to wait for process 117653 with error system:10: No child processes
+E0425 21:38:50.689875 117592 process.cc:265] Failed to wait for process 117635 with error system:10: No child processes
+E0425 21:38:50.689888 117592 process.cc:265] Failed to wait for process 117663 with error system:10: No child processes

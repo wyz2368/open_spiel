@@ -1,0 +1,65 @@
+NodeManager:
+InitialConfigResources: {node:10.164.8.103: 1.000000}, {CPU: 36.000000}, {memory: 107.861328 GiB}, {object_store_memory: 34.619141 GiB}
+ClusterResources:
+c55ba1dd35f604015a2b424f81bc7f79d39a1100: 
+- total: {node:10.164.8.103: 1.000000}, {CPU: 36.000000}, {memory: 107.861328 GiB}, {object_store_memory: 34.619141 GiB}
+- avail: {node:10.164.8.103: 1.000000}, {CPU: 35.000000}, {memory: 107.861328 GiB}, {object_store_memory: 34.619141 GiB}
+ObjectManager:
+- num local objects: 0
+- num active wait requests: 0
+- num unfulfilled push requests: 0
+- num pull requests: 0
+- num buffered profile events: 0
+ObjectDirectory:
+- num listeners: 0
+ObjectStoreNotificationManager:
+- num adds processed: 37
+- num removes processed: 37
+BufferPool:
+- get buffer state map size: 0
+- create buffer state map size: 0
+RedisGcsClient:
+- TaskTable: num lookups: 0, num adds: 0
+- LogBasedActorTable: num lookups: 0, num appends: 0
+- ActorTable: num lookups: 0, num adds: 0
+- TaskReconstructionLog: num lookups: 0, num appends: 0
+- TaskLeaseTable: num lookups: 0, num adds: 0
+- HeartbeatTable: num lookups: 0, num adds: 101
+- ErrorTable: num lookups: 0, num appends: 0
+- ProfileTable: num lookups: 0, num appends: 0
+- ClientTable: num lookups: 0, num appends: 1, cache size: 1, num removed: 0
+- JobTable: num lookups: 0, num appends: 1
+WorkerPool:
+- num PYTHON workers: 36
+- num PYTHON drivers: 1
+SchedulingQueue:
+- num placeable tasks: 0
+- num waiting tasks: 0
+- num ready tasks: 0
+- num running tasks: 1
+- num infeasible tasks: 0
+- num waiting for actor creation tasks: 0
+- num swap tasks: 0
+- num tasks blocked: 0
+ScheduledTaskCounts:
+- {type=PythonFunctionDescriptor, module_name=open_spiel.python.algorithms.psro_v2.ars_ray.shared_noise, class_name=, function_name=create_shared_noise, function_hash=6613a63437415c1bb07b49f1d90d5f3124389939}{CPU: 1.000000}: 1
+ReconstructionPolicy:
+- num reconstructing: 0
+TaskDependencyManager:
+- task dep map size: 0
+- task req map size: 0
+- req objects map size: 0
+- local objects map size: 0
+- pending tasks map size: 0
+LineageCache:
+- child map size: 0
+- num subscribed tasks: 0
+- lineage size: 0
+num async plasma notifications: 0
+ActorRegistry:
+- num live actors: 0
+- num reconstructing actors: 0
+- num dead actors: 0
+- max num handles: 0
+Remote node manager clients: 
+DebugString() time ms: 1

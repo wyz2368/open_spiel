@@ -19,8 +19,12 @@ ENV/
 
  # Build products
 build/
+cmake-build-*/
 dist/
 pyspiel.egg-info/
+
+# Swift build directory
+.build
 
  # External git modules
 open_spiel/abseil-cpp/
@@ -37,9 +41,12 @@ open_spiel/scripts/jill.sh
 # julia wrapper
 Manifest.toml
 
+
 # IDE
 .idea/
 .vscode/
+*~
+
 
 open_spiel/cmake-build-debug/
 
