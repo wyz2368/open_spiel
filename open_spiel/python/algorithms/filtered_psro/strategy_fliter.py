@@ -9,8 +9,8 @@ def strategy_filter(solver):
                                 solver._policies,
                                 marginals,
                                 solver.strategy_set_size)
-    elif solver.filtering_method == "trace":
-        raise NotImplementedError
+    elif solver.filtering_method == "etrace":
+        return etrace_filter(solver)
     else:
         return solver._meta_games, solver._policies
 
@@ -55,9 +55,6 @@ def alpharank_filter(meta_games,
 
     return meta_games, policies
 
-
-
-
 def alpharank_filter_test():
     meta_game = np.array([[1,2,3,4,5],
                           [2,3,4,5,6],
@@ -70,6 +67,40 @@ def alpharank_filter_test():
     marginals = [np.array([0.001, 0.3, 0.3, 0.3, 0.009]), np.array([0.3, 0.001, 0.001, 0.3, 0.001])]
     meta_games, policies = alpharank_filter(meta_games,
                                             policies,
-                                            marginals)
+                                            marginals,
+                                            4)
     print("meta_games:", meta_games)
     print("policies:", policies)
+
+def etrace_filter(solver, gamma=0.7):
+    num_players = solver._num_players
+    filtered_idx_list = []
+    for player in range(num_players):
+        solver.etrace[player] *= gamma
+    solver.update_meta_strategies()
+    nash = solver.get_meta_strategies()
+    for player in range(num_players):
+        one_pos = np.where(nash[player] > 0)[0]
+        nash[player][one_pos] = 1
+        solver.etrace[player] = np.append(solver.etrace[player], 0)
+        solver.etrace[player] += nash[player]
+        filtered_idx_list.append(np.argmin(solver.etrace[player]))
+
+    meta_games = solver.get_meta_game()
+    policies = solver.get_policies()
+    num_str, _ = np.shape(meta_games[0])
+    if num_str <= solver.strategy_set_size:
+        return meta_games, policies
+    for player in range(num_players):
+        # filter meta_games.
+        for dim in range(num_players):
+            filtered_idx = filtered_idx_list[dim]
+            meta_games[player] = np.delete(meta_games[player], filtered_idx, axis=dim)
+        # filter policies.
+        policies[player] = np.delete(policies[player], filtered_idx_list[player])
+        policies[player] = list(policies[player])
+        solver.etrace[player] = np.delete(solver.etrace[player], filtered_idx_list[player])
+
+    return meta_games, policies
+
+
