@@ -86,6 +86,10 @@ def etrace_filter(solver, gamma=0.7):
         solver.etrace[player] += nash[player]
         filtered_idx_list.append(np.argmin(solver.etrace[player]))
 
+    print("Eligibility Trace with gamma:", gamma)
+    for player in range(num_players):
+        print("Player " + str(player) + ":", solver.etrace[player])
+
     meta_games = solver.get_meta_game()
     policies = solver.get_policies()
     num_str, _ = np.shape(meta_games[0])
@@ -100,6 +104,13 @@ def etrace_filter(solver, gamma=0.7):
         policies[player] = np.delete(policies[player], filtered_idx_list[player])
         policies[player] = list(policies[player])
         solver.etrace[player] = np.delete(solver.etrace[player], filtered_idx_list[player])
+
+    print("Strategies filtered:")
+    num_str_players = []
+    for player in range(num_players):
+        print("Player " + str(player) + ":", filtered_idx_list[player])
+        num_str_players.append(len(policies[player]))
+    print("Number of strategies after filtering:", num_str_players)
 
     return meta_games, policies
 
