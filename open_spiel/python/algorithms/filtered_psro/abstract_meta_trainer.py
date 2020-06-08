@@ -213,7 +213,7 @@ class AbstractMetaTrainer(object):
     # filtering
     self.filtering_method = filtering_method
     self.strategy_set_size = strategy_set_size
-    self.etrace = [np.array([1]), np.array([1])]
+    self.etrace = [np.array([1], dtype=np.float), np.array([1], dtype=np.float)]
 
     # controls switch heuristics with pattern without changing oracle
     self._switch_heuristic_regardless_of_oracle = kwargs.get('switch_heuristic_regardless_of_oracle',False)

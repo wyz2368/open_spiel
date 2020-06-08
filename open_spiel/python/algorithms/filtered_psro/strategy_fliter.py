@@ -81,8 +81,8 @@ def etrace_filter(solver, gamma=0.7):
     nash = solver.get_meta_strategies()
     for player in range(num_players):
         one_pos = np.where(nash[player] > 0)[0]
-        nash[player][one_pos] = 1
-        solver.etrace[player] = np.append(solver.etrace[player], 0)
+        nash[player][one_pos] = 1.0
+        solver.etrace[player] = np.append(solver.etrace[player], 0.0)
         solver.etrace[player] += nash[player]
         filtered_idx_list.append(np.argmin(solver.etrace[player]))
 
