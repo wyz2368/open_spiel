@@ -138,7 +138,7 @@ flags.DEFINE_bool("verbose", True, "Enables verbose printing and profiling.")
 flags.DEFINE_bool("log_train", False,"log training reward curve")
 
 # Strategy filtering
-flags.DEFINE_string("filtering_method", 'alpharank', "Algorithm to filter out strategies.")
+flags.DEFINE_string("filtering_method", 'etrace', "Algorithm to filter out strategies.")
 flags.DEFINE_integer("strategy_set_size", 30, "The maximum number of strategies for each player.")
 
 
