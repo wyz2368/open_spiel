@@ -75,7 +75,7 @@ def alpharank_filter_test():
     print("meta_games:", meta_games)
     print("policies:", policies)
 
-def etrace_filter(solver, gamma=0.7):
+def etrace_filter(solver, gamma=0.5, threshold=0.001):
     num_players = solver._num_players
     filtered_idx_list = []
     for player in range(num_players):
@@ -89,6 +89,7 @@ def etrace_filter(solver, gamma=0.7):
         nash[player][zero_pos] = 0.0
         solver.etrace[player] = np.append(solver.etrace[player], 0.0)
         solver.etrace[player] += nash[player]
+        solver.etrace[player][solver.etrace[player] < threshold] = 0
         filtered_idx_list.append(np.argmin(solver.etrace[player]))
 
     print("Eligibility Trace with gamma:", gamma)
@@ -118,5 +119,4 @@ def etrace_filter(solver, gamma=0.7):
     print("Number of strategies after filtering:", num_str_players)
 
     return meta_games, policies
-
 
