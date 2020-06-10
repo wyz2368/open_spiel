@@ -2,7 +2,7 @@ import numpy as np
 
 from open_spiel.python.algorithms.psro_v2.utils import alpharank_strategy
 
-def strategy_filter(solver, stopping_time=120):
+def strategy_filter(solver, stopping_time=None):
     if stopping_time is not None:
         if solver._iterations > stopping_time:
             return solver._meta_games, solver._policies

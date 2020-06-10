@@ -61,7 +61,7 @@ from open_spiel.python.algorithms.psro_v2.eval_utils import save_strategies
 
 FLAGS = flags.FLAGS
 # Game-related
-flags.DEFINE_string("game_name", "kuhn_poker", "Game name.")
+flags.DEFINE_string("game_name", "leduc_poker", "Game name.")
 flags.DEFINE_integer("n_players", 2, "The number of players.")
 flags.DEFINE_list("game_param",None,"game parameters") #game_param=v=1,"vmodule=a=0,b=2"
 # PSRO related
