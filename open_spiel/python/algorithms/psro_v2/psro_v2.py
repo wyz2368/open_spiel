@@ -300,10 +300,11 @@ class PSROSolver(abstract_meta_trainer.AbstractMetaTrainer):
 
       return probability
 
-  def update_agents(self):
+  def update_agents(self, test_reward=False):
     """Updates policies for each player at the same time by calling the oracle.
 
     The resulting policies are appended to self._new_policies.
+    Also return test reward
     """
 
     # Sample strategies from current meta-strategies as initial policies for training BR.
@@ -328,7 +329,7 @@ class PSROSolver(abstract_meta_trainer.AbstractMetaTrainer):
             joint_policy[current_player] for joint_policy in used_policies
         ]
         current_indexes = used_indexes[current_player]
-
+      
       for i in range(len(currently_used_policies)):
         pol = currently_used_policies[i]
         ind = current_indexes[i]
@@ -355,7 +356,7 @@ class PSROSolver(abstract_meta_trainer.AbstractMetaTrainer):
     # collect training performance to plot if RL oracle
     if self._train_loggable_oracle:
       # rl oracle return reward trace together with approximate best response policies
-      self.oracle, reward_trace = self._oracle(self._game, training_parameters, strategy_sampler=sample_strategy, using_joint_strategies=self._rectify_training or not self.sample_from_marginals)
+      self.oracle, train_reward_trace, test_reward_trace = self._oracle(self._game, training_parameters, strategy_sampler=sample_strategy, using_joint_strategies=self._rectify_training or not self.sample_from_marginals, test_reward=test_reward)
     else:
       # best response oracle does not return reward_trace
       self.oracle = self._oracle(self._game, training_parameters, strategy_sampler=sample_strategy, using_joint_strategies=self._rectify_training or not self.sample_from_marginals)
@@ -368,7 +369,10 @@ class PSROSolver(abstract_meta_trainer.AbstractMetaTrainer):
       self._policies = [self._policies[0]]
       self._num_players = 1
 
-    return reward_trace if self._train_loggable_oracle else []
+    if self._train_loggable_oracle:
+      return train_reward_trace, test_reward_trace
+    else:
+      return [],[]
   
   def update_empirical_gamestate(self, seed=None):
     """Given new agents in _new_policies, update meta_games through simulations.

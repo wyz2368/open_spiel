@@ -51,3 +51,7 @@ Manifest.toml
 open_spiel/cmake-build-debug/
 
 open_spiel/python/algorithms/psro_v2/slurm_scripts/*
+open_spiel/python/algorithms/psro_v2/root_result/*
+open_spiel/python/algorithms/psro_v2/root_result
+open_spiel/python/algorithms/psro_v2/slurm_scripts
+

@@ -297,6 +297,7 @@ class RLOracle(optimization_oracle.AbstractOracle):
                game,
                training_parameters,
                strategy_sampler=utils.sample_strategy,
+               test_reward=False,
                **oracle_specific_execution_kwargs):
     """Call method for oracle, returns best responses against a set of policies.
 
@@ -337,6 +338,8 @@ class RLOracle(optimization_oracle.AbstractOracle):
       self.update_new_policies_in_workers(new_policies)
 
     reward_trace = [[] for _ in range(game.num_players())]
+    if test_reward:
+      test_reward_trace = [[] for _ in range(game.num_players())]
     while not self._has_terminated(episodes_per_oracle):
       if self._ars_parallel:
         # No reward trace for ARS_parallel.
@@ -357,13 +360,16 @@ class RLOracle(optimization_oracle.AbstractOracle):
       else:
         reward = self._rollout(game, agents, **oracle_specific_execution_kwargs)
         reward_trace[indexes[0][0]].append(reward[indexes[0][0]])
+        if test_reward:
+          reward_test = self.sample_episode(None, agents, is_evaluation=True)
+          test_reward_trace[indexes[0][0]].append(reward_test[indexes[0][0]])
 
       episodes_per_oracle = update_episodes_per_oracles(episodes_per_oracle,
                                                         indexes)
 
 
     for i in range(len(reward_trace)):
-        reward_trace[i] = utils.lagging_mean(reward_trace[i])
+      reward_trace[i] = utils.lagging_mean(reward_trace[i])
     # Freeze the new policies to keep their weights static. This allows us to
     # later not have to make the distinction between static and training
     # policies in training iterations.
@@ -373,8 +379,12 @@ class RLOracle(optimization_oracle.AbstractOracle):
     if hasattr(self,'_ARS_episodes'):
       delattr(self,'_ARS_episodes')
 
-
-    return new_policies, reward_trace
+    if not test_reward:
+      return new_policies, reward_trace, None
+    else:
+      for i in range(len(test_reward_trace)):
+        test_reward_trace[i] = utils.lagging_mean(test_reward_trace[i]) 
+      return new_policies, reward_trace, test_reward_trace
 
     #####################################################
     ############# Parallel Implementation of ARS ########

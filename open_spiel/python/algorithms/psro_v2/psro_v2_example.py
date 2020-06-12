@@ -140,6 +140,7 @@ flags.DEFINE_integer("seed", None, "Seed.")
 flags.DEFINE_bool("local_launch", False, "Launch locally or not.")
 flags.DEFINE_bool("verbose", True, "Enables verbose printing and profiling.")
 flags.DEFINE_bool("log_train", False,"log training reward curve")
+flags.DEFINE_bool("test_reward",False,"evaluate test reward along training process")
 flags.DEFINE_bool("compute_exact_br",True,"compute and log exp with exact br. If false, than use combined game at the last iteration to evaluate")
 
 
@@ -298,6 +299,8 @@ def print_beneficial_deviation_analysis(last_meta_game, meta_game, last_meta_pro
   prob_matrix = meta_strategies.general_get_joint_strategy_from_marginals(last_meta_prob)
   this_meta_prob = [np.append(last_meta_prob[i],[0 for _ in range(num_new_pol[i])]) for i in range(num_player)]
   beneficial_deviation = [0 for _ in range(num_player)]
+  print(last_meta_game)
+  print(meta_game)
   for i in range(num_player): 
     ne_payoff = np.sum(last_meta_game[i]*prob_matrix)
     # iterate through player's new policy
@@ -440,7 +443,7 @@ def gpsro_looper(env, oracle, agents, writer, quiesce=False, checkpoint_dir=None
       print("\n===========================\n")
       print("Iteration : {}".format(gpsro_iteration))
       print("Time so far: {}".format(time.time() - start_time))
-    train_reward_curve = g_psro_solver.iteration(seed=seed)
+    train_reward_curve, test_reward_curve = g_psro_solver.iteration(seed=seed, test_reward=FLAGS.test_reward)
     meta_game = g_psro_solver.get_meta_game()
     meta_probabilities = g_psro_solver.get_meta_strategies()
     nash_meta_probabilities = g_psro_solver.get_nash_strategies()
@@ -456,12 +459,10 @@ def gpsro_looper(env, oracle, agents, writer, quiesce=False, checkpoint_dir=None
       aggr_policies = aggregator.aggregate(
           range(FLAGS.n_players), policies, nash_meta_probabilities)
       
-      print('found aggregated probabiolities')
 
       exploitabilities, expl_per_player = exploitability.nash_conv(
           env.game, aggr_policies, return_only_nash_conv=False)
 
-      print('calculated exploitabilities')
       for p in range(len(expl_per_player)):
         writer.add_scalar('player'+str(p)+'_exp',expl_per_player[p],gpsro_iteration)
       writer.add_scalar('exp',exploitabilities,gpsro_iteration)
@@ -490,6 +491,12 @@ def gpsro_looper(env, oracle, agents, writer, quiesce=False, checkpoint_dir=None
       for p in range(len(train_reward_curve)):
         for p_i in range(len(train_reward_curve[p])):
           writer.add_scalar('player'+str(p)+'_'+str(gpsro_iteration),train_reward_curve[p][p_i],p_i)
+
+    if FLAGS.log_train and FLAGS.test_reward and (gpsro_iteration<=10 or gpsro_iteration%5==0):
+      for p in range(len(test_reward_curve)):
+        for p_i in range(len(test_reward_curve[p])):
+          writer.add_scalar('player'+str(p)+'_t_'+str(gpsro_iteration),test_reward_curve[p][p_i],p_i)
+
     
 def main(argv):
   if len(argv) > 1:
@@ -504,7 +511,7 @@ def main(argv):
   checkpoint_dir = FLAGS.game_name
   if FLAGS.game_name in ['laser_tag']: # games where parameter does not have num_players
     #game_param = {'zero_sum': pyspiel.GameParameter(False)}
-    game_param_raw = {'zero_sum': False}
+    game_param_raw = {'zero_sum': False,'horizon':30}
   elif FLAGS.game_name in ['markov_soccer']:
     game_param_raw = {'horizon':20}
   else:
