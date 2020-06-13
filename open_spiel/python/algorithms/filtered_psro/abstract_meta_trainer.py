@@ -541,5 +541,7 @@ class AbstractMetaTrainer(object):
     self.update_meta_strategy_method(new_meta_str_method)
 
   def update_NE_list(self):
+    if self._num_players != 2:
+      pass
     self._NE_list.append(self.get_nash_strategies())
 
