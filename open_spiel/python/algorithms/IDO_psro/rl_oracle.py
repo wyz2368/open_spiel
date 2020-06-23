@@ -123,7 +123,7 @@ class RLOracle(optimization_oracle.AbstractOracle):
     self._self_play_proportion = self_play_proportion
     self._number_training_episodes = number_training_episodes
 
-    self._iterated_turn = 0
+    self._filtered_player = 1
 
     # Initialization for ARS parallel
     self._ars_parallel = ars_parallel
@@ -210,8 +210,10 @@ class RLOracle(optimization_oracle.AbstractOracle):
     num_players = len(training_parameters)
 
     # Prioritizing players that haven't had as much training as the others.
-    episodes_per_player = [sum(episodes) for episodes in episodes_per_oracle]
-    chosen_player = random_count_weighted_choice(episodes_per_player)
+    # episodes_per_player = [sum(episodes) for episodes in episodes_per_oracle]
+    # chosen_player = random_count_weighted_choice(episodes_per_player)
+
+    chosen_player = 1 - self._filtered_player
 
     # Uniformly choose among the sampled player.
     agent_chosen_ind = np.random.randint(
@@ -326,42 +328,25 @@ class RLOracle(optimization_oracle.AbstractOracle):
       A list of list, one for each member of training_parameters, of (epsilon)
       best responses.
     """
-    episodes_per_oracle = [[0
-                            for _ in range(len(player_params))]
-                           for player_params in training_parameters]
-    episodes_per_oracle = np.array(episodes_per_oracle)
+    # episodes_per_oracle = [[0
+    #                         for _ in range(len(player_params))]
+    #                        for player_params in training_parameters]
+    # episodes_per_oracle = np.array(episodes_per_oracle)
+
+    episodes_training_player = 0
 
     new_policies = self.generate_new_policies(training_parameters)
 
-    # Sync total policies in all workers.
-    if self._ars_parallel:
-      self.update_used_policies_in_workers(training_parameters)
-      self.update_new_policies_in_workers(new_policies)
-
     reward_trace = [[] for _ in range(game.num_players())]
-    while not self._has_terminated(episodes_per_oracle):
-      if self._ars_parallel:
-        # No reward trace for ARS_parallel.
-        chosen_player = self.choose_live_agent(episodes_per_oracle)
-        # Notice that one episode contains trials of all directions of ars.
-        indexes = [(chosen_player, 0)]
-        rollout_rewards, deltas_idx = self.deploy_workers(training_parameters, chosen_player)
-        self.update_ars_agent(rollout_rewards, deltas_idx, new_policies, chosen_player)
-      else:
+    while episodes_training_player < self._number_training_episodes:
         agents, indexes = self.sample_policies_for_episode(
-          new_policies, training_parameters, episodes_per_oracle,
+          new_policies, training_parameters, None,
           strategy_sampler)
 
-      if self._ars_parallel:
-        # No reward trace for ARS.
-        rollout_rewards, deltas_idx = self.deploy_workers(agents, indexes)
-        self.update_ars_agent(rollout_rewards, deltas_idx, agents, indexes)
-      else:
         reward = self._rollout(game, agents, **oracle_specific_execution_kwargs)
         reward_trace[indexes[0][0]].append(reward[indexes[0][0]])
 
-      episodes_per_oracle = update_episodes_per_oracles(episodes_per_oracle,
-                                                        indexes)
+        episodes_training_player += 1
 
 
     for i in range(len(reward_trace)):
@@ -371,10 +356,8 @@ class RLOracle(optimization_oracle.AbstractOracle):
     # policies in training iterations.
     freeze_all(new_policies)
 
-    # Specified written for ARS aligning same opponent strategies for directions
-    if hasattr(self,'_ARS_episodes'):
-      delattr(self,'_ARS_episodes')
-
+    new_policies[self._filtered_player] = []
+    self._filtered_player = 1 - self._filtered_player
 
     return new_policies, reward_trace
 

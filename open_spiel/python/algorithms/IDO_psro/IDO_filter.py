@@ -7,7 +7,7 @@ def strategy_filter(solver):
     _meta_games = solver._meta_games
     _policies = solver._policies
 
-    filtered_idx = len(_policies[filtered_player]-1)
+    filtered_idx = len(_policies[filtered_player]) - 1
 
     for player in range(num_players):
         # filter meta_games.
