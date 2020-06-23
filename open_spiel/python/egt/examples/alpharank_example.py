@@ -58,13 +58,21 @@ def get_kuhn_poker_data(num_players=2):
 
 def main(unused_arg):
   # Construct meta-game payoff tables
-  payoff_tables = get_kuhn_poker_data()
+  # payoff_tables = get_kuhn_poker_data()
+
+  payoff_tables = [np.array([[1.1, -10.0],
+                             [1.0, -1.0],
+                             [-1.0, 1.0]]),
+                   np.array([[-1.1, 10.0],
+                             [-1.0, 1.0],
+                             [1.0, -1.0]])]
+
   payoffs_are_hpt_format = utils.check_payoffs_are_hpt(payoff_tables)
   strat_labels = utils.get_strat_profile_labels(payoff_tables,
                                                 payoffs_are_hpt_format)
 
   # Run AlphaRank
-  rhos, rho_m, pi, _, _ = alpharank.compute(payoff_tables, alpha=1e2)
+  rhos, rho_m, pi, _, _ = alpharank.compute(payoff_tables, alpha=60)
 
   # Report & plot results
   alpharank.print_results(
