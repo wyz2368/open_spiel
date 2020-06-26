@@ -319,7 +319,7 @@ class AbstractMetaTrainer(object):
   def get_nash_strategies(self):
     """Returns the nash meta-strategy distribution on meta game matrix. When other meta strategies in play, nash strategy is still needed for evaluation
     """
-    if self._meta_strategy_method_name in {'general_nash_strategy','nash_strategy'}:
+    if self._meta_strategy_method_name in {'general_nash_strategy','nash_strategy'} or self._num_players > 2:
       return self.get_meta_strategies()
     meta_strategy_probabilities = meta_strategies.general_nash_strategy(self, checkpoint_dir=self.checkpoint_dir)
     return [np.copy(a) for a in meta_strategy_probabilities]

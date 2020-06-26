@@ -422,32 +422,28 @@ def gpsro_looper(env, oracle, agents, writer, quiesce=False, checkpoint_dir=None
     train_reward_curve = g_psro_solver.iteration(seed=seed)
     meta_game = g_psro_solver.get_meta_game()
     meta_probabilities = g_psro_solver.get_meta_strategies()
-    if g_psro_solver._num_players == 2:
-        nash_meta_probabilities = g_psro_solver.get_nash_strategies()
+    nash_meta_probabilities = g_psro_solver.get_nash_strategies()
     policies = g_psro_solver.get_policies()
    
     if FLAGS.verbose:
       # print("Meta game : {}".format(meta_game))
       print("Probabilities : {}".format(meta_probabilities))
-      if g_psro_solver._num_players == 2:
-          print("Nash Probabilities : {}".format(nash_meta_probabilities))
+      print("Nash Probabilities : {}".format(nash_meta_probabilities))
 
     aggregator = policy_aggregator.PolicyAggregator(env.game)
 
     ## Using NE-based NashConv
-    if g_psro_solver._num_players == 2:
-        aggr_policies_Mike = aggregator.aggregate(
+    aggr_policies = aggregator.aggregate(
             range(FLAGS.n_players), policies, nash_meta_probabilities)
     ## Using heuristic-based NashConv
-    aggr_policies = aggregator.aggregate(
-        range(FLAGS.n_players), policies, meta_probabilities)
+    # aggr_policies = aggregator.aggregate(
+    #     range(FLAGS.n_players), policies, meta_probabilities)
 
     exploitabilities, expl_per_player = exploitability.nash_conv(
         env.game, aggr_policies, return_only_nash_conv=False)
 
-    if g_psro_solver._num_players == 2:
-        nash_Mike, expl_per_player = exploitability.nash_conv(
-            env.game, aggr_policies_Mike, return_only_nash_conv=False)
+    # nash_Mike, expl_per_player = exploitability.nash_conv(
+    #         env.game, aggr_policies_Mike, return_only_nash_conv=False)
 
     unique_policies = print_policy_analysis(policies, env.game, FLAGS.verbose)
     for p, cur_set in enumerate(unique_policies):
@@ -470,8 +466,7 @@ def gpsro_looper(env, oracle, agents, writer, quiesce=False, checkpoint_dir=None
     for p in range(len(expl_per_player)):
       writer.add_scalar('player'+str(p)+'_exp', expl_per_player[p], gpsro_iteration)
     writer.add_scalar('exp', exploitabilities, gpsro_iteration)
-    if g_psro_solver._num_players == 2:
-        writer.add_scalar('exp_Mike', nash_Mike, gpsro_iteration)
+    # writer.add_scalar('exp_Mike', nash_Mike, gpsro_iteration)
     if FLAGS.verbose:
       print("Exploitabilities : {}".format(exploitabilities))
       print("Exploitabilities per player : {}".format(expl_per_player))

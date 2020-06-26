@@ -7,13 +7,15 @@ import numpy as np
 
 fig, ax = plt.subplots(figsize=(6, 3), subplot_kw=dict(aspect="equal"))
 
-recipe = ["0 0-20",
-          "0.005 21-40",
-          "0.178 41-60",
-          "0.817 61-80"]
+recipe = ["0.364 two devs",
+          "0.636 one dev",
+          ]
 
-data = [float(x.split()[0]) for x in recipe]
-ingredients = [x.split()[-1] for x in recipe]
+# data = [float(x.split()[0]) for x in recipe]
+# ingredients = [x.split()[-1] for x in recipe]
+
+data = [0.636, 0.364]
+ingredients = ["One dev", "Two devs"]
 
 
 def func(pct, allvals):
@@ -21,7 +23,7 @@ def func(pct, allvals):
     return "{:.1f}%".format(pct)
 
 
-wedges, texts, autotexts = ax.pie(data, autopct=lambda pct: func(pct, data), textprops=dict(color="w"), colors=["r", 'C0', 'C2', 'C1'])
+wedges, texts, autotexts = ax.pie(data, autopct=lambda pct: func(pct, data), textprops=dict(color="w"), colors=['C1', 'C2'])
 
 # wedges, texts, autotexts = ax.pie(data,  textprops=dict(color="w"))
 
