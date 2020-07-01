@@ -467,10 +467,8 @@ def print_rankings_table(payoff_tables,
       else:
         strat_profile = get_strat_profile_from_id(num_strats_per_population,
                                                   strat)
-      print('strat_profile:', strat_profile)
       label = get_label_from_strat_profile(num_populations, strat_profile,
                                            strat_labels)
-      print('label:', label)
       print_3col(label, str(rank), str(np.abs(rounded_pi)))
       num_strats_printed += 1
     rank += 1
