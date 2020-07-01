@@ -3,6 +3,12 @@ import numpy as np
 from open_spiel.python.algorithms.psro_v2.utils import alpharank_strategy
 
 def strategy_filter(solver, stopping_time=None):
+    """
+
+    :param solver:
+    :param stopping_time: time step when we stop filtering strategies.
+    :return:
+    """
     if stopping_time is not None:
         if solver._iterations > stopping_time:
             return solver._meta_games, solver._policies
@@ -14,6 +20,8 @@ def strategy_filter(solver, stopping_time=None):
                                 solver.strategy_set_size)
     elif solver.filtering_method == "etrace":
         return etrace_filter(solver)
+    elif solver.filtering_method == "one_nash":
+        return one_nash_filter(solver)
     else:
         return solver._meta_games, solver._policies
 
@@ -110,6 +118,46 @@ def etrace_filter(solver, gamma=0.5, threshold=0.001):
         policies[player] = np.delete(policies[player], filtered_idx_list[player])
         policies[player] = list(policies[player])
         solver.etrace[player] = np.delete(solver.etrace[player], filtered_idx_list[player])
+
+    print("Strategies filtered:")
+    num_str_players = []
+    for player in range(num_players):
+        print("Player " + str(player) + ":", filtered_idx_list[player])
+        num_str_players.append(len(policies[player]))
+    print("Number of strategies after filtering:", num_str_players)
+
+    return meta_games, policies
+
+def one_nash_filter(solver, threshold=0.001):
+    num_players = solver._num_players
+    filtered_idx_list = []
+    len_filtered_strategies = []
+
+    meta_games = solver.get_meta_game()
+    policies = solver.get_policies()
+    num_str, _ = np.shape(meta_games[0])
+    if num_str <= solver.strategy_set_size:
+        return meta_games, policies
+
+    solver.update_meta_strategies()
+    nash = solver.get_meta_strategies()
+
+    for player in range(num_players):
+        zero_pos = np.where(nash[player] <= threshold)[0]
+        filtered_idx_list.append(zero_pos)
+        len_filtered_strategies.append(len(zero_pos))
+
+    if np.sum(len_filtered_strategies) == 0:
+        return solver._meta_games, solver._policies
+
+    for player in range(num_players):
+        # filter meta_games.
+        for dim in range(num_players):
+            filtered_idx = filtered_idx_list[dim]
+            meta_games[player] = np.delete(meta_games[player], filtered_idx, axis=dim)
+        # filter policies.
+        policies[player] = np.delete(policies[player], filtered_idx_list[player])
+        policies[player] = list(policies[player])
 
     print("Strategies filtered:")
     num_str_players = []
