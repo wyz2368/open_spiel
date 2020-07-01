@@ -12,5 +12,5 @@
 
 module load python3.6-anaconda/5.2.0
 cd ${SLURM_SUBMIT_DIR}
-python psro_v2_example.py --game_name=leduc_poker --n_players=2 --strategy_set_size=30  --filtering_method=etrace --meta_strategy_method=nash --oracle_type=BR --gpsro_iterations=150 --number_training_episodes=10000 --sbatch_run=True --root_result_folder=br_do_30_etrace_0.5
+python psro_v2_example.py --game_name=leduc_poker --n_players=2 --strategy_set_size=20  --filtering_method=etrace --meta_strategy_method=nash --oracle_type=DQN --gpsro_iterations=150 --number_training_episodes=10000 --sbatch_run=True --root_result_folder=dqn_do_20_etrace_0.5
 
