@@ -46,24 +46,24 @@ order = 2
 
 
 ################### Draw different NashConvs  ##########################
-# deepmind_fic = savgol_filter(genfromtxt('./data/2Nash_merged_csv/deepmind_fic.csv', delimiter=','), window_size, order)
-# Mike_fic = savgol_filter(genfromtxt('./data/2Nash_merged_csv/Mike_fic.csv', delimiter=','), window_size, order)
-# dqn_do = savgol_filter(genfromtxt('./data/2Nash_merged_csv/dqn_do.csv', delimiter=','), window_size, order)
+# deepmind_fic = savgol_filter(genfromtxt('./data/merged_data_kuhn/deepmind_fic.csv', delimiter=','), window_size, order)
+# Mike_fic = savgol_filter(genfromtxt('./data/merged_data_kuhn/Mike_fic.csv', delimiter=','), window_size, order)
+# dqn_do = savgol_filter(genfromtxt('./data/merged_data_kuhn/dqn_do.csv', delimiter=','), window_size, order)
 
-deepmind_fic_mean = genfromtxt('./data/2Nash_merged_csv/dqn_fic_deepmind_mean.csv', delimiter=',')
-Mike_fic_mean = genfromtxt('./data/2Nash_merged_csv/dqn_fic_Mike_mean.csv', delimiter=',')
-dqn_do_mean = genfromtxt('./data/2Nash_merged_csv/dqn_DO_mean.csv', delimiter=',')
-deepmind_prd_mean = genfromtxt('./data/2Nash_merged_csv/dqn_prd_deepmind_mean.csv', delimiter=',')
-Mike_prd_mean = genfromtxt('./data/2Nash_merged_csv/dqn_prd_Mike_mean.csv', delimiter=',')
+deepmind_fic_mean = genfromtxt('./data/merged_data_kuhn/dqn_fic_deepmind_kuhn_mean.csv', delimiter=',')
+Mike_fic_mean = genfromtxt('./data/merged_data_kuhn/dqn_fic_Mike_kuhn_mean.csv', delimiter=',')
+dqn_do_mean = genfromtxt('./data/merged_data_kuhn/dqn_DO_Mike_kuhn_mean.csv', delimiter=',')
+deepmind_prd_mean = genfromtxt('./data/merged_data_kuhn/dqn_prd_deepmind_kuhn_mean.csv', delimiter=',')
+Mike_prd_mean = genfromtxt('./data/merged_data_kuhn/dqn_prd_Mike_kuhn_mean.csv', delimiter=',')
 
-deepmind_fic_std = genfromtxt('./data/2Nash_merged_csv/dqn_fic_deepmind_std.csv', delimiter=',')
-Mike_fic_std = genfromtxt('./data/2Nash_merged_csv/dqn_fic_Mike_std.csv', delimiter=',')
-dqn_do_std = genfromtxt('./data/2Nash_merged_csv/dqn_DO_std.csv', delimiter=',')
-deepmind_prd_std = genfromtxt('./data/2Nash_merged_csv/dqn_prd_deepmind_std.csv', delimiter=',')
-Mike_prd_std = genfromtxt('./data/2Nash_merged_csv/dqn_prd_Mike_std.csv', delimiter=',')
+deepmind_fic_std = genfromtxt('./data/merged_data_kuhn/dqn_fic_deepmind_kuhn_std.csv', delimiter=',')
+Mike_fic_std = genfromtxt('./data/merged_data_kuhn/dqn_fic_Mike_kuhn_std.csv', delimiter=',')
+dqn_do_std = genfromtxt('./data/merged_data_kuhn/dqn_DO_Mike_kuhn_std.csv', delimiter=',')
+deepmind_prd_std = genfromtxt('./data/merged_data_kuhn/dqn_prd_deepmind_kuhn_std.csv', delimiter=',')
+Mike_prd_std = genfromtxt('./data/merged_data_kuhn/dqn_prd_Mike_kuhn_std.csv', delimiter=',')
 
 axes = plt.gca()
-axes.set_ylim([0.5,2])
+axes.set_ylim([0,0.4])
 
 x = np.arange(1, 151)
 plt.plot(x, dqn_do_mean, '-b', label= "DO")
