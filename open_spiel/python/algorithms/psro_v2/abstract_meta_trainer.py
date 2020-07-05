@@ -324,6 +324,10 @@ class AbstractMetaTrainer(object):
     meta_strategy_probabilities = meta_strategies.general_nash_strategy(self, checkpoint_dir=self.checkpoint_dir)
     return [np.copy(a) for a in meta_strategy_probabilities]
 
+  def get_prd_strategies(self):
+    meta_strategy_probabilities = meta_strategies.prd_strategy(self)
+    return [np.copy(a) for a in meta_strategy_probabilities]
+
   def get_meta_strategies(self):
     """Returns the meta-strategy distribution on meta game matrix."""
     meta_strategy_probabilities = self._meta_strategy_probabilities
