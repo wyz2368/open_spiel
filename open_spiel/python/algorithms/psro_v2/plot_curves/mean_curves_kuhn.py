@@ -67,19 +67,19 @@ axes.set_ylim([0,0.4])
 
 x = np.arange(1, 151)
 plt.plot(x, dqn_do_mean, '-b', label= "DO")
-plt.fill_between(x, dqn_do_mean+dqn_do_std, dqn_do_mean-dqn_do_std, alpha=0.1, color="C2")
+plt.fill_between(x, dqn_do_mean+dqn_do_std, dqn_do_mean-dqn_do_std, alpha=0.1, color="b")
 
-# plt.plot(x, deepmind_fic_mean, '-C2', label= "Heuristic-based Uniform")
-# plt.fill_between(x, deepmind_fic_mean+deepmind_fic_std, deepmind_fic_mean-deepmind_fic_std, alpha=0.1, color="C2")
+plt.plot(x, deepmind_fic_mean, '-C2', label= "Heuristic-based Uniform")
+plt.fill_between(x, deepmind_fic_mean+deepmind_fic_std, deepmind_fic_mean-deepmind_fic_std, alpha=0.1, color="C2")
+
+plt.plot(x, Mike_fic_mean, '-C1', label= "NE-based Uniform")
+plt.fill_between(x, Mike_fic_mean+Mike_fic_std, Mike_fic_mean-Mike_fic_std, alpha=0.1, color="C1")
+
+# plt.plot(x, deepmind_prd_mean, '-C2', label= "Heuristic-based PRD")
+# plt.fill_between(x, deepmind_prd_mean+deepmind_prd_std, deepmind_prd_mean-deepmind_prd_std, alpha=0.1, color="C2")
 #
-# plt.plot(x, Mike_fic_mean, '-C1', label= "NE-based Uniform")
-# plt.fill_between(x, Mike_fic_mean+Mike_fic_std, Mike_fic_mean-Mike_fic_std, alpha=0.1, color="C1")
-
-plt.plot(x, deepmind_prd_mean, '-C2', label= "Heuristic-based PRD")
-plt.fill_between(x, deepmind_prd_mean+deepmind_prd_std, deepmind_prd_mean-deepmind_prd_std, alpha=0.1, color="C2")
-
-plt.plot(x, Mike_prd_mean, '-C1', label= "NE-based PRD")
-plt.fill_between(x, Mike_prd_mean+Mike_prd_std, Mike_prd_mean-Mike_prd_std, alpha=0.1, color="C1")
+# plt.plot(x, Mike_prd_mean, '-C1', label= "NE-based PRD")
+# plt.fill_between(x, Mike_prd_mean+Mike_prd_std, Mike_prd_mean-Mike_prd_std, alpha=0.1, color="C1")
 
 plt.xticks(size = 17)
 plt.yticks(size = 17)

@@ -86,7 +86,8 @@ etrace_40_std = genfromtxt('./data/etrace_40_std.csv', delimiter=',')
 DO_mean = genfromtxt('./data/DO_mean.csv', delimiter=',')
 DO_std = genfromtxt('./data/DO_std.csv', delimiter=',')
 
-
+axes = plt.gca()
+axes.set_ylim([0,2])
 
 X = np.arange(1, 151)
 

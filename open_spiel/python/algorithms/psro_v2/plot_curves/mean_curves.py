@@ -62,12 +62,15 @@ dqn_do_std = genfromtxt('./data/2Nash_merged_csv/dqn_DO_std.csv', delimiter=',')
 deepmind_prd_std = genfromtxt('./data/2Nash_merged_csv/dqn_prd_deepmind_std.csv', delimiter=',')
 Mike_prd_std = genfromtxt('./data/2Nash_merged_csv/dqn_prd_Mike_std.csv', delimiter=',')
 
+dqn_do_prd_prd_mean = genfromtxt('./data/2Nash_merged_csv/dqn_do_prd_prd_mean.csv', delimiter=',')
+dqn_do_prd_prd_std = genfromtxt('./data/2Nash_merged_csv/dqn_do_prd_prd_std.csv', delimiter=',')
+
 axes = plt.gca()
 axes.set_ylim([0.5,2])
 
 x = np.arange(1, 151)
 plt.plot(x, dqn_do_mean, '-b', label= "DO")
-plt.fill_between(x, dqn_do_mean+dqn_do_std, dqn_do_mean-dqn_do_std, alpha=0.1, color="C2")
+plt.fill_between(x, dqn_do_mean+dqn_do_std, dqn_do_mean-dqn_do_std, alpha=0.1, color="b")
 
 # plt.plot(x, deepmind_fic_mean, '-C2', label= "Heuristic-based Uniform")
 # plt.fill_between(x, deepmind_fic_mean+deepmind_fic_std, deepmind_fic_mean-deepmind_fic_std, alpha=0.1, color="C2")
@@ -80,6 +83,9 @@ plt.fill_between(x, deepmind_prd_mean+deepmind_prd_std, deepmind_prd_mean-deepmi
 
 plt.plot(x, Mike_prd_mean, '-C1', label= "NE-based PRD")
 plt.fill_between(x, Mike_prd_mean+Mike_prd_std, Mike_prd_mean-Mike_prd_std, alpha=0.1, color="C1")
+
+plt.plot(x, dqn_do_prd_prd_mean, '-C5', label= "Heuristic-based PRD in DO run")
+plt.fill_between(x, dqn_do_prd_prd_mean+dqn_do_prd_prd_std, dqn_do_prd_prd_mean-dqn_do_prd_prd_std, alpha=0.1, color="C5")
 
 plt.xticks(size = 17)
 plt.yticks(size = 17)
