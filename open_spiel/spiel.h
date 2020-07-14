@@ -20,7 +20,6 @@
 #include <map>
 #include <memory>
 #include <numeric>
-#include <optional>
 #include <random>
 #include <sstream>
 #include <string>
@@ -30,26 +29,13 @@
 
 #include "open_spiel/abseil-cpp/absl/random/bit_gen_ref.h"
 #include "open_spiel/abseil-cpp/absl/strings/str_join.h"
+#include "open_spiel/abseil-cpp/absl/types/optional.h"
+#include "open_spiel/fog/fog_constants.h"
 #include "open_spiel/game_parameters.h"
+#include "open_spiel/spiel_globals.h"
 #include "open_spiel/spiel_utils.h"
 
 namespace open_spiel {
-
-// Player ids are 0, 1, 2, ...
-// Negative numbers are used for various special values.
-enum PlayerId {
-  // The fixed player id for chance/nature.
-  kChancePlayerId = -1,
-  // What is returned as a player id when the game is simultaneous.
-  kSimultaneousPlayerId = -2,
-  // Invalid player.
-  kInvalidPlayer = -3,
-  // What is returned as the player id on terminal nodes.
-  kTerminalPlayerId = -4
-};
-
-// Constant representing an invalid action.
-inline constexpr Action kInvalidAction = -1;
 
 // Static information for a game. This will determine what algorithms are
 // applicable. For example, minimax search is only applicable to two-player,
@@ -140,31 +126,24 @@ struct GameType {
   // Can the game be loaded with no parameters? It is strongly recommended that
   // games be loadable with default arguments.
   bool default_loadable = true;
+
+  // Can we factorize observations into public and private parts?
+  // This is similar to observation fields before, but adds additional
+  // distinction between public and private observations.
+  // See fog_constants.h for more details.
+  bool provides_factored_observation_string = false;
 };
 
-enum class StateType {
-  kTerminal,  // If the state is terminal.
-  kChance,    // If the player to act equals kChanceId.
-  kDecision,  // If a player other than kChanceId is acting.
-};
 std::ostream& operator<<(std::ostream& os, const StateType& type);
 
 std::ostream& operator<<(std::ostream& stream, GameType::Dynamics value);
 std::ostream& operator<<(std::ostream& stream, GameType::ChanceMode value);
 std::ostream& operator<<(std::ostream& stream, GameType::Information value);
 std::ostream& operator<<(std::ostream& stream, GameType::Utility value);
+std::ostream& operator<<(std::ostream& stream, GameType::RewardModel value);
 
 // The probability of taking each possible action in a particular info state.
 using ActionsAndProbs = std::vector<std::pair<Action, double>>;
-
-// Layouts for 3-D tensors. For 2-D tensors, we assume that the layout is a
-// single spatial dimension and a channel dimension. If a 2-D tensor should be
-// interpreted as a 2-D space, report it as 3-D with a channel dimension of
-// size 1. We have no standard for higher-dimensional tensors.
-enum class TensorLayout {
-  kHWC,  // indexes are in the order (height, width, channels)
-  kCHW,  // indexes are in the order (channels, height, width)
-};
 
 // Forward declaration needed for the backpointer within State.
 class Game;
@@ -205,8 +184,12 @@ class State {
   virtual void ApplyAction(Action action_id) {
     // history_ needs to be modified *after* DoApplyAction which could
     // be using it.
+
+    // Cannot apply an invalid action.
+    SPIEL_CHECK_NE(action_id, kInvalidAction);
+    Player player = CurrentPlayer();
     DoApplyAction(action_id);
-    history_.push_back(action_id);
+    history_.push_back({player, action_id});
   }
 
   // `LegalActions(Player player)` is valid for all nodes in all games,
@@ -332,6 +315,9 @@ class State {
     return CurrentPlayer() == kChancePlayerId;
   }
 
+  // Is this state a player node, with a single player acting?
+  virtual bool IsPlayerNode() const { return CurrentPlayer() >= 0; }
+
   // Is this state a node that requires simultaneous action choices from more
   // than one player? If this is ever true, then the game should be marked as
   // a simultaneous game.
@@ -339,18 +325,48 @@ class State {
     return CurrentPlayer() == kSimultaneousPlayerId;
   }
 
-  // A string representation for the history. There should be a one to one
-  // mapping between an history (i.e. a sequence of actions for all players,
-  // including chance) and the `State` objects.
-  virtual std::vector<Action> History() const { return history_; }
+  // We store (player, action) pairs in the history.
+  struct PlayerAction {
+    Player player;
+    Action action;
+  };
 
-  std::string HistoryString() const { return absl::StrJoin(history_, " "); }
+  // For backward-compatibility reasons, this is the history of actions only.
+  // To get the (player, action) pairs, use `FullHistory` instead.
+  std::vector<Action> History() const {
+    std::vector<Action> history;
+    history.reserve(history_.size());
+    for (auto& h : history_) history.push_back(h.action);
+    return history;
+  }
+
+  // The full (player, action) history.
+  std::vector<PlayerAction> FullHistory() const { return history_; }
+
+  // A string representation for the history. There should be a one to one
+  // mapping between histories (i.e. sequences of actions for all players,
+  // including chance) and the `State` objects.
+  std::string HistoryString() const { return absl::StrJoin(History(), " "); }
+
+  // Is this a first state in the game, i.e. the initial state (root node)?
+  bool IsInitialState() const { return History().empty(); }
 
   // For imperfect information games. Returns an identifier for the current
   // information state for the specified player.
   // Different ground states can yield the same information state for a player
   // when the only part of the state that differs is not observable by that
   // player (e.g. opponents' cards in Poker.)
+
+  // The identifiers must be unique across all players.
+  // This allows an algorithm to maintain a single table of identifiers
+  // instead of maintaining a table per player to avoid name collisions.
+  //
+  // A simple way to do so is for example, in a card game, if both players can
+  // hold the card Jack, the identifier can contain player identification as
+  // well, like P1Jack and P2Jack. However prefixing by player number is not
+  // a requirement. The only thing that is necessary is that it is unambiguous
+  // who is the observer.
+
 
   // Games that do not have imperfect information do not need to implement
   // these methods, but most algorithms intended for imperfect information
@@ -368,6 +384,16 @@ class State {
   // For example, in tic-tac-toe, the current state of the board would not be
   // a perfect-recall representation, but the sequence of moves played would
   // be.
+
+  // If you implement both InformationState and Observation, the two must be
+  // consistent for all the players (even the non-acting player(s)).
+  // By consistency we mean that when you maintain an Action-Observation
+  // history (AOH) for different ground states, the (in)equality of two AOHs
+  // implies the (in)equality of two InformationStates.
+  // In other words, AOH is a factored representation of InformationState.
+  //
+  // For details, see Section 3.1 of https://arxiv.org/abs/1908.09453
+  // or Section 2.1 of https://arxiv.org/abs/1906.11110
 
   // There are currently no use-case for calling this function with
   // `kChancePlayerId` or `kTerminalPlayerId`. Thus, games are expected to raise
@@ -412,13 +438,17 @@ class State {
   //  - It has at most the same information content as the information state
   //  - The complete history of observations and our actions over the
   //    course of the game is sufficient to reconstruct the information
-  //    state.
+  //    state for any players at any point in the game.
   //
-  // For example, the cards revealed and bets made since our previous move in
-  // poker, or the current state of the board in chess.
+  // For example, an observation is the cards revealed and bets made in Poker,
+  // or the current state of the board in Chess.
   // Note that neither of these are valid information states, since the same
   // observation may arise from two different observation histories (i.e. they
   // are not perfect recall).
+  //
+  // Observations should cover all observations: a combination of both public
+  // and private observations. They are not factored into these individual
+  // constituent parts.
   //
   // Implementations should start with (and it's tested in api_test.py):
   //   SPIEL_CHECK_GE(player, 0);
@@ -455,6 +485,97 @@ class State {
     return ObservationTensor(CurrentPlayer());
   }
 
+  // The public / private observations factorize observations into their
+  // (mostly) non-overlapping public and private parts (they overlap only for
+  // the start of the game and time). See also <open_spiel/fog_constants.h>
+  //
+  // The public observations correspond to information that all the players know
+  // that all the players know, like upward-facing cards on a table.
+  // Perfect information games, like Chess, have only public observations.
+  //
+  // All games have non-empty public observations. The minimum public
+  // information is time: we assume that all the players can perceive absolute
+  // time (we do not consider any relativistic effects). The implemented games
+  // must be 1-timeable (see [1] for details), a property that is trivially
+  // satisfied with all human-played board games, so you don't have to typically
+  // worry about this. (You'd have to knock players out / consider Einstein's
+  // time-relativistic effects to make non-timeable games.).
+  //
+  // The public observations are used to create a list of observations:
+  // a public observation history. If you return any non-empty public
+  // observation, you implicitly encode time as well within this sequence.
+  //
+  // Public observations are not required to be "common knowledge" observations.
+  // Example: In imperfect-info version of card game Goofspiel, players make
+  // bets with cards on their hand, and their imperfect information consists of
+  // not knowing exactly what cards the opponent currently holds, as the players
+  // only learn public information whether they have won/lost/draw the bet.
+  // However, when the player bets a card "5" and learns it drew the round,
+  // it can infer that the opponent must have also bet the card "5", just as the
+  // player did. In principle we could ask the game to make this inference
+  // automatically, and return observation "draw-5". We do not require this, as
+  // it is in general expensive to compute. Returning public observation "draw"
+  // is sufficient.
+  //
+  // In the initial state this function must return kStartOfGameObservation.
+  // If there is no public observation available except time, the implementation
+  // should return kClockTickObservation.
+  // Note that empty strings for observations are forbidden.
+  //
+  // See the Factored-Observation Game (FOG) paper for more details.
+  // [1] https://arxiv.org/abs/1906.11110
+
+  virtual std::string PublicObservationString() const {
+    SpielFatalError("PublicObservationString is not implemented.");
+  }
+
+  // The public / private observations factorize observations into their
+  // (mostly) non-overlapping public and private parts (they overlap only for
+  // the start of the game and time). See also <open_spiel/fog_constants.h>
+  //
+  // The private observations correspond to the part of the observation that
+  // is not public. In Poker, this would be the cards the player holds in his
+  // hand. Note that this does not imply that other players don't have access
+  // to this information.
+  //
+  // For example, consider there is a mirror behind an unaware player, betraying
+  // his hand in the reflection. Even if everyone was aware of the mirror, then
+  // this information still may not be public, because the players do not know
+  // for certain that everyone is aware of this. It would become public if and
+  // only if all the players were aware of the mirror, and they also knew that
+  // indeed everyone else knows about it too. Then this would effectively make
+  // it the same as if the player just placed his cards on the table for
+  // everyone to see.
+  //
+  // In the initial state this function must return kStartOfGameObservation.
+  // If there is no private observation available, the implementation should
+  // return kClockTickObservation. These two types of observations are shared
+  // with the public observations. This is done for technical reasons discussed
+  // in <open_spiel/fog_constants.h>
+  //
+  // Perfect information games have no private observations: implementations
+  // should just return a start of game and clock ticking. Imperfect-information
+  // games should return a different string string at least once in the game
+  // (otherwise they would be considered perfect-info games).
+  // Note that empty strings for observations are forbidden.
+  //
+  // Implementations should start with (and it's tested in api_test.py):
+  //   SPIEL_CHECK_GE(player, 0);
+  //   SPIEL_CHECK_LT(player, num_players_);
+  //
+  // See the Factored-Observation Game (FOG) paper for more details.
+  // [1] https://arxiv.org/abs/1906.11110
+  virtual std::string PrivateObservationString(Player player) const {
+    SpielFatalError("PrivateObservationString is not implemented.");
+  }
+  std::string PrivateObservationString() const {
+    const int player = CurrentPlayer();
+    // PrivateObservationString is only valid for actual players, not any of the
+    // special values. See PlayerId.
+    SPIEL_CHECK_GE(player, 0);
+    return PrivateObservationString(player);
+  }
+
   // Return a copy of this state.
   virtual std::unique_ptr<State> Clone() const = 0;
 
@@ -479,13 +600,15 @@ class State {
   // Every player must submit a action; if one of the players has no actions at
   // this node, then kInvalidAction should be passed instead.
   //
-  // Simulatenous games should implement DoApplyActions.
+  // Simultaneous games should implement DoApplyActions.
   void ApplyActions(const std::vector<Action>& actions) {
     // history_ needs to be modified *after* DoApplyActions which could
     // be using it.
     DoApplyActions(actions);
     history_.reserve(history_.size() + actions.size());
-    history_.insert(history_.end(), actions.begin(), actions.end());
+    for (int player = 0; player < actions.size(); ++player) {
+      history_.push_back({player, actions[player]});
+    }
   }
 
   // The size of the action space. See `Game` for a full description.
@@ -585,11 +708,13 @@ class State {
   // Fields common to every game state.
   int num_distinct_actions_;
   int num_players_;
-  std::vector<Action> history_;  // The list of actions leading to the state.
+  std::vector<PlayerAction> history_;  // Actions taken so far.
 
   // A pointer to the game that created this state.
   std::shared_ptr<const Game> game_;
 };
+
+std::ostream& operator<<(std::ostream& stream, const State& state);
 
 // A class that refers to a particular game instantiation, for example
 // Breakthrough(8x8).
@@ -713,7 +838,7 @@ class Game : public std::enable_shared_from_this<Game> {
   // that is taken from the initial state.
   //
   // If this method is overridden, then it should be the inverse of
-  // Game::SerializeState (i.e. that method should also be overridden).
+  // State::Serialize (i.e. that method should also be overridden).
   virtual std::unique_ptr<State> DeserializeState(const std::string& str) const;
 
   // The maximum length of any one game (in terms of number of decision nodes
@@ -736,7 +861,7 @@ class Game : public std::enable_shared_from_this<Game> {
   // - Returns `default_value` if provided.
   template <typename T>
   T ParameterValue(const std::string& key,
-                   std::optional<T> default_value = std::nullopt) const;
+                   absl::optional<T> default_value = absl::nullopt) const;
 
   // The game type.
   GameType game_type_;
@@ -856,6 +981,14 @@ DeserializeGameAndState(const std::string& serialized_state);
 // circular dependency.
 using HistoryDistribution =
     std::pair<std::vector<std::unique_ptr<State>>, std::vector<double>>;
+
+// Convert GameTypes from and to strings. Used for serialization of objects
+// that contain them.
+// Note: these are not finished! They will be finished by an external
+// contributor. See https://github.com/deepmind/open_spiel/issues/234 for
+// details.
+std::string GameTypeToString(const GameType& game_type);
+GameType GameTypeFromString(const std::string& game_type_str);
 
 }  // namespace open_spiel
 

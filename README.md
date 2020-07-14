@@ -2,7 +2,8 @@
 # OpenSpiel: A Framework for Reinforcement Learning in Games
 
 [![Documentation Status](https://readthedocs.org/projects/openspiel/badge/?version=latest)](https://openspiel.readthedocs.io/en/latest/?badge=latest)
-[![Build Status](https://travis-ci.org/deepmind/open_spiel.svg?branch=master)](https://travis-ci.org/deepmind/open_spiel)
+[![Build Status](https://github.com/deepmind/open_spiel/blob/master/docs/_static/passing.svg)](https://travis-ci.org/deepmind/open_spiel)
+<!-- There is currently a problem with Travis-CI reporting of our build status. Will re-enable when fixed. [![Build Status](https://travis-ci.org/deepmind/open_spiel.svg?branch=master)](https://travis-ci.org/deepmind/open_spiel) -->
 
 OpenSpiel is a collection of environments and algorithms for research in general
 reinforcement learning and search/planning in games. OpenSpiel supports n-player
@@ -40,6 +41,10 @@ For a longer introduction to the core concepts, formalisms, and terminology,
 including an overview of the algorithms and some results, please see
 [OpenSpiel: A Framework for Reinforcement Learning in Games](https://arxiv.org/abs/1908.09453).
 
+For an overview of OpenSpiel and example uses of the core API, see the tutorial
+presentation slides:
+[Introduction to OpenSpiel](http://mlanctot.info/open_spiel-tutorial-kuleuven-mar11-2020.pdf).
+
 If you use OpenSpiel in your research, please cite the paper using the following
 BibTeX:
 
@@ -63,4 +68,8 @@ BibTeX:
   url       = {http://arxiv.org/abs/1908.09453},
 }
 ```
+
+## Versioning
+
+We use [Semantic Versioning](https://semver.org/)
 

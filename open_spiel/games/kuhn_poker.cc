@@ -19,8 +19,11 @@
 #include <string>
 #include <utility>
 
+#include "open_spiel/abseil-cpp/absl/strings/str_cat.h"
+#include "open_spiel/fog/fog_constants.h"
 #include "open_spiel/game_parameters.h"
 #include "open_spiel/spiel.h"
+#include "open_spiel/spiel_utils.h"
 
 namespace open_spiel {
 namespace kuhn_poker {
@@ -45,7 +48,10 @@ const GameType kGameType{/*short_name=*/"kuhn_poker",
                          /*provides_observation_string=*/true,
                          /*provides_observation_tensor=*/true,
                          /*parameter_specification=*/
-                         {{"players", GameParameter(kDefaultPlayers)}}};
+                         {{"players", GameParameter(kDefaultPlayers)}},
+                         /*default_loadable=*/true,
+                         /*provides_factored_observation_string=*/true,
+                        };
 
 std::shared_ptr<const Game> Factory(const GameParameters& params) {
   return std::shared_ptr<const Game>(new KuhnGame(params));
@@ -86,7 +92,7 @@ void KuhnState::DoApplyAction(Action move) {
 
   // We undo that before exiting the method.
   // This is used in `DidBet`.
-  history_.push_back(move);
+  history_.push_back({CurrentPlayer(), move});
 
   // Check for the game being over.
   const int num_actions = history_.size() - num_players_;
@@ -140,13 +146,13 @@ std::string KuhnState::ToString() const {
   std::string str;
   for (int i = 0; i < history_.size() && i < num_players_; ++i) {
     if (!str.empty()) str.push_back(' ');
-    absl::StrAppend(&str, history_[i]);
+    absl::StrAppend(&str, history_[i].action);
   }
 
   // The betting history: p for Pass, b for Bet
   if (history_.size() > num_players_) str.push_back(' ');
   for (int i = num_players_; i < history_.size(); ++i) {
-    str.push_back(history_[i] ? 'b' : 'p');
+    str.push_back(history_[i].action ? 'b' : 'p');
   }
 
   return str;
@@ -156,7 +162,7 @@ bool KuhnState::IsTerminal() const { return winner_ != kInvalidPlayer; }
 
 std::vector<double> KuhnState::Returns() const {
   if (!IsTerminal()) {
-    return {0.0, 0.0};
+    return std::vector<double>(num_players_, 0.0);
   }
 
   std::vector<double> returns(num_players_);
@@ -173,9 +179,9 @@ std::string KuhnState::InformationStateString(Player player) const {
   SPIEL_CHECK_LT(player, num_players_);
 
   if (history_.size() <= player) return "";
-  std::string str = std::to_string(history_[player]);
+  std::string str = std::to_string(history_[player].action);
   for (int i = num_players_; i < history_.size(); ++i)
-    str.push_back(history_[i] ? 'b' : 'p');
+    str.push_back(history_[i].action ? 'b' : 'p');
   return str;
 }
 
@@ -185,7 +191,7 @@ std::string KuhnState::ObservationString(Player player) const {
   SPIEL_CHECK_LT(player, num_players_);
 
   if (history_.size() <= player) return "";
-  std::string str = std::to_string(history_[player]);
+  std::string str = std::to_string(history_[player].action);
 
   // Adding the contribution of each players to the pot. These values are not
   // between 0 and 1.
@@ -193,6 +199,25 @@ std::string KuhnState::ObservationString(Player player) const {
     str += std::to_string(ante_[p]);
   }
   return str;
+}
+
+std::string KuhnState::PublicObservationString() const {
+  if (history_.empty()) return kStartOfGamePublicObservation;
+  if (history_.size() <= num_players_) {
+    int currently_dealing_to_player = history_.size() - 1;
+    return absl::StrCat("Deal to player ", currently_dealing_to_player);
+  }
+  return history_.back().action ? "Bet" : "Pass";
+}
+
+std::string KuhnState::PrivateObservationString(Player player) const {
+  SPIEL_CHECK_GE(player, 0);
+  SPIEL_CHECK_LT(player, num_players_);
+  // Returns private observation string if available.
+  if (history_.size() - 1 == player) {
+    return absl::StrCat("Received card ", history_[player].action);
+  }
+  return kNothingPrivateObservation;
 }
 
 void KuhnState::InformationStateTensor(Player player,
@@ -208,11 +233,12 @@ void KuhnState::InformationStateTensor(Player player,
   (*values)[player] = 1;
 
   // The player's card, if one has been dealt.
-  if (history_.size() > player) (*values)[num_players_ + history_[player]] = 1;
+  if (history_.size() > player)
+    (*values)[num_players_ + history_[player].action] = 1;
 
   // Betting sequence.
   for (int i = num_players_; i < history_.size(); ++i) {
-    (*values)[1 + 2 * i + history_[i]] = 1;
+    (*values)[1 + 2 * i + history_[i].action] = 1;
   }
 }
 
@@ -232,7 +258,8 @@ void KuhnState::ObservationTensor(Player player,
   (*values)[player] = 1;
 
   // The player's card, if one has been dealt.
-  if (history_.size() > player) (*values)[num_players_ + history_[player]] = 1;
+  if (history_.size() > player)
+    (*values)[num_players_ + history_[player].action] = 1;
 
   int offset = 2 * num_players_ + 1;
   // Adding the contribution of each players to the pot. These values are not
@@ -277,16 +304,16 @@ bool KuhnState::DidBet(Player player) const {
   } else if (player == first_bettor_) {
     return true;
   } else if (player > first_bettor_) {
-    return history_[num_players_ + player] == ActionType::kBet;
+    return history_[num_players_ + player].action == ActionType::kBet;
   } else {
-    return history_[num_players_ * 2 + player] == ActionType::kBet;
+    return history_[num_players_ * 2 + player].action == ActionType::kBet;
   }
 }
 
 std::unique_ptr<State> KuhnState::ResampleFromInfostate(
     int player_id, std::function<double()> rng) const {
   std::unique_ptr<State> state = game_->NewInitialState();
-  Action player_chance = history_.at(player_id);
+  Action player_chance = history_.at(player_id).action;
   for (int p = 0; p < game_->NumPlayers(); ++p) {
     if (p == history_.size()) return state;
     if (p == player_id) {
@@ -302,7 +329,7 @@ std::unique_ptr<State> KuhnState::ResampleFromInfostate(
   SPIEL_CHECK_GE(state->CurrentPlayer(), 0);
   if (game_->NumPlayers() == history_.size()) return state;
   for (int i = game_->NumPlayers(); i < history_.size(); ++i) {
-    state->ApplyAction(history_.at(i));
+    state->ApplyAction(history_.at(i).action);
   }
   return state;
 }

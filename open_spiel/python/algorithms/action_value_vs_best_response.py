@@ -143,8 +143,11 @@ class Calculator(object):
 
     # Compute action values
     self._action_value_calculator.compute_all_states_action_values({
-        player: player_policy,
-        opponent: policy.PolicyFromCallable(self.game, best_response_policy),
+        player:
+            player_policy,
+        opponent:
+            policy.tabular_policy_from_callable(
+                self.game, best_response_policy, [opponent]),
     })
     obj = self._action_value_calculator._get_tabular_statistics(  # pylint: disable=protected-access
         ((player, s) for s in info_states))

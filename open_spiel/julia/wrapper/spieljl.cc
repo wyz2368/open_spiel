@@ -27,7 +27,6 @@
 #include "open_spiel/matrix_game.h"
 #include "open_spiel/normal_form_game.h"
 #include "open_spiel/policy.h"
-#include "open_spiel/query.h"
 #include "open_spiel/spiel.h"
 #include "open_spiel/spiel_bots.h"
 #include "open_spiel/spiel_utils.h"
@@ -256,6 +255,10 @@ JLCXX_MODULE define_julia_module(jlcxx::Module& mod) {
               [](const open_spiel::GameType& gt) {
                 return gt.provides_observation_tensor;
               })
+      .method("provides_factored_observation_string",
+              [](const open_spiel::GameType& gt) {
+                return gt.provides_factored_observation_string;
+              })
       .method("parameter_specification", [](const open_spiel::GameType& gt) {
         return gt.parameter_specification;
       });
@@ -342,6 +345,14 @@ JLCXX_MODULE define_julia_module(jlcxx::Module& mod) {
               [](open_spiel::State& s, open_spiel::Player p,
                  std::vector<double> data) {
                 return s.ObservationTensor(p, &data);
+              })
+      .method("public_observation_string",
+              [](open_spiel::State& s) { return s.PublicObservationString(); })
+      .method("private_observation_string",
+              [](open_spiel::State& s) { return s.PrivateObservationString(); })
+      .method("private_observation_string",
+              [](open_spiel::State& s, open_spiel::Player p) {
+                return s.PrivateObservationString(p);
               })
       .method("clone", &open_spiel::State::Clone)
       .method("child", &open_spiel::State::Child)
@@ -762,8 +773,4 @@ JLCXX_MODULE define_julia_module(jlcxx::Module& mod) {
                    game, policies, state_to_index, batch_size,
                    include_full_observations, seed, max_unroll_length);
              });
-
-  mod.method("negotiation_item_pool", &open_spiel::query::NegotiationItemPool);
-  mod.method("negotiation_agent_utils",
-             &open_spiel::query::NegotiationAgentUtils);
 }  // NOLINT(readability/fn_size)

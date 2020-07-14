@@ -22,7 +22,6 @@
 #include <cstdint>
 #include <limits>
 #include <locale>
-#include <optional>
 #include <random>
 #include <sstream>
 #include <string>
@@ -38,6 +37,7 @@
 #include "open_spiel/abseil-cpp/absl/strings/str_split.h"
 #include "open_spiel/abseil-cpp/absl/time/clock.h"
 #include "open_spiel/abseil-cpp/absl/time/time.h"
+#include "open_spiel/abseil-cpp/absl/types/optional.h"
 
 // Code that is not part of the API, but is widely useful in implementations
 
@@ -64,6 +64,15 @@ std::ostream& operator<<(std::ostream& stream, const std::array<T, N>& v) {
     stream << element << " ";
   }
   stream << "]";
+  return stream;
+}
+template <typename T>
+std::ostream& operator<<(std::ostream& stream, const std::unique_ptr<T>& v) {
+  return stream << *v;
+}
+template <typename T, typename U>
+std::ostream& operator<<(std::ostream& stream, const std::pair<T, U>& v) {
+  stream << "(" << v.first << "," << v.second << ")";
   return stream;
 }
 
@@ -114,8 +123,8 @@ inline constexpr float FloatingPointDefaultThresholdRatio() { return 1e-5; }
 Action RankActionMixedBase(const std::vector<int>& bases,
                            const std::vector<int>& digits);
 
-void UnrankActionMixedBase(Action action, const std::vector<int>& bases,
-                           std::vector<int>* digits);
+std::vector<int> UnrankActionMixedBase(Action action,
+                                       const std::vector<int>& bases);
 
 // Helper function to determine the next player in a round robin.
 int NextPlayerRoundRobin(Player player, int nplayers);
@@ -127,7 +136,7 @@ int PreviousPlayerRoundRobin(Player player, int nplayers);
 // 3 and filename is my.txt, it will look for ./my.txt, ../my.txt, ../../my.txt,
 // and ../../../my.txt, return the first file found or std::nullopt if not
 // found.
-std::optional<std::string> FindFile(const std::string& filename, int levels);
+absl::optional<std::string> FindFile(const std::string& filename, int levels);
 
 // Returns whether the absolute difference between floating point values a and
 // b is less than or equal to FloatingPointThresholdRatio() * max(|a|, |b|).
@@ -196,12 +205,13 @@ bool Near(T a, T b, T epsilon) {
 // Checks that x and y are equal to the default dynamic threshold proportional
 // to max(|x|, |y|).
 #define SPIEL_CHECK_FLOAT_EQ(x, y) \
-  SPIEL_CHECK_FN2(static_cast<float>(x), static_cast<float>(y), Near)
+  SPIEL_CHECK_FN2(static_cast<float>(x), static_cast<float>(y), \
+                  open_spiel::Near)
 
 // Checks that x and y are epsilon apart or closer.
 #define SPIEL_CHECK_FLOAT_NEAR(x, y, epsilon)                   \
   SPIEL_CHECK_FN3(static_cast<float>(x), static_cast<float>(y), \
-                  static_cast<float>(epsilon), Near)
+                  static_cast<float>(epsilon), open_spiel::Near)
 
 #define SPIEL_CHECK_TRUE(x)                                      \
   while (!(x))                                                   \
@@ -256,6 +266,46 @@ class UniformProbabilitySampler {
   const double min_;
   const double max_;
 };
+
+// Utility functions intended to be used for casting
+// from a Base class to a Derived subclass.
+// These functions handle various use cases, such as pointers, const references,
+// shared or unique pointers.
+// When you use debug mode, a more expensive dynamic_cast is used and it checks
+// whether the casting has been successful. In optimized builds only static_cast
+// is used when possible.
+
+// use like this: subclass_cast<T*>(foo);
+template <typename To, typename From>
+inline To subclass_cast(From* f) {
+#if !defined(NDEBUG)
+  if (f != nullptr && dynamic_cast<To>(f) == nullptr) {
+    std::string from = typeid(From).name();
+    std::string to = typeid(From).name();
+    SpielFatalError(
+        absl::StrCat("Cast failure: could not cast a pointer from '", from,
+                     "' to '", to, "'"));
+  }
+#endif
+  return static_cast<To>(f);
+}
+
+// use like this: subclass_cast<T&>(foo);
+template <typename To, typename From>
+inline To subclass_cast(From& f) {
+  typedef typename std::remove_reference<To>::type* ToAsPointer;
+#if !defined(NDEBUG)
+  if (dynamic_cast<ToAsPointer>(&f) == nullptr) {
+    std::string from = typeid(From).name();
+    std::string to = typeid(From).name();
+    SpielFatalError(
+        absl::StrCat("Cast failure: could not cast a reference from '", from,
+                     "' to '", to, "'"));
+  }
+#endif
+  return *static_cast<ToAsPointer>(&f);
+}
+
 
 }  // namespace open_spiel
 

@@ -14,10 +14,13 @@
 
 #include "open_spiel/games/efg_game.h"
 
+#include <algorithm>
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
 
+#include "open_spiel/abseil-cpp/absl/algorithm/container.h"
+#include "open_spiel/abseil-cpp/absl/container/flat_hash_map.h"
 #include "open_spiel/abseil-cpp/absl/strings/numbers.h"
 #include "open_spiel/abseil-cpp/absl/strings/str_cat.h"
 #include "open_spiel/abseil-cpp/absl/strings/str_split.h"
@@ -80,6 +83,11 @@ std::string NodeToString(const Node* node) {
   }
   return str;
 }
+
+std::string EFGInformationStateString(Player owner, Player observer, int number,
+                                      const std::string& name) {
+  return absl::StrCat(owner, "-", observer, "-", number, "-", name);
+}
 }  // namespace
 
 EFGState::EFGState(std::shared_ptr<const Game> game, const Node* root)
@@ -99,8 +107,10 @@ Player EFGState::CurrentPlayer() const {
 }
 
 std::string EFGState::ActionToString(Player player, Action action) const {
-  SPIEL_CHECK_LT(action, cur_node_->actions.size());
-  return cur_node_->actions[action];
+  int action_idx = ActionIdx(action);
+  SPIEL_CHECK_GE(action_idx, 0);
+  SPIEL_CHECK_LT(action_idx, cur_node_->actions.size());
+  return cur_node_->actions[action_idx];
 }
 
 std::string EFGState::ToString() const {
@@ -126,8 +136,9 @@ std::string EFGState::InformationStateString(Player player) const {
   // The information set number has to uniquely identify the infoset, whereas
   // the names are optional. But the numbers are unique per player, so must
   // add the player number.
-  return absl::StrCat(cur_node_->player_number - 1, "-", player, "-",
-                      cur_node_->infoset_number, "-", cur_node_->infoset_name);
+  return EFGInformationStateString(cur_node_->player_number - 1, player,
+                                   cur_node_->infoset_number,
+                                   cur_node_->infoset_name);
 }
 
 std::string EFGState::ObservationString(Player player) const {
@@ -146,24 +157,34 @@ void EFGState::UndoAction(Player player, Action action) {
   cur_node_ = cur_node_->parent;
 }
 
+int EFGState::ActionIdx(Action action) const {
+  int action_idx = -1;
+  for (int i = 0; i < cur_node_->action_ids.size(); ++i) {
+    if (action == cur_node_->action_ids[i]) {
+      action_idx = i;
+      break;
+    }
+  }
+  return action_idx;
+}
+
 void EFGState::DoApplyAction(Action action) {
   // Actions in these games are just indices into the legal actions.
   SPIEL_CHECK_FALSE(cur_node_->type == NodeType::kTerminal);
-  SPIEL_CHECK_LT(action, cur_node_->children.size());
-  SPIEL_CHECK_FALSE(cur_node_->children[action] == nullptr);
-  cur_node_ = cur_node_->children[action];
+  SPIEL_CHECK_GE(action, 0);
+  if (IsChanceNode()) {
+    SPIEL_CHECK_LT(action, game_->MaxChanceOutcomes());
+  } else {
+    SPIEL_CHECK_LT(action, game_->NumDistinctActions());
+  }
+  int action_idx = ActionIdx(action);
+  SPIEL_CHECK_NE(action_idx, -1);
+  SPIEL_CHECK_FALSE(cur_node_->children[action_idx] == nullptr);
+  cur_node_ = cur_node_->children[action_idx];
 }
 
 std::vector<Action> EFGState::LegalActions() const {
-  // Actions in these games are just indices into the legal actions.
-  std::vector<Action> actions(cur_node_->actions.size(), 0);
-  for (int i = 0; i < cur_node_->actions.size(); ++i) {
-    actions[i] = i;
-  }
-  if (cur_node_->type != NodeType::kTerminal) {
-    SPIEL_CHECK_GT(actions.size(), 0);
-  }
-  return actions;
+  return cur_node_->action_ids;
 }
 
 std::vector<std::pair<Action, double>> EFGState::ChanceOutcomes() const {
@@ -171,11 +192,13 @@ std::vector<std::pair<Action, double>> EFGState::ChanceOutcomes() const {
   SPIEL_CHECK_TRUE(cur_node_->type == NodeType::kChance);
   std::vector<std::pair<Action, double>> outcomes(cur_node_->children.size());
   for (int i = 0; i < cur_node_->children.size(); ++i) {
-    outcomes[i].first = i;
+    outcomes[i].first = cur_node_->action_ids[i];
     outcomes[i].second = cur_node_->probs[i];
   }
   return outcomes;
 }
+
+int EFGGame::MaxChanceOutcomes() const { return chance_action_ids_.size(); }
 
 int EFGGame::NumDistinctActions() const { return action_ids_.size(); }
 
@@ -195,7 +218,6 @@ EFGGame::EFGGame(const GameParameters& params)
       pos_(0),
       num_chance_nodes_(0),
       max_actions_(0),
-      max_chance_outcomes_(0),
       max_depth_(0),
       constant_sum_(true),
       identical_payoffs_(true),
@@ -230,7 +252,6 @@ EFGGame::EFGGame(const std::string& data)
       pos_(0),
       num_chance_nodes_(0),
       max_actions_(0),
-      max_chance_outcomes_(0),
       max_depth_(0),
       constant_sum_(true),
       identical_payoffs_(true),
@@ -257,11 +278,44 @@ std::unique_ptr<Node> EFGGame::NewNode() const {
   return new_node;
 }
 
+// Let's use custom parser macros, so that we can print the line
+// and an error about what happened while parsing the gambit file.
+
+#define SPIEL_EFG_PARSE_CHECK_OP(x_exp, op, y_exp)                   \
+  do {                                                               \
+    auto x = x_exp;                                                  \
+    auto y = y_exp;                                                  \
+    if (!((x)op(y)))                                                 \
+      open_spiel::SpielFatalError(open_spiel::internal::SpielStrCat( \
+          __FILE__, ":", __LINE__, " ", #x_exp " " #op " " #y_exp,   \
+          "\n" #x_exp, " = ", x, ", " #y_exp " = ", y, "\n",         \
+          " while parsing line #", line_, ":\n", GetLine(line_)));   \
+  } while (false)
+
+#define SPIEL_EFG_PARSE_CHECK_GE(x, y) SPIEL_EFG_PARSE_CHECK_OP(x, >=, y)
+#define SPIEL_EFG_PARSE_CHECK_GT(x, y) SPIEL_EFG_PARSE_CHECK_OP(x, >, y)
+#define SPIEL_EFG_PARSE_CHECK_LE(x, y) SPIEL_EFG_PARSE_CHECK_OP(x, <=, y)
+#define SPIEL_EFG_PARSE_CHECK_LT(x, y) SPIEL_EFG_PARSE_CHECK_OP(x, <, y)
+#define SPIEL_EFG_PARSE_CHECK_EQ(x, y) SPIEL_EFG_PARSE_CHECK_OP(x, ==, y)
+#define SPIEL_EFG_PARSE_CHECK_NE(x, y) SPIEL_EFG_PARSE_CHECK_OP(x, !=, y)
+
+#define SPIEL_EFG_PARSE_CHECK_TRUE(x)                            \
+  while (!(x))                                                   \
+  open_spiel::SpielFatalError(open_spiel::internal::SpielStrCat( \
+      __FILE__, ":", __LINE__, " CHECK_TRUE(", #x, ")\n",        \
+      " while parsing line #", line_, ":\n", GetLine(line_)))
+
+#define SPIEL_EFG_PARSE_CHECK_FALSE(x)                           \
+  while (x)                                                      \
+  open_spiel::SpielFatalError(open_spiel::internal::SpielStrCat( \
+      __FILE__, ":", __LINE__, " CHECK_FALSE(", #x, ")\n",       \
+      " while parsing line #", line_, ":\n", GetLine(line_)))
+
 bool EFGGame::ParseDoubleValue(const std::string& str, double* value) const {
   if (str.find('/') != std::string::npos) {
     // Check for rational number of the form X/Y
     std::vector<std::string> parts = absl::StrSplit(str, '/');
-    SPIEL_CHECK_EQ(parts.size(), 2);
+    SPIEL_EFG_PARSE_CHECK_EQ(parts.size(), 2);
     int numerator = 0, denominator = 0;
     bool success = absl::SimpleAtoi(parts[0], &numerator);
     if (!success) {
@@ -271,7 +325,7 @@ bool EFGGame::ParseDoubleValue(const std::string& str, double* value) const {
     if (!success) {
       return false;
     }
-    SPIEL_CHECK_FALSE(denominator == 0);
+    SPIEL_EFG_PARSE_CHECK_FALSE(denominator == 0);
     *value = static_cast<double>(numerator) / denominator;
     return true;
   } else {
@@ -286,7 +340,7 @@ std::string EFGGame::NextToken() {
 
   if (string_data_.at(pos_) == '"') {
     reading_quoted_string = true;
-    pos_++;
+    AdvancePosition();
   }
 
   while (true) {
@@ -298,20 +352,41 @@ std::string EFGGame::NextToken() {
     }
 
     str.push_back(string_data_.at(pos_));
-    pos_++;
+    AdvancePosition();
   }
 
   if (reading_quoted_string) {
-    SPIEL_CHECK_EQ(string_data_.at(pos_), '"');
+    SPIEL_EFG_PARSE_CHECK_EQ(string_data_.at(pos_), '"');
   }
-  pos_++;
+  AdvancePosition();
 
   // Advance the position to the next token.
   while (pos_ < string_data_.length() && IsWhiteSpace(string_data_.at(pos_))) {
-    pos_++;
+    AdvancePosition();
   }
 
   return str;
+}
+
+void EFGGame::AdvancePosition() {
+  pos_++;
+  if (string_data_[pos_] == '\n') line_++;
+}
+
+std::string EFGGame::GetLine(int line) const {
+  SPIEL_CHECK_GE(line, 1);
+
+  int cur_line = 1;
+  int pos = 0;
+  int len = string_data_.size();
+  std::string buf;
+  do {
+    if (cur_line == line) buf.push_back(string_data_[pos]);
+    if (string_data_[pos] == '\n') cur_line++;
+    pos++;
+  } while (cur_line != line + 1 && pos < len);
+
+  return buf;
 }
 
 /*
@@ -350,28 +425,29 @@ t "" 16 "Outcome 16" { 10.000000 0.000000 }
 */
 void EFGGame::ParsePrologue() {
   // Parse the first part of the header "EFG 2 R "
-  SPIEL_CHECK_TRUE(NextToken() == "EFG");
-  SPIEL_CHECK_LT(pos_, string_data_.length());
-  SPIEL_CHECK_TRUE(NextToken() == "2");
-  SPIEL_CHECK_LT(pos_, string_data_.length());
-  SPIEL_CHECK_TRUE(NextToken() == "R");
-  SPIEL_CHECK_LT(pos_, string_data_.length());
-  SPIEL_CHECK_EQ(string_data_.at(pos_), '"');
+  SPIEL_EFG_PARSE_CHECK_TRUE(NextToken() == "EFG");
+  SPIEL_EFG_PARSE_CHECK_LT(pos_, string_data_.length());
+  SPIEL_EFG_PARSE_CHECK_TRUE(NextToken() == "2");
+  SPIEL_EFG_PARSE_CHECK_LT(pos_, string_data_.length());
+  SPIEL_EFG_PARSE_CHECK_TRUE(NextToken() == "R");
+  SPIEL_EFG_PARSE_CHECK_LT(pos_, string_data_.length());
+  SPIEL_EFG_PARSE_CHECK_EQ(string_data_.at(pos_), '"');
   name_ = NextToken();
   std::string token = NextToken();
-  SPIEL_CHECK_TRUE(token == "{");
-  SPIEL_CHECK_EQ(string_data_.at(pos_), '"');
+  SPIEL_EFG_PARSE_CHECK_TRUE(token == "{");
+  SPIEL_EFG_PARSE_CHECK_EQ(string_data_.at(pos_), '"');
   token = NextToken();
   while (token != "}") {
     player_names_.push_back(token);
     token = NextToken();
   }
   num_players_ = player_names_.size();
+  infoset_num_to_states_count_.resize(num_players_, {});
   if (string_data_.at(pos_) == '"') {
     description_ = NextToken();
   }
-  SPIEL_CHECK_LT(pos_, string_data_.length());
-  SPIEL_CHECK_TRUE(IsNodeToken(string_data_.at(pos_)));
+  SPIEL_EFG_PARSE_CHECK_LT(pos_, string_data_.length());
+  SPIEL_EFG_PARSE_CHECK_TRUE(IsNodeToken(string_data_.at(pos_)));
 }
 
 void EFGGame::ParseChanceNode(Node* parent, Node* child, int depth) {
@@ -384,44 +460,78 @@ void EFGGame::ParseChanceNode(Node* parent, Node* child, int depth) {
   // (optional)the payoffs to each player for the outcome
   //
   // c "ROOT" 1 "(0,1)" { "1G" 0.500000 "1B" 0.500000 } 0
-  SPIEL_CHECK_TRUE(NextToken() == "c");
+  SPIEL_EFG_PARSE_CHECK_TRUE(NextToken() == "c");
   num_chance_nodes_++;
   max_depth_ = std::max(max_depth_, depth);
   child->type = NodeType::kChance;
   child->parent = parent;
-  SPIEL_CHECK_EQ(string_data_.at(pos_), '"');
+  SPIEL_EFG_PARSE_CHECK_EQ(string_data_.at(pos_), '"');
   child->name = NextToken();
-  SPIEL_CHECK_FALSE(string_data_.at(pos_) == '"');
-  SPIEL_CHECK_TRUE(absl::SimpleAtoi(NextToken(), &child->infoset_number));
+  SPIEL_EFG_PARSE_CHECK_FALSE(string_data_.at(pos_) == '"');
+  SPIEL_EFG_PARSE_CHECK_TRUE(
+      absl::SimpleAtoi(NextToken(), &child->infoset_number));
   if (string_data_.at(pos_) == '"') {
     child->infoset_name = NextToken();
   }
   // I do not understand how the list of children can be optional.
-  SPIEL_CHECK_TRUE(NextToken() == "{");
+  SPIEL_EFG_PARSE_CHECK_TRUE(NextToken() == "{");
   int chance_outcomes = 0;
   double prob_sum = 0.0;
   while (string_data_.at(pos_) == '"') {
-    child->actions.push_back(NextToken());
+    std::string action_str = NextToken();
+    child->actions.push_back(action_str);
+    Action action = AddOrGetChanceOutcome(action_str);
+    child->action_ids.push_back(action);
     double prob = -1;
-    SPIEL_CHECK_TRUE(ParseDoubleValue(NextToken(), &prob));
-    SPIEL_CHECK_GE(prob, 0.0);
-    SPIEL_CHECK_LE(prob, 1.0);
+    SPIEL_EFG_PARSE_CHECK_TRUE(ParseDoubleValue(NextToken(), &prob));
+    SPIEL_EFG_PARSE_CHECK_GE(prob, 0.0);
+    SPIEL_EFG_PARSE_CHECK_LE(prob, 1.0);
     prob_sum += prob;
     child->probs.push_back(prob);
     nodes_.push_back(NewNode());
     child->children.push_back(nodes_.back().get());
     chance_outcomes++;
   }
-  SPIEL_CHECK_GT(child->actions.size(), 0);
-  SPIEL_CHECK_TRUE(Near(prob_sum, 1.0));
-  max_chance_outcomes_ = std::max(max_chance_outcomes_, chance_outcomes);
-  SPIEL_CHECK_TRUE(NextToken() == "}");
-  SPIEL_CHECK_TRUE(absl::SimpleAtoi(NextToken(), &child->outcome_number));
+  SPIEL_EFG_PARSE_CHECK_GT(child->actions.size(), 0);
+  absl::c_sort(child->action_ids);
+  SPIEL_EFG_PARSE_CHECK_TRUE(Near(prob_sum, 1.0));
+  SPIEL_EFG_PARSE_CHECK_TRUE(NextToken() == "}");
+  SPIEL_EFG_PARSE_CHECK_TRUE(
+      absl::SimpleAtoi(NextToken(), &child->outcome_number));
   // Do not support optional payoffs here for now.
 
   // Now, recurse:
   for (Node* grand_child : child->children) {
     RecParseSubtree(child, grand_child, depth + 1);
+  }
+}
+
+void EFGGame::UpdateAndCheckInfosetMaps(const Node* node) {
+  // If the infoset name is not empty:
+  //   1. ensure mapping from infoset (player,num) -> name is consistent, adding
+  //      it if it doesn't exist.
+  //   2. Add also name -> (player, num) to a hash map
+  Player player = node->player_number - 1;
+  if (!node->infoset_name.empty()) {
+    std::pair<Player, int> key = {player, node->infoset_number};
+    const auto& iter1 = infoset_player_num_to_name_.find(key);
+    if (iter1 != infoset_player_num_to_name_.end()) {
+      if (iter1->second != node->infoset_name) {
+        SpielFatalError(absl::StrCat(
+            "Inconsistent infoset (player, num) -> name: ",
+            static_cast<int>(player), ",", node->infoset_number, " ",
+            node->infoset_name, " ", iter1->second, "\nfilename: ", filename_,
+            "\nstring data:\n", string_data_));
+      }
+    } else {
+      std::pair<Player, int> key = {player, node->infoset_number};
+      infoset_player_num_to_name_[key] = node->infoset_name;
+    }
+
+    // Name -> infoset number is not required to be unique in .efg so we don't
+    // check it. So these may overlap unless the mapping is unique in the file.
+    infoset_name_to_player_num_[node->infoset_name] = {player,
+                                                       node->infoset_number};
   }
 }
 
@@ -436,37 +546,46 @@ void EFGGame::ParsePlayerNode(Node* parent, Node* child, int depth) {
   // the payoffs to each player for the outcome
   //
   // p "" 1 1 "(1,1)" { "H" "L" } 0
-  SPIEL_CHECK_TRUE(NextToken() == "p");
+  SPIEL_EFG_PARSE_CHECK_TRUE(NextToken() == "p");
   max_depth_ = std::max(max_depth_, depth);
   child->type = NodeType::kPlayer;
   child->parent = parent;
-  SPIEL_CHECK_EQ(string_data_.at(pos_), '"');
+  SPIEL_EFG_PARSE_CHECK_EQ(string_data_.at(pos_), '"');
   child->name = NextToken();
-  SPIEL_CHECK_FALSE(string_data_.at(pos_) == '"');
-  SPIEL_CHECK_TRUE(absl::SimpleAtoi(NextToken(), &child->player_number));
-  SPIEL_CHECK_TRUE(absl::SimpleAtoi(NextToken(), &child->infoset_number));
-  infoset_num_to_states_count_[child->infoset_number] += 1;
-  if (infoset_num_to_states_count_[child->infoset_number]) {
+  SPIEL_EFG_PARSE_CHECK_FALSE(string_data_.at(pos_) == '"');
+  SPIEL_EFG_PARSE_CHECK_TRUE(
+      absl::SimpleAtoi(NextToken(), &child->player_number));
+  SPIEL_EFG_PARSE_CHECK_TRUE(
+      absl::SimpleAtoi(NextToken(), &child->infoset_number));
+  infoset_num_to_states_count_[child->player_number - 1]
+                              [child->infoset_number]++;
+  if (infoset_num_to_states_count_[child->player_number - 1]
+                                  [child->infoset_number] > 1) {
     perfect_information_ = false;
   }
+  child->infoset_name = "";
   if (string_data_.at(pos_) == '"') {
     child->infoset_name = NextToken();
   }
+  UpdateAndCheckInfosetMaps(child);
   // Do not understand how the list of actions can be optional.
-  SPIEL_CHECK_TRUE(NextToken() == "{");
+  SPIEL_EFG_PARSE_CHECK_TRUE(NextToken() == "{");
   int actions = 0;
   while (string_data_.at(pos_) == '"') {
     std::string action_str = NextToken();
     child->actions.push_back(action_str);
-    AddActionToMap(action_str);
+    Action action = AddOrGetAction(action_str);
+    child->action_ids.push_back(action);
     nodes_.push_back(NewNode());
     child->children.push_back(nodes_.back().get());
     actions++;
   }
-  SPIEL_CHECK_GT(child->actions.size(), 0);
+  SPIEL_EFG_PARSE_CHECK_GT(child->actions.size(), 0);
+  absl::c_sort(child->action_ids);
   max_actions_ = std::max(max_actions_, actions);
-  SPIEL_CHECK_TRUE(NextToken() == "}");
-  SPIEL_CHECK_TRUE(absl::SimpleAtoi(NextToken(), &child->outcome_number));
+  SPIEL_EFG_PARSE_CHECK_TRUE(NextToken() == "}");
+  SPIEL_EFG_PARSE_CHECK_TRUE(
+      absl::SimpleAtoi(NextToken(), &child->outcome_number));
   // Do not support optional payoffs here for now.
 
   // Now, recurse:
@@ -482,24 +601,25 @@ void EFGGame::ParseTerminalNode(Node* parent, Node* child, int depth) {
   // the payoffs to each player for the outcome
   //
   // t "" 1 "Outcome 1" { 10.000000 2.000000 }
-  SPIEL_CHECK_TRUE(NextToken() == "t");
+  SPIEL_EFG_PARSE_CHECK_TRUE(NextToken() == "t");
   max_depth_ = std::max(max_depth_, depth);
   child->type = NodeType::kTerminal;
   child->parent = parent;
-  SPIEL_CHECK_EQ(string_data_.at(pos_), '"');
+  SPIEL_EFG_PARSE_CHECK_EQ(string_data_.at(pos_), '"');
   child->name = NextToken();
-  SPIEL_CHECK_TRUE(absl::SimpleAtoi(NextToken(), &child->outcome_number));
+  SPIEL_EFG_PARSE_CHECK_TRUE(
+      absl::SimpleAtoi(NextToken(), &child->outcome_number));
   if (string_data_.at(pos_) == '"') {
     child->outcome_name = NextToken();
   }
-  SPIEL_CHECK_TRUE(NextToken() == "{");
+  SPIEL_EFG_PARSE_CHECK_TRUE(NextToken() == "{");
 
   int idx = 0;
   double util_sum = 0;
   bool identical = true;
   while (string_data_.at(pos_) != '}') {
     double utility = 0;
-    SPIEL_CHECK_TRUE(ParseDoubleValue(NextToken(), &utility));
+    SPIEL_EFG_PARSE_CHECK_TRUE(ParseDoubleValue(NextToken(), &utility));
     child->payoffs.push_back(utility);
     util_sum += utility;
     if (!min_util_.has_value()) {
@@ -520,8 +640,8 @@ void EFGGame::ParseTerminalNode(Node* parent, Node* child, int depth) {
 
     idx++;
   }
-  SPIEL_CHECK_EQ(child->payoffs.size(), num_players_);
-  SPIEL_CHECK_TRUE(NextToken() == "}");
+  SPIEL_EFG_PARSE_CHECK_EQ(child->payoffs.size(), num_players_);
+  SPIEL_EFG_PARSE_CHECK_TRUE(NextToken() == "}");
 
   // Inspect the utilities to classify the utility type for this game.
   if (!util_sum_.has_value()) {
@@ -567,17 +687,40 @@ std::string EFGGame::PrettyTree(const Node* node,
   return str;
 }
 
+std::string EFGGame::GetInformationStateStringByName(
+    Player player, const std::string& name) const {
+  const auto& iter = infoset_name_to_player_num_.find(name);
+  if (iter == infoset_name_to_player_num_.end()) {
+    SpielFatalError(absl::StrCat("Information state not found: ", name));
+  }
+  if (iter->second.first != player) {
+    SpielFatalError(absl::StrCat("Player mismatch in lookup by name: ", name,
+                                 " ", player, " ", iter->second.first));
+  }
+  return EFGInformationStateString(player, player, iter->second.second, name);
+}
+
+std::string EFGGame::GetInformationStateStringByNumber(Player player,
+                                                       int number) const {
+  const auto& iter = infoset_player_num_to_name_.find({player, number});
+  if (iter == infoset_player_num_to_name_.end()) {
+    SpielFatalError(
+        absl::StrCat("Information state not found: ", player, ",", number));
+  }
+  return EFGInformationStateString(player, player, number, iter->second);
+}
+
 void EFGGame::ParseGame() {
   // Skip any initial whitespace.
   while (IsWhiteSpace(string_data_.at(pos_))) {
-    pos_++;
+    AdvancePosition();
   }
-  SPIEL_CHECK_LT(pos_, string_data_.length());
+  SPIEL_EFG_PARSE_CHECK_LT(pos_, string_data_.length());
 
   ParsePrologue();
   nodes_.push_back(NewNode());
   RecParseSubtree(nullptr, nodes_[0].get(), 0);
-  SPIEL_CHECK_GE(pos_, string_data_.length());
+  SPIEL_EFG_PARSE_CHECK_GE(pos_, string_data_.length());
 
   // Modify the game type.
   if (num_chance_nodes_ > 0) {
@@ -603,6 +746,37 @@ void EFGGame::ParseGame() {
   game_type_.max_num_players = num_players_;
   game_type_.min_num_players = num_players_;
 }
+
+TabularPolicy EFGGameTabularPolicy(
+    std::shared_ptr<const Game> game,
+    const absl::flat_hash_map<std::pair<Player, std::string>,
+                              std::vector<std::pair<std::string, double>>>&
+        policy_map) {
+  const EFGGame* efg_game = dynamic_cast<const EFGGame*>(game.get());
+  SPIEL_CHECK_TRUE(efg_game != nullptr);
+
+  TabularPolicy policy;
+  for (const auto& outer_iter : policy_map) {
+    Player player = outer_iter.first.first;
+    std::string infoset_label = outer_iter.first.second;
+    std::string infoset_str =
+        efg_game->GetInformationStateStringByName(player, infoset_label);
+
+    ActionsAndProbs state_policy;
+    state_policy.reserve(outer_iter.second.size());
+    for (const auto& inner_iter : outer_iter.second) {
+      std::string action_label = inner_iter.first;
+      double prob = inner_iter.second;
+      Action action = efg_game->GetAction(action_label);
+      state_policy.push_back({action, prob});
+    }
+
+    policy.SetStatePolicy(infoset_str, state_policy);
+  }
+
+  return policy;
+}
+
 
 }  // namespace efg_game
 }  // namespace open_spiel

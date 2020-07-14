@@ -15,10 +15,13 @@
 #ifndef OPEN_SPIEL_ALGORITHMS_HISTORY_TREE_H_
 #define OPEN_SPIEL_ALGORITHMS_HISTORY_TREE_H_
 
-#include <iostream>
 #include <map>
+#include <memory>
+#include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
+#include <vector>
 
 #include "open_spiel/policy.h"
 #include "open_spiel/spiel.h"
@@ -32,6 +35,11 @@ namespace algorithms {
 // history in the game.
 class HistoryNode {
  public:
+  // Use specific infostate strings for chance and terminal nodes so that we
+  // don't rely on the game implementations defining them at those states.
+  static constexpr const char* kChanceNodeInfostateString = "Chance Node";
+  static constexpr const char* kTerminalNodeInfostateString = "Terminal node";
+
   HistoryNode(Player player_id, std::unique_ptr<State> game_state);
 
   State* GetState() { return state_.get(); }

@@ -19,6 +19,7 @@
 #include <cstdint>
 #include <ostream>
 #include <vector>
+
 #include "open_spiel/spiel_utils.h"
 
 namespace open_spiel {
@@ -68,14 +69,38 @@ std::pair<int, int> VirtualPointTo2DPoint(VirtualPoint p);
 // 0-index coordinate in the concrete board.
 VirtualPoint VirtualPointFrom2DPoint(std::pair<int, int> row_col);
 
-// Returns a reference to a vector that contains all points that are on a board
-// of the specified size.
-const std::vector<VirtualPoint> &BoardPoints(int board_size);
-
 // Converts an OpenSpiel action in range [0, board_size **2] to the
 // Virtual board range [0, kVirtualPass], and vice-versa.
 Action VirtualActionToAction(int virtual_action, int board_size);
 int ActionToVirtualAction(Action action, int board_size);
+
+inline std::string GoActionToString(Action action, int board_size) {
+  return VirtualPointToString(ActionToVirtualAction(action, board_size));
+}
+
+// Returns a reference to a vector that contains all points that are on a board
+// of the specified size.
+const std::vector<VirtualPoint> &BoardPoints(int board_size);
+
+// To iterate over 4 neighbouring points, do
+//
+// VirtualPoint point;
+// for (auto p = Neighbours4(point); p; ++p) {
+//   // Do something on p..
+// }
+//
+class Neighbours4 {
+ public:
+  explicit Neighbours4(const VirtualPoint p);
+
+  Neighbours4 &operator++();
+  const VirtualPoint operator*() const;
+  explicit operator bool() const;
+
+ private:
+  VirtualPoint dir_;
+  const VirtualPoint p_;
+};
 
 // Simple Go board that is optimized for speed.
 // It only implements the minimum of functionality necessary to support the
@@ -123,7 +148,8 @@ class GoBoard {
 
   inline bool InAtari(VirtualPoint p) const { return chain(p).in_atari(); }
 
-  inline uint64_t HashValue() const { return zobrist_hash_; }
+  // If a chain has a single liberty (it is in Atari), return that liberty.
+  VirtualPoint SingleLiberty(VirtualPoint p) const;
 
   // Actual liberty count, i.e. each liberty is counted exactly once.
   // This is computed on the fly by actually walking the group and checking the
@@ -136,11 +162,18 @@ class GoBoard {
     return num_lib;
   }
 
+  inline uint64_t HashValue() const { return zobrist_hash_; }
+
   // Head of a chain; each chain has exactly one head that can be used to
-  // uniquely identify it. Chain heads may change over successive playMove()s.
+  // uniquely identify it. Chain heads may change over successive PlayMove()s.
   inline VirtualPoint ChainHead(VirtualPoint p) const {
     return board_[p].chain_head;
   }
+
+  // Number of stones in a chain.
+  inline int ChainSize(VirtualPoint p) const { return chain(p).num_stones; }
+
+  std::string ToString();
 
   class GroupIter {
    public:
@@ -213,6 +246,7 @@ class GoBoard {
     }
     void add_liberty(VirtualPoint p);
     void remove_liberty(VirtualPoint p);
+    VirtualPoint single_liberty() const;
   };
 
   Chain &chain(VirtualPoint p) { return chains_[ChainHead(p)]; }
@@ -236,6 +270,20 @@ std::ostream &operator<<(std::ostream &os, const GoBoard &board);
 
 // Score according to https://senseis.xmp.net/?TrompTaylorRules.
 float TrompTaylorScore(const GoBoard &board, float komi, int handicap = 0);
+
+// Generates a go board from the given string, setting X to black stones and O
+// to white stones. The first character of the first line is mapped to A1, the
+// second character to B1, etc, as below:
+//     ABCDEFGH
+//   1 ++++XO++
+//   2 XXXXXO++
+//   3 OOOOOO++
+//   4 ++++++++
+// The board will always be 19x19.
+// This exists mostly for test purposes.
+// WARNING: This coordinate system is different from the representation in
+// GoBoard in which A1 is at the bottom left.
+GoBoard CreateBoard(const std::string &initial_stones);
 
 }  // namespace go
 }  // namespace open_spiel

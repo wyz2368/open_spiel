@@ -21,7 +21,6 @@
 #include <vector>
 
 #include "open_spiel/abseil-cpp/absl/algorithm/container.h"
-#include "open_spiel/abseil-cpp/absl/strings/str_cat.h"
 #include "open_spiel/spiel.h"
 #include "open_spiel/spiel_utils.h"
 
@@ -36,6 +35,15 @@ void SetProb(ActionsAndProbs* actions_and_probs, Action action, double prob);
 // Helper for deterministic policies: returns the single action if the policy
 // is deterministic, otherwise returns kInvalidAction.
 Action GetAction(const ActionsAndProbs& action_and_probs);
+
+// Returns a policy where every legal action has probability 1 / (number of
+// legal actions).
+ActionsAndProbs UniformStatePolicy(const State& state);
+
+// Return a new policy with all the same actions, but with probability 1 on the
+// specified action, and 0 on the others.
+ActionsAndProbs ToDeterministicPolicy(const ActionsAndProbs& actions_and_probs,
+                                      Action action);
 
 // A general policy object. A policy is a mapping from states to list of
 // (action, prob) pairs for all the legal actions at the state.
@@ -156,6 +164,11 @@ class TabularPolicy : public Policy {
     open_spiel::SetProb(&(iter->second), action, prob);
   }
 
+  void SetStatePolicy(const std::string& info_state,
+                      const ActionsAndProbs& state_policy) {
+    policy_table_[info_state] = state_policy;
+  }
+
   std::unordered_map<std::string, ActionsAndProbs>& PolicyTable() {
     return policy_table_;
   }
@@ -164,17 +177,10 @@ class TabularPolicy : public Policy {
     return policy_table_;
   }
 
-  const std::string ToString() const {
-    std::string str = "";
-    for (const auto& infostate_and_policy : policy_table_) {
-      absl::StrAppend(&str, infostate_and_policy.first, ": ");
-      for (const auto& policy : infostate_and_policy.second) {
-        absl::StrAppend(&str, " ", policy.first, "=", policy.second);
-      }
-      absl::StrAppend(&str, "\n");
-    }
-    return str;
-  }
+  const std::string ToString() const;
+
+  // A ToString where the keys are sorted.
+  const std::string ToStringSorted() const;
 
  private:
   std::unordered_map<std::string, ActionsAndProbs> policy_table_;
@@ -184,14 +190,8 @@ class TabularPolicy : public Policy {
 // tabular version, except that this works for large games.
 class UniformPolicy : public Policy {
  public:
-  ActionsAndProbs GetStatePolicy(const State& state) const {
-    ActionsAndProbs probs;
-    std::vector<Action> actions = state.LegalActions();
-    probs.reserve(actions.size());
-    absl::c_for_each(actions, [&probs, &actions](Action a) {
-      probs.push_back({a, 1. / static_cast<double>(actions.size())});
-    });
-    return probs;
+  ActionsAndProbs GetStatePolicy(const State& state) const override {
+    return UniformStatePolicy(state);
   }
 };
 
