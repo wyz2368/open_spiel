@@ -16,6 +16,8 @@
 import itertools
 import copy
 import numpy as np
+import time
+
 
 from open_spiel.python import policy
 from open_spiel.python.algorithms.psro_v2 import utils
@@ -43,16 +45,23 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
     ]
     super(PSROQuiesceSolver,self).update_empirical_gamestate(seed=None)
     self.update_complete_ind([0 for _ in range(self._game_num_players)],add_sample=True)
+    self.number_profile_sampled = 1
+
   
   def update_meta_strategies(self):
     """Recomputes the current meta strategy of each player.
     Given new payoff tables, we call self._meta_strategy_method to update the
     meta-probabilities.
     """
-    if self._meta_strategy_str == 'nash' or 'general_nash':
+
+    if self._meta_strategy_str in ['nash','general_nash','prd']:
+        start_time = time.time()
         self._meta_strategy_probabilities,self._non_marginalized_probabilities = self.inner_loop()
+        return time.time()-start_time
     else:
         super(PSROQuiesceSolver,self).update_meta_strategies()
+        return 0
+
 
   def update_empirical_gamestate(self, seed=None):
     """Given new agents in _new_policies, update meta_games through simulations. For quiesce, only update the meta game grid, but does not need to fill in values. If filling in value required, use parent class method
@@ -130,9 +139,12 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
         Equilibrium support, non_margianlized profile probability
     """
     found_confirmed_eq = False
+
+    NE_solver = 'replicator'if self._num_players>2 else 'gambit'
     while not found_confirmed_eq:
       maximum_subgame = self.get_complete_meta_game
-      ne_subgame = meta_strategies.general_nash_strategy(solver=self, return_joint=False, game=maximum_subgame, checkpoint_dir=self.checkpoint_dir)
+      ne_subgame = meta_strategies.general_nash_strategy(solver=self, return_joint=False, NE_solver=NE_solver, game=maximum_subgame, checkpoint_dir=self.checkpoint_dir)
+
       # ne_support_num: list of list, index of where equilibrium is [[0,1],[2]]
       # cumsum: index ne_subgame with self._complete_ind
       cum_sum = [np.cumsum(ele) for ele in self._complete_ind]
@@ -235,6 +247,9 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
       add_sample      : whether there are sample added after last update
     """
     policy_len = [len(self._policies) for _ in range(self._game_num_players)] if self.symmetric_game else [len(ele) for ele in self._policies]
+
+    self.num_profiles = np.prod(policy_len)
+
     for i in range(self._game_num_players):
       for _ in range(policy_len[i]-len(self._complete_ind[i])):
         self._complete_ind[i].append(0)
@@ -256,6 +271,9 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
     """
     if not np.isnan(self._meta_games[0][tuple(policy_indicator)]):
       return False
+
+    self.number_profile_sampled += 1
+
     if self.symmetric_game:
       estimated_policies = [self._policies[policy_indicator[i]] for i in range(self._game_num_players)]
     else:

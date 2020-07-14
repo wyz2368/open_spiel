@@ -1,0 +1,4 @@
+Log file created at: 2020/04/25 21:38:38
+Running on machine: gl3053.arc-ts.umich.edu
+Log line format: [IWEF]mmdd hh:mm:ss.uuuuuu threadid file:line] msg
+I0425 21:38:38.741365 117653 redis_gcs_client.cc:171] RedisGcsClient Connected.

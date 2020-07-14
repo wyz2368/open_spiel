@@ -1,5 +1,7 @@
 import numpy as np
+
 from open_spiel.python.algorithms.psro_v2.eval_utils import smoothing_kl
+
 
 class Exp3(object):
     """
@@ -21,6 +23,7 @@ class Exp3(object):
         self.abs_value = abs_value
         self.kl_regularization = kl_regularization
         self.kl_coef = kl_coef
+
 
     def sample(self, temerature=None):
         """
@@ -61,11 +64,13 @@ class pure_exp(object):
         self.slow_period = slow_period
         self.fast_period = fast_period
 
+
     def sample(self, num_iters):
         temperature = self.temperature_scheme(num_iters)
         self.probability_distribution = softmax(self.weights, temperature=temperature)
         self.arm_pulled = np.random.choice(range(len(self.probability_distribution)), p=self.probability_distribution)
         return self.arm_pulled
+
 
     def update_weights(self, reward, NE_list):
         if self.abs_value:
@@ -84,6 +89,7 @@ class pure_exp(object):
         else:
             return 10
 
+
     def calculate_kl(self, NE_list):
         if len(NE_list) <= 2 * (self.slow_period + self.fast_period):
             return 0
@@ -95,3 +101,4 @@ class pure_exp(object):
             kl = smoothing_kl(p, q)
             kl_conv += kl
         return kl_conv
+

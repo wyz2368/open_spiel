@@ -1,0 +1,44 @@
+WARNING: Logging before InitGoogleLogging() is written to STDERR
+I0425 21:38:30.997285 117591 store.cc:1244] Allowing the Plasma store to use up to 53.9323GB of memory.
+I0425 21:38:30.997400 117591 store.cc:1271] Starting object store with directory /dev/shm and huge page support disabled
+I0425 21:38:50.441956 117591 store.cc:749] Disconnecting client on fd 10
+I0425 21:38:50.555562 117591 store.cc:749] Disconnecting client on fd 45
+I0425 21:38:50.556358 117591 store.cc:749] Disconnecting client on fd 38
+I0425 21:38:50.560664 117591 store.cc:749] Disconnecting client on fd 44
+I0425 21:38:50.613813 117591 store.cc:749] Disconnecting client on fd 11
+I0425 21:38:50.641676 117591 store.cc:749] Disconnecting client on fd 31
+I0425 21:38:50.641706 117591 store.cc:749] Disconnecting client on fd 40
+I0425 21:38:50.648687 117591 store.cc:749] Disconnecting client on fd 35
+I0425 21:38:50.649051 117591 store.cc:749] Disconnecting client on fd 17
+I0425 21:38:50.650260 117591 store.cc:749] Disconnecting client on fd 12
+I0425 21:38:50.651676 117591 store.cc:749] Disconnecting client on fd 13
+I0425 21:38:50.651885 117591 store.cc:749] Disconnecting client on fd 16
+I0425 21:38:50.651973 117591 store.cc:749] Disconnecting client on fd 19
+I0425 21:38:50.653609 117591 store.cc:749] Disconnecting client on fd 41
+I0425 21:38:50.660377 117591 store.cc:749] Disconnecting client on fd 43
+I0425 21:38:50.661058 117591 store.cc:749] Disconnecting client on fd 14
+I0425 21:38:50.662539 117591 store.cc:749] Disconnecting client on fd 20
+I0425 21:38:50.662698 117591 store.cc:749] Disconnecting client on fd 22
+I0425 21:38:50.662956 117591 store.cc:749] Disconnecting client on fd 24
+I0425 21:38:50.663343 117591 store.cc:749] Disconnecting client on fd 30
+I0425 21:38:50.663359 117591 store.cc:749] Disconnecting client on fd 15
+I0425 21:38:50.663422 117591 store.cc:749] Disconnecting client on fd 29
+I0425 21:38:50.663445 117591 store.cc:749] Disconnecting client on fd 42
+I0425 21:38:50.663604 117591 store.cc:749] Disconnecting client on fd 32
+I0425 21:38:50.663652 117591 store.cc:749] Disconnecting client on fd 37
+I0425 21:38:50.666520 117591 store.cc:749] Disconnecting client on fd 34
+I0425 21:38:50.666708 117591 store.cc:749] Disconnecting client on fd 39
+I0425 21:38:50.669232 117591 store.cc:749] Disconnecting client on fd 27
+I0425 21:38:50.669340 117591 store.cc:749] Disconnecting client on fd 23
+I0425 21:38:50.669443 117591 store.cc:749] Disconnecting client on fd 18
+I0425 21:38:50.670256 117591 store.cc:749] Disconnecting client on fd 46
+I0425 21:38:50.672400 117591 store.cc:749] Disconnecting client on fd 33
+I0425 21:38:50.673137 117591 store.cc:749] Disconnecting client on fd 26
+I0425 21:38:50.673153 117591 store.cc:749] Disconnecting client on fd 25
+I0425 21:38:50.673287 117591 store.cc:749] Disconnecting client on fd 21
+I0425 21:38:50.674903 117591 store.cc:749] Disconnecting client on fd 28
+I0425 21:38:50.680519 117591 store.cc:749] Disconnecting client on fd 36
+I0425 21:38:50.715680 117591 store.cc:749] Disconnecting client on fd 8
+I0425 21:38:50.715711 117591 store.cc:749] Disconnecting client on fd 6
+I0425 21:38:50.776701 117591 store.cc:749] Disconnecting client on fd 9
+I0425 21:38:52.040195 117591 store.cc:1192] SIGTERM Signal received, closing Plasma Server...

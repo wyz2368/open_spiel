@@ -24,6 +24,9 @@ import numpy as np
 import tensorflow.compat.v1 as tf
 
 from open_spiel.python import rl_agent
+import os
+import psutil
+from memory_profiler import profile
 from open_spiel.python import simple_nets
 
 # Temporarily disable TF2 behavior until code is updated.
@@ -111,7 +114,7 @@ class DQN(rl_agent.AbstractAgent):
                min_buffer_size_to_learn=1000,
                epsilon_start=1.0,
                epsilon_end=0.1,
-               epsilon_decay_duration=int(1e6),
+               epsilon_decay_duration=int(3e6),
                optimizer_str="sgd",
                loss_str="mse"):
     """Initialize the DQN agent."""
@@ -231,7 +234,6 @@ class DQN(rl_agent.AbstractAgent):
     Returns:
       A `rl_agent.StepOutput` containing the action probs and chosen action.
     """
-
     # Act step: don't act at terminal info states or if its not our turn.
     if (not time_step.last()) and (
         time_step.is_simultaneous_move() or
@@ -314,7 +316,8 @@ class DQN(rl_agent.AbstractAgent):
         tf.assign(target_v, v)
         for (target_v, v) in zip(self._target_variables, self._variables)
     ])
-
+  
+  #@profile
   def _epsilon_greedy(self, info_state, legal_actions, epsilon):
     """Returns a valid epsilon-greedy action and valid action probs.
 

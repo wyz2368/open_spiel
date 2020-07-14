@@ -148,6 +148,7 @@ class RLOracle(optimization_oracle.AbstractOracle):
     time_step = self._env.reset()
     cumulative_rewards = 0.0
     while not time_step.last():
+      test_state = self._env.get_state
       if time_step.is_simultaneous_move():
         action_list = []
         for agent in agents:
@@ -157,7 +158,7 @@ class RLOracle(optimization_oracle.AbstractOracle):
         cumulative_rewards += np.array(time_step.rewards)
       else:
         player_id = time_step.observations["current_player"]
-
+        # chance node will never appear here because env automatically push forward time steps until next decision node
         # is_evaluation is a boolean that, when False, lets policies train. The
         # setting of PSRO requires that all policies be static aside from those
         # being trained by the oracle. is_evaluation could be used to prevent
@@ -169,7 +170,6 @@ class RLOracle(optimization_oracle.AbstractOracle):
         action_list = [agent_output.action]
         time_step = self._env.step(action_list)
         cumulative_rewards += np.array(time_step.rewards)
-
     if not is_evaluation:
       for agent in agents:
         agent.step(time_step)
@@ -297,6 +297,7 @@ class RLOracle(optimization_oracle.AbstractOracle):
                game,
                training_parameters,
                strategy_sampler=utils.sample_strategy,
+               test_reward=False,
                **oracle_specific_execution_kwargs):
     """Call method for oracle, returns best responses against a set of policies.
 
@@ -337,6 +338,7 @@ class RLOracle(optimization_oracle.AbstractOracle):
       self.update_new_policies_in_workers(new_policies)
 
     reward_trace = [[] for _ in range(game.num_players())]
+
     while not self._has_terminated(episodes_per_oracle):
       if self._ars_parallel:
         # No reward trace for ARS_parallel.
@@ -358,12 +360,14 @@ class RLOracle(optimization_oracle.AbstractOracle):
         reward = self._rollout(game, agents, **oracle_specific_execution_kwargs)
         reward_trace[indexes[0][0]].append(reward[indexes[0][0]])
 
+
       episodes_per_oracle = update_episodes_per_oracles(episodes_per_oracle,
                                                         indexes)
 
 
     for i in range(len(reward_trace)):
         reward_trace[i] = utils.lagging_mean(reward_trace[i])
+
     # Freeze the new policies to keep their weights static. This allows us to
     # later not have to make the distinction between static and training
     # policies in training iterations.
@@ -373,8 +377,8 @@ class RLOracle(optimization_oracle.AbstractOracle):
     if hasattr(self,'_ARS_episodes'):
       delattr(self,'_ARS_episodes')
 
-
     return new_policies, reward_trace
+
 
     #####################################################
     ############# Parallel Implementation of ARS ########
