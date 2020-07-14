@@ -87,7 +87,7 @@ DO_mean = genfromtxt('./data/DO_mean.csv', delimiter=',')
 DO_std = genfromtxt('./data/DO_std.csv', delimiter=',')
 
 axes = plt.gca()
-axes.set_ylim([0,2])
+axes.set_ylim([0,3])
 
 X = np.arange(1, 151)
 
