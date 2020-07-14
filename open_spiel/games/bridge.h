@@ -43,8 +43,7 @@
 // partner). There will thus be 26 turns for declarer, and 13 turns for each
 // of the defenders during the play.
 
-#include <optional>
-
+#include "open_spiel/abseil-cpp/absl/types/optional.h"
 #include "open_spiel/games/bridge/double_dummy_solver/include/dll.h"
 #include "open_spiel/games/bridge/bridge_scoring.h"
 #include "open_spiel/spiel.h"
@@ -70,6 +69,10 @@ inline constexpr int kAuctionTensorSize =
                    ) +
     kNumCards                                  // Our hand
     + kNumVulnerabilities * kNumPartnerships;  // Vulnerability of each side
+inline constexpr int kPublicInfoTensorSize =
+    kAuctionTensorSize  // The auction
+    - kNumCards         // But not any player's cards
+    + kNumPlayers;      // Plus trailing passes
 inline constexpr int kPlayTensorSize =
     kNumBidLevels              // What the contract is
     + kNumDenominations        // What trumps are
@@ -119,6 +122,8 @@ class BridgeState : public State {
   bool IsTerminal() const override { return phase_ == Phase::kGameOver; }
   std::vector<double> Returns() const override { return returns_; }
   std::string ObservationString(Player player) const override;
+  template <typename T>
+  void WriteObservationTensor(Player player, absl::Span<T> values) const;
   void ObservationTensor(Player player,
                          std::vector<double>* values) const override;
   std::unique_ptr<State> Clone() const override {
@@ -146,6 +151,21 @@ class BridgeState : public State {
     return score_by_contract_;
   }
 
+  // Returns the double-dummy score for a list of contracts from the point
+  // of view of the specified player.
+  // Will compute the double-dummy results if needed.
+  std::vector<int> ScoreForContracts(int player,
+                                     const std::vector<int>& contracts) const;
+
+  // Private information tensor per player.
+  std::vector<double> PrivateObservationTensor(Player player) const;
+
+  // Public information.
+  std::vector<double> PublicObservationTensor() const;
+
+  // Current phase.
+  int CurrentPhase() const { return static_cast<int>(phase_); }
+
  protected:
   void DoApplyAction(Action action) override;
 
@@ -158,15 +178,14 @@ class BridgeState : public State {
   void ApplyDealAction(int card);
   void ApplyBiddingAction(int call);
   void ApplyPlayAction(int card);
-  void ComputeDoubleDummyTricks();
-  void ComputeScoreByContract();
+  void ComputeDoubleDummyTricks() const;
+  void ComputeScoreByContract() const;
   void ScoreUp();
   Trick& CurrentTrick() { return tricks_[num_cards_played_ / kNumPlayers]; }
   const Trick& CurrentTrick() const {
     return tricks_[num_cards_played_ / kNumPlayers];
   }
-  std::array<std::string, kNumSuits> FormatHand(int player,
-                                                bool mark_voids) const;
+  std::array<absl::optional<Player>, kNumCards> OriginalDeal() const;
   std::string FormatDeal() const;
   std::string FormatVulnerability() const;
   std::string FormatAuction(bool trailing_query) const;
@@ -182,15 +201,15 @@ class BridgeState : public State {
   Player current_player_ = 0;  // During the play phase, the hand to play.
   Phase phase_ = Phase::kDeal;
   Contract contract_{0};
-  std::array<std::array<std::optional<Player>, kNumDenominations>,
+  std::array<std::array<absl::optional<Player>, kNumDenominations>,
              kNumPartnerships>
       first_bidder_{};
   std::array<Trick, kNumTricks> tricks_{};
   std::vector<double> returns_ = std::vector<double>(kNumPlayers);
-  std::array<std::optional<Player>, kNumCards> holder_{};
-  absl::optional<ddTableResults> double_dummy_results_{};
+  std::array<absl::optional<Player>, kNumCards> holder_{};
+  mutable absl::optional<ddTableResults> double_dummy_results_{};
   std::array<bool, kNumContracts> possible_contracts_;
-  std::array<int, kNumContracts> score_by_contract_;
+  mutable std::array<int, kNumContracts> score_by_contract_;
 };
 
 class BridgeGame : public Game {
@@ -220,8 +239,15 @@ class BridgeGame : public Game {
   std::unique_ptr<State> DeserializeState(
       const std::string& str) const override;
 
+  // How many contracts there are (including declarer and double status).
+  int NumPossibleContracts() const { return kNumContracts; }
+
   // A string representation of a contract.
   std::string ContractString(int index) const;
+
+  // Extra observation tensors.
+  int PrivateObservationTensorSize() const { return kNumCards; }
+  int PublicObservationTensorSize() const { return kPublicInfoTensorSize; }
 
  private:
   bool UseDoubleDummyResult() const {

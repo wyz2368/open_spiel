@@ -28,12 +28,14 @@ pyspiel.egg-info/
 
  # External git modules
 open_spiel/abseil-cpp/
+open_spiel/eigen/libeigen/
 open_spiel/games/bridge/double_dummy_solver/
 open_spiel/games/universal_poker/double_dummy_solver/
 open_spiel/games/hanabi/hanabi-learning-environment/
 pybind11/
 
 # Install artifacts
+download_cache/
 get-pip.py
 open_spiel/scripts/shflags
 open_spiel/scripts/jill.sh
@@ -55,3 +57,5 @@ open_spiel/python/algorithms/psro_v2/root_result/*
 open_spiel/python/algorithms/psro_v2/root_result
 open_spiel/python/algorithms/psro_v2/slurm_scripts
 
+# Swift generated build file
+Package.resolved

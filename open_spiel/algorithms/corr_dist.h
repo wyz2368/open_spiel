@@ -15,9 +15,9 @@
 #ifndef OPEN_SPIEL_ALGORITHMS_CORR_DIST_H_
 #define OPEN_SPIEL_ALGORITHMS_CORR_DIST_H_
 
-#include <optional>
 #include <vector>
 
+#include "open_spiel/abseil-cpp/absl/types/optional.h"
 #include "open_spiel/policy.h"
 #include "open_spiel/spiel.h"
 
@@ -66,6 +66,9 @@ namespace algorithms {
 // (if the game is small enough) or the metrics below can be approximated via
 // Monte Carlo sampling of deterministic joint policies from the mixtures.
 using CorrelationDevice = std::vector<std::pair<double, TabularPolicy>>;
+
+// Return a string representation of the correlation device.
+std::string ToString(const CorrelationDevice& corr_dev);
 
 // A helper class for the normal-form functions.
 struct NormalFormJointPolicyWithProb {

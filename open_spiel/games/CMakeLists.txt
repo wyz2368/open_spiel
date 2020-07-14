@@ -21,6 +21,8 @@ set(GAME_SOURCES
   chess/chess_common.h
   cliff_walking.cc
   cliff_walking.h
+  clobber.cc
+  clobber.h
   coin_game.cc
   coin_game.h
   connect_four.cc
@@ -51,6 +53,8 @@ set(GAME_SOURCES
   goofspiel.h
   havannah.cc
   havannah.h
+  hearts.cc
+  hearts.h
   hex.cc
   hex.h
   kuhn_poker.cc
@@ -59,6 +63,8 @@ set(GAME_SOURCES
   laser_tag.h
   leduc_poker.cc
   leduc_poker.h
+  lewis_signaling.cc
+  lewis_signaling.h
   liars_dice.cc
   liars_dice.h
   markov_soccer.cc
@@ -114,6 +120,9 @@ if (${BUILD_WITH_HANABI})
 endif()
 if (${BUILD_WITH_ACPC})
   add_subdirectory(universal_poker)
+endif()
+if (${BUILD_WITH_XINXIN})
+  add_subdirectory(hearts)
 endif()
 
 # Uncomment to build the Ludii demo
@@ -209,6 +218,10 @@ add_executable(cliff_walking_test cliff_walking_test.cc ${OPEN_SPIEL_OBJECTS}
                $<TARGET_OBJECTS:tests>)
 add_test(cliff_walking_test cliff_walking_test)
 
+add_executable(clobber_test clobber_test.cc ${OPEN_SPIEL_OBJECTS}
+               $<TARGET_OBJECTS:tests>)
+add_test(clobber_test clobber_test)
+
 add_executable(coin_game_test coin_game_test.cc ${OPEN_SPIEL_OBJECTS}
                $<TARGET_OBJECTS:tests>
                $<TARGET_OBJECTS:algorithms>)
@@ -263,6 +276,10 @@ add_executable(havannah_test havannah_test.cc ${OPEN_SPIEL_OBJECTS}
                $<TARGET_OBJECTS:tests>)
 add_test(havannah_test havannah_test)
 
+add_executable(hearts_test hearts_test.cc ${OPEN_SPIEL_OBJECTS}
+               $<TARGET_OBJECTS:tests>)
+add_test(hearts_test hearts_test)
+
 add_executable(hex_test hex_test.cc ${OPEN_SPIEL_OBJECTS}
                $<TARGET_OBJECTS:tests>)
 add_test(hex_test hex_test)
@@ -276,6 +293,10 @@ add_executable(leduc_poker_test leduc_poker_test.cc ${OPEN_SPIEL_OBJECTS}
                $<TARGET_OBJECTS:tests>
                $<TARGET_OBJECTS:algorithms>)
 add_test(leduc_poker_test leduc_poker_test)
+
+add_executable(lewis_signaling_test lewis_signaling_test.cc ${OPEN_SPIEL_OBJECTS}
+               $<TARGET_OBJECTS:tests>)
+add_test(lewis_signaling_test lewis_signaling_test)
 
 add_executable(liars_dice_test liars_dice_test.cc ${OPEN_SPIEL_OBJECTS}
                $<TARGET_OBJECTS:tests>

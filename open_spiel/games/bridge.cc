@@ -21,7 +21,11 @@
 #include "open_spiel/abseil-cpp/absl/strings/str_cat.h"
 #include "open_spiel/abseil-cpp/absl/strings/str_format.h"
 #include "open_spiel/abseil-cpp/absl/strings/string_view.h"
+#include "open_spiel/abseil-cpp/absl/synchronization/mutex.h"
 #include "open_spiel/games/bridge/double_dummy_solver/include/dll.h"
+#include "open_spiel/games/bridge/double_dummy_solver/src/Memory.h"
+#include "open_spiel/games/bridge/double_dummy_solver/src/SolverIF.h"
+#include "open_spiel/games/bridge/double_dummy_solver/src/TransTableL.h"
 #include "open_spiel/game_parameters.h"
 #include "open_spiel/games/bridge/bridge_scoring.h"
 #include "open_spiel/spiel.h"
@@ -145,12 +149,31 @@ std::string BridgeState::ToString() const {
   return rv;
 }
 
+std::array<std::string, kNumSuits> FormatHand(
+    int player, bool mark_voids,
+    const std::array<absl::optional<Player>, kNumCards>& deal) {
+  std::array<std::string, kNumSuits> cards;
+  for (int suit = 0; suit < kNumSuits; ++suit) {
+    cards[suit].push_back(kSuitChar[suit]);
+    cards[suit].push_back(' ');
+    bool is_void = true;
+    for (int rank = kNumCardsPerSuit - 1; rank >= 0; --rank) {
+      if (player == deal[Card(Suit(suit), rank)]) {
+        cards[suit].push_back(kRankChar[rank]);
+        is_void = false;
+      }
+    }
+    if (is_void && mark_voids) absl::StrAppend(&cards[suit], "none");
+  }
+  return cards;
+}
+
 std::string BridgeState::ObservationString(Player player) const {
   SPIEL_CHECK_GE(player, 0);
   SPIEL_CHECK_LT(player, num_players_);
   if (IsTerminal()) return ToString();
   std::string rv = FormatVulnerability();
-  auto cards = FormatHand(player, /*mark_voids=*/true);
+  auto cards = FormatHand(player, /*mark_voids=*/true, holder_);
   for (int suit = kNumSuits - 1; suit >= 0; --suit)
     absl::StrAppend(&rv, cards[suit], "\n");
   if (history_.size() > kNumCards)
@@ -161,35 +184,27 @@ std::string BridgeState::ObservationString(Player player) const {
   return rv;
 }
 
-std::array<std::string, kNumSuits> BridgeState::FormatHand(
-    int player, bool mark_voids) const {
-  // Current hand, except in the terminal state when we use the original hand
-  // to enable an easy review of the whole deal.
-  auto deal = holder_;
-  if (IsTerminal()) {
-    for (int i = 0; i < kNumCards; ++i)
-      deal[history_[i].action] = (i % kNumPlayers);
-  }
-  std::array<std::string, kNumSuits> cards;
-  for (int suit = 0; suit < kNumSuits; ++suit) {
-    cards[suit].push_back(kSuitChar[suit]);
-    cards[suit].push_back(' ');
-    bool is_void = true;
-    for (int rank = kNumCardsPerSuit - 1; rank >= 0; --rank) {
-      if (player == holder_[Card(Suit(suit), rank)]) {
-        cards[suit].push_back(kRankChar[rank]);
-        is_void = false;
-      }
-    }
-    if (is_void && mark_voids) absl::StrAppend(&cards[suit], "none");
-  }
-  return cards;
+std::array<absl::optional<Player>, kNumCards> BridgeState::OriginalDeal()
+    const {
+  SPIEL_CHECK_GE(history_.size(), kNumCards);
+  std::array<absl::optional<Player>, kNumCards> deal;
+  for (int i = 0; i < kNumCards; ++i)
+    deal[history_[i].action] = (i % kNumPlayers);
+  return deal;
 }
 
 std::string BridgeState::FormatDeal() const {
   std::array<std::array<std::string, kNumSuits>, kNumPlayers> cards;
-  for (auto player : {kNorth, kEast, kSouth, kWest}) {
-    cards[player] = FormatHand(player, /*mark_voids=*/false);
+  if (IsTerminal()) {
+    // Include all cards in the terminal state to make reviewing the deal easier
+    auto deal = OriginalDeal();
+    for (auto player : {kNorth, kEast, kSouth, kWest}) {
+      cards[player] = FormatHand(player, /*mark_voids=*/false, deal);
+    }
+  } else {
+    for (auto player : {kNorth, kEast, kSouth, kWest}) {
+      cards[player] = FormatHand(player, /*mark_voids=*/false, holder_);
+    }
   }
   constexpr int kColumnWidth = 8;
   std::string padding(kColumnWidth, ' ');
@@ -265,14 +280,20 @@ std::string BridgeState::FormatResult() const {
 
 void BridgeState::ObservationTensor(Player player,
                                     std::vector<double>* values) const {
+  values->resize(game_->ObservationTensorSize());
+  WriteObservationTensor<double>(player, absl::MakeSpan(*values));
+}
+
+template <typename T>
+void BridgeState::WriteObservationTensor(Player player,
+                                         absl::Span<T> values) const {
   SPIEL_CHECK_GE(player, 0);
   SPIEL_CHECK_LT(player, num_players_);
 
-  std::fill(values->begin(), values->end(), 0.0);
-  values->resize(game_->ObservationTensorSize());
+  std::fill(values.begin(), values.end(), 0.0);
   if (phase_ == Phase::kGameOver || phase_ == Phase::kDeal) return;
   int partnership = Partnership(player);
-  auto ptr = values->begin();
+  auto ptr = values.begin();
   if (num_cards_played_ > 0) {
     // Observation for play phase
     if (phase_ == Phase::kPlay) ptr[2] = 1;
@@ -340,9 +361,9 @@ void BridgeState::ObservationTensor(Player player,
     ptr += kNumTricks;
     ptr[num_cards_played_ / 4 - num_declarer_tricks_] = 1;
     ptr += kNumTricks;
-    SPIEL_CHECK_EQ(std::distance(values->begin(), ptr),
+    SPIEL_CHECK_EQ(std::distance(values.begin(), ptr),
                    kPlayTensorSize + kNumObservationTypes);
-    SPIEL_CHECK_LE(std::distance(values->begin(), ptr), values->size());
+    SPIEL_CHECK_LE(std::distance(values.begin(), ptr), values.size());
   } else {
     // Observation for auction or opening lead.
     ptr[phase_ == Phase::kPlay ? 1 : 0] = 1;
@@ -372,10 +393,58 @@ void BridgeState::ObservationTensor(Player player,
     for (int i = 0; i < kNumCards; ++i)
       if (holder_[i] == player) ptr[i] = 1;
     ptr += kNumCards;
-    SPIEL_CHECK_EQ(std::distance(values->begin(), ptr),
+    SPIEL_CHECK_EQ(std::distance(values.begin(), ptr),
                    kAuctionTensorSize + kNumObservationTypes);
-    SPIEL_CHECK_LE(std::distance(values->begin(), ptr), values->size());
+    SPIEL_CHECK_LE(std::distance(values.begin(), ptr), values.size());
   }
+}
+
+template void BridgeState::WriteObservationTensor<float>(
+    Player player, absl::Span<float> values) const;
+
+template void BridgeState::WriteObservationTensor<double>(
+    Player player, absl::Span<double> values) const;
+
+std::vector<double> BridgeState::PublicObservationTensor() const {
+  SPIEL_CHECK_TRUE(phase_ == Phase::kAuction);
+  std::vector<double> rv(kPublicInfoTensorSize);
+  auto ptr = rv.begin();
+  ptr[is_vulnerable_[0]] = 1;
+  ptr += kNumVulnerabilities;
+  ptr[is_vulnerable_[1]] = 1;
+  ptr += kNumVulnerabilities;
+  auto bidding = ptr + 2 * kNumPlayers;  // initial and recent passes
+  int last_bid = 0;
+  for (int i = kNumCards; i < history_.size(); ++i) {
+    const int player = i % kNumPlayers;
+    const int this_call = history_[i].action - kBiddingActionBase;
+    if (this_call == kPass) {
+      if (last_bid == 0) ptr[player] = 1;  // Leading passes
+      ptr[kNumPlayers + player] = 1;       // Trailing passes
+    } else {
+      // Call is a non-Pass, so clear the trailing pass markers.
+      for (int i = 0; i < kNumPlayers; ++i) ptr[kNumPlayers + i] = 0;
+      if (this_call == kDouble) {
+        auto base = bidding + (last_bid - kFirstBid) * kNumPlayers * 3;
+        base[kNumPlayers + player] = 1;
+      } else if (this_call == kRedouble) {
+        auto base = bidding + (last_bid - kFirstBid) * kNumPlayers * 3;
+        base[kNumPlayers * 2 + player] = 1;
+      } else {
+        last_bid = this_call;
+        auto base = bidding + (last_bid - kFirstBid) * kNumPlayers * 3;
+        base[player] = 1;
+      }
+    }
+  }
+  return rv;
+}
+
+std::vector<double> BridgeState::PrivateObservationTensor(Player player) const {
+  std::vector<double> rv(kNumCards);
+  for (int i = 0; i < kNumCards; ++i)
+    if (holder_[i] == player) rv[i] = 1;
+  return rv;
 }
 
 void BridgeState::SetDoubleDummyResults(ddTableResults double_dummy_results) {
@@ -383,8 +452,11 @@ void BridgeState::SetDoubleDummyResults(ddTableResults double_dummy_results) {
   ComputeScoreByContract();
 }
 
-void BridgeState::ComputeDoubleDummyTricks() {
+ABSL_CONST_INIT absl::Mutex dds_mutex(absl::kConstInit);
+
+void BridgeState::ComputeDoubleDummyTricks() const {
   if (!double_dummy_results_.has_value()) {
+    absl::MutexLock lock(&dds_mutex);  // TODO(author11) Make DDS code thread-safe
     double_dummy_results_ = ddTableResults{};
     ddTableDeal dd_table_deal{};
     for (int suit = 0; suit < kNumSuits; ++suit) {
@@ -403,6 +475,125 @@ void BridgeState::ComputeDoubleDummyTricks() {
     }
   }
   ComputeScoreByContract();
+}
+
+std::vector<int> BridgeState::ScoreForContracts(
+    int player, const std::vector<int>& contracts) const {
+  // Storage for the number of tricks.
+  std::array<std::array<int, kNumPlayers>, kNumDenominations> dd_tricks;
+
+  if (double_dummy_results_.has_value()) {
+    // If we have already computed double-dummy results, use them.
+    for (int declarer = 0; declarer < kNumPlayers; ++declarer) {
+      for (int trumps = 0; trumps < kNumDenominations; ++trumps) {
+        dd_tricks[trumps][declarer] =
+            double_dummy_results_->resTable[trumps][declarer];
+      }
+    }
+  } else {
+    {
+      // This performs some sort of global initialization; unclear
+      // exactly what.
+      absl::MutexLock lock(&dds_mutex);
+      DDS_EXTERNAL(SetMaxThreads)(0);
+    }
+
+    // Working storage for DD calculation.
+    auto thread_data = std::make_unique<ThreadData>();
+    auto transposition_table = std::make_unique<TransTableL>();
+    transposition_table->SetMemoryDefault(95);   // megabytes
+    transposition_table->SetMemoryMaximum(160);  // megabytes
+    transposition_table->MakeTT();
+    thread_data->transTable = transposition_table.get();
+
+    // Which trump suits do we need to handle?
+    std::set<int> suits;
+    for (auto index : contracts) {
+      const auto& contract = kAllContracts[index];
+      if (contract.level > 0) suits.emplace(contract.trumps);
+    }
+    // Build the deal
+    ::deal dl{};
+    for (int suit = 0; suit < kNumSuits; ++suit) {
+      for (int rank = 0; rank < kNumCardsPerSuit; ++rank) {
+        const int player = holder_[Card(Suit(suit), rank)].value();
+        dl.remainCards[player][suit] += 1 << (2 + rank);
+      }
+    }
+    for (int k = 0; k <= 2; k++) {
+      dl.currentTrickRank[k] = 0;
+      dl.currentTrickSuit[k] = 0;
+    }
+
+    // Analyze for each trump suit.
+    for (int suit : suits) {
+      dl.trump = suit;
+      transposition_table->ResetMemory(TT_RESET_NEW_TRUMP);
+
+      // Assemble the declarers we need to consider.
+      std::set<int> declarers;
+      for (auto index : contracts) {
+        const auto& contract = kAllContracts[index];
+        if (contract.level > 0 && contract.trumps == suit)
+          declarers.emplace(contract.declarer);
+      }
+
+      // Analyze the deal for each declarer.
+      absl::optional<Player> first_declarer;
+      absl::optional<int> first_tricks;
+      for (int declarer : declarers) {
+        ::futureTricks fut;
+        dl.first = (declarer + 1) % kNumPlayers;
+        if (!first_declarer.has_value()) {
+          // First time we're calculating this trump suit.
+          const int return_code = SolveBoardInternal(
+              thread_data.get(), dl,
+              /*target=*/-1,    // Find max number of tricks
+              /*solutions=*/1,  // Just the tricks (no card-by-card result)
+              /*mode=*/2,       // Unclear
+              &fut              // Output
+          );
+          if (return_code != RETURN_NO_FAULT) {
+            char error_message[80];
+            DDS_EXTERNAL(ErrorMessage)(return_code, error_message);
+            SpielFatalError(
+                absl::StrCat("double_dummy_solver:", error_message));
+          }
+          dd_tricks[suit][declarer] = 13 - fut.score[0];
+          first_declarer = declarer;
+          first_tricks = 13 - fut.score[0];
+        } else {
+          // Reuse data from last time.
+          const int hint = Partnership(declarer) == Partnership(*first_declarer)
+                               ? *first_tricks
+                               : 13 - *first_tricks;
+          const int return_code =
+              SolveSameBoard(thread_data.get(), dl, &fut, hint);
+          if (return_code != RETURN_NO_FAULT) {
+            char error_message[80];
+            DDS_EXTERNAL(ErrorMessage)(return_code, error_message);
+            SpielFatalError(
+                absl::StrCat("double_dummy_solver:", error_message));
+          }
+          dd_tricks[suit][declarer] = 13 - fut.score[0];
+        }
+      }
+    }
+  }
+
+  // Compute the scores.
+  std::vector<int> scores;
+  scores.reserve(contracts.size());
+  for (int contract_index : contracts) {
+    const Contract& contract = kAllContracts[contract_index];
+    const int declarer_score =
+        Score(contract, dd_tricks[contract.trumps][contract.declarer],
+              is_vulnerable_[Partnership(contract.declarer)]);
+    scores.push_back(Partnership(contract.declarer) == Partnership(player)
+                         ? declarer_score
+                         : -declarer_score);
+  }
+  return scores;
 }
 
 std::vector<Action> BridgeState::LegalActions() const {
@@ -511,11 +702,15 @@ void BridgeState::ApplyBiddingAction(int call) {
     num_passes_ = 0;
   }
 
+  auto partnership = Partnership(current_player_);
   if (call == kDouble) {
+    SPIEL_CHECK_NE(Partnership(contract_.declarer), partnership);
     SPIEL_CHECK_EQ(contract_.double_status, kUndoubled);
+    SPIEL_CHECK_GT(contract_.level, 0);
     possible_contracts_[contract_.Index()] = false;
     contract_.double_status = kDoubled;
   } else if (call == kRedouble) {
+    SPIEL_CHECK_EQ(Partnership(contract_.declarer), partnership);
     SPIEL_CHECK_EQ(contract_.double_status, kDoubled);
     possible_contracts_[contract_.Index()] = false;
     contract_.double_status = kRedoubled;
@@ -545,6 +740,9 @@ void BridgeState::ApplyBiddingAction(int call) {
     }
   } else {
     // A bid was made.
+    SPIEL_CHECK_TRUE((BidLevel(call) > contract_.level) ||
+                     (BidLevel(call) == contract_.level &&
+                      BidSuit(call) > contract_.trumps));
     contract_.level = BidLevel(call);
     contract_.trumps = BidSuit(call);
     contract_.double_status = kUndoubled;
@@ -627,17 +825,22 @@ void BridgeState::ScoreUp() {
   }
 }
 
-void BridgeState::ComputeScoreByContract() {
+void BridgeState::ComputeScoreByContract() const {
   SPIEL_CHECK_TRUE(double_dummy_results_.has_value());
   for (int i = 0; i < kNumContracts; ++i) {
     Contract contract = kAllContracts[i];
-    const int num_declarer_tricks =
-        double_dummy_results_->resTable[contract.trumps][contract.declarer];
-    const int declarer_score =
-        Score(contract, num_declarer_tricks,
-              is_vulnerable_[Partnership(contract.declarer)]);
-    score_by_contract_[i] =
-        Partnership(contract.declarer) == 0 ? declarer_score : -declarer_score;
+    if (contract.level == 0) {
+      score_by_contract_[i] = 0;
+    } else {
+      const int num_declarer_tricks =
+          double_dummy_results_->resTable[contract.trumps][contract.declarer];
+      const int declarer_score =
+          Score(contract, num_declarer_tricks,
+                is_vulnerable_[Partnership(contract.declarer)]);
+      score_by_contract_[i] = Partnership(contract.declarer) == 0
+                                  ? declarer_score
+                                  : -declarer_score;
+    }
   }
 }
 
