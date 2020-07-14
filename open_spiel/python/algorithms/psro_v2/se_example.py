@@ -54,17 +54,21 @@ from open_spiel.python.algorithms.psro_v2 import rl_policy
 from open_spiel.python.algorithms.psro_v2 import strategy_selectors
 from open_spiel.python.algorithms.psro_v2.quiesce.quiesce import PSROQuiesceSolver
 from open_spiel.python.algorithms.psro_v2 import meta_strategies
+
 from open_spiel.python.algorithms.psro_v2.eval_utils import save_pkl
 from open_spiel.python.algorithms.psro_v2.quiesce import quiesce_sparse
 from open_spiel.python.algorithms.psro_v2.utils import set_seed
 from open_spiel.python.algorithms.psro_v2.eval_utils import smoothing_kl, save_nash, save_strategies, save_pkl
 
 
+
 FLAGS = flags.FLAGS
 # Game-related
 flags.DEFINE_string("game_name", "kuhn_poker", "Game name.")
 flags.DEFINE_integer("n_players", 2, "The number of players.")
+
 flags.DEFINE_list("game_param",None,"game parameters") #game_param=v=1,"vmodule=a=0,b=2"
+
 
 # PSRO related
 flags.DEFINE_string("meta_strategy_method", "general_nash",
@@ -138,7 +142,9 @@ flags.DEFINE_integer("seed", None, "Seed.")
 flags.DEFINE_bool("local_launch", False, "Launch locally or not.")
 flags.DEFINE_bool("verbose", True, "Enables verbose printing and profiling.")
 flags.DEFINE_bool("log_train", False,"log training reward curve")
+
 flags.DEFINE_bool("compute_exact_br",True,"compute and log exp with exact br. If false, than use combined game at the last iteration to evaluate")
+
 
 
 # Strategy Exploration
@@ -154,6 +160,11 @@ flags.DEFINE_float("exploration_gamma",0.0,'gamma for heuristics selector like e
 flags.DEFINE_list("heuristic_list",'general_nash_strategy,uniform_strategy','heuristics to consider')
 flags.DEFINE_list("heuristic_to_add", '',"Heuristic to be added to heuristic list.") # could contail 'sp_strategy,'
 flags.DEFINE_bool("switch_heuristic_regardless_of_oracle",False,'switch heuristics with DQN all alone') # This could not be true with switch_fsat_slow at the same time!
+
+flags.DEFINE_bool("abs_reward", False,'use absolute reward for bandit arms') # This could not be true with switch_fsat_slow at the same time!
+flags.DEFINE_bool("kl_regularization", False,'add kl regularization to reward of arms.') # This could not be true with switch_fsat_slow at the same time!
+
+
 
 def init_pg_responder(sess, env):
   """Initializes the Policy Gradient-based responder and agents."""
@@ -192,10 +203,12 @@ def init_pg_responder(sess, env):
   ]
   for agent in agents:
     agent.freeze()
+
   
   agent_kwargs_save = {key:val for key,val in agent_kwargs.items() if key!="session" }
   agent_kwargs_save["policy_class"] = "PG"
   return oracle, agents, agent_kwargs_save
+
 
 
 def init_br_responder(env):
@@ -204,6 +217,7 @@ def init_br_responder(env):
   oracle = best_response_oracle.BestResponseOracle(
       game=env.game, policy=random_policy)
   agents = [random_policy.__copy__() for _ in range(FLAGS.n_players)]
+
   agent_kwargs = {}
   agent_kwargs["policy_class"] = "BR"
   return oracle, agents, agent_kwargs
@@ -244,9 +258,11 @@ def init_dqn_responder(sess, env):
   for agent in agents:
     agent.freeze()
 
+
   agent_kwargs_save = {key:val for key,val in agent_kwargs.items() if key!="session" }
   agent_kwargs_save["policy_class"] = "DQN"
   return oracle, agents, agent_kwargs_save
+
 
 def init_ars_responder(sess, env):
   """
@@ -265,13 +281,17 @@ def init_ars_responder(sess, env):
     "learning_rate": FLAGS.ars_learning_rate,
     "nb_directions": FLAGS.num_directions,
     "nb_best_directions": FLAGS.num_directions,
-    "noise": FLAGS.noise
+
+    "noise": FLAGS.noise,
+    "v2": FLAGS.v2
+
   }
   oracle = rl_oracle.RLOracle(
     env,
     agent_class,
     agent_kwargs,
     number_training_episodes=FLAGS.number_training_episodes,
+
     self_play_proportion=FLAGS.self_play_proportion,
     sigma=FLAGS.sigma)
 
@@ -284,10 +304,10 @@ def init_ars_responder(sess, env):
   ]
   for agent in agents:
     agent.freeze()
-
   agent_kwargs_save = {key:val for key,val in agent_kwargs.items() if key!="session" }
   agent_kwargs_save["policy_class"] = "ARS"
   return oracle, agents, agent_kwargs_save
+
 
 
 def print_beneficial_deviation_analysis(last_meta_game, meta_game, last_meta_prob, verbose=False):
@@ -400,7 +420,10 @@ def gpsro_looper(env, oracle, oracle_list, agents, writer, quiesce=False, checkp
       standard_regret=FLAGS.standard_regret,
       heuristic_list=heuristic_list,
       gamma=FLAGS.exploration_gamma,
-      switch_heuristic_regardless_of_oracle=FLAGS.switch_heuristic_regardless_of_oracle)
+      switch_heuristic_regardless_of_oracle=FLAGS.switch_heuristic_regardless_of_oracle,
+      abs_value=FLAGS.abs_reward,
+      kl_reg=FLAGS.kl_regularization)
+
   
   last_meta_prob = [np.array([1]) for _ in range(FLAGS.n_players)]
   last_meta_game = g_psro_solver.get_meta_game()
@@ -446,6 +469,7 @@ def gpsro_looper(env, oracle, oracle_list, agents, writer, quiesce=False, checkp
           writer.add_scalar("kl_conv", kl_conv, gpsro_iteration)
 
     # The following lines only work for sequential games for the moment.
+
     if FLAGS.compute_exact_br: #simple extensive form calculate best response
       ######### calculate exploitability then log it
       if env.game.get_type().dynamics == pyspiel.GameType.Dynamics.SEQUENTIAL:
@@ -470,11 +494,13 @@ def gpsro_looper(env, oracle, oracle_list, agents, writer, quiesce=False, checkp
     else: # use combined game to evaluate exp, thus nash_ne for every iteration should be saved
       save_nash(nash_meta_probabilities, gpsro_iteration, checkpoint_dir)
        
+
     
     ######### record meta_game into pkl
     if gpsro_iteration % 5 == 0:
       save_at_termination(solver=g_psro_solver, file_for_meta_game=checkpoint_dir+'/meta_game.pkl')
-      save_strategies(solver=g_psro_solver, checkpoint_dir=checkpoint_dir)
+      # save_strategies(solver=g_psro_solver, checkpoint_dir=checkpoint_dir)
+
    
     ######### analyze if this iteration found beneficial deviation
     beneficial_deviation = print_beneficial_deviation_analysis(last_meta_game, meta_game, last_meta_prob, FLAGS.verbose)
@@ -511,6 +537,7 @@ def main(argv):
     seed = np.random.randint(low=0, high=1e5)
   else:
     seed = FLAGS.seed
+
   set_seed(seed)
 
   checkpoint_dir = 'se1_'+FLAGS.game_name
@@ -530,6 +557,7 @@ def main(argv):
   for key, val in game_param_raw.items():
     game_param[key] = pyspiel.GameParameter(val)
   game = pyspiel.load_game_as_turn_based(FLAGS.game_name, game_param)
+
 
   env = rl_environment.Environment(game,seed=seed)
   env.reset()
@@ -553,7 +581,9 @@ def main(argv):
   if not os.path.exists(FLAGS.root_result_folder):
     os.makedirs(FLAGS.root_result_folder)
   
+
   checkpoint_dir += '_sims_'+str(FLAGS.sims_per_entry)+'_it_'+str(FLAGS.gpsro_iterations)+'_ep_'+str(FLAGS.number_training_episodes)+'_or_'+FLAGS.oracle_type
+
 
   checkpoint_dir += '_msl_'+",".join(heuristic_list)
 
@@ -576,6 +606,7 @@ def main(argv):
   writer = SummaryWriter(logdir=checkpoint_dir+'/log')
   if FLAGS.sbatch_run:
     sys.stdout = open(checkpoint_dir+'/stdout.txt','w+')
+
 
   env_kwargs = {"game_name":FLAGS.game_name, "param": game_param_raw}
   strategy_path = os.path.join(checkpoint_dir, 'strategies')
@@ -602,6 +633,7 @@ def main(argv):
     
     if FLAGS.switch_fast_slow:
       fast_oracle, agents, _ = init_ars_responder(sess=None, env=env)
+
       oracle_list = [[], []]
       oracle_list[0].append(slow_oracle)
       oracle_list[0].append(fast_oracle)

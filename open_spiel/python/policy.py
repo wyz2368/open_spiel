@@ -393,6 +393,12 @@ class FirstActionPolicy(Policy):
     return {action: 1.0 if action == min_action else 0.0
             for action in legal_actions}
 
+  def get_weights(self):
+    return 'first_action'
+
+  def set_weights(self, variables):
+    raise NotImplementedError
+
 
   def get_weights(self):
     return 'first_action'

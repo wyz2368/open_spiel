@@ -445,6 +445,7 @@ def print_rankings_table(payoff_tables,
 
   # Cluster strategies according to stationary distr. (in case of tied ranks)
   masses_to_strats = cluster_strats(pi)
+  print("mass:", masses_to_strats)
 
   def print_3col(col1, col2, col3):
     print("%-12s %-12s %-12s" % (col1, col2, col3))
@@ -456,6 +457,7 @@ def print_rankings_table(payoff_tables,
   num_strats_printed = 0
   # Print a table of strategy rankings from highest to lowest mass
   for _, strats in sorted(masses_to_strats.items(), reverse=True):
+    print("strats:", strats)
     for strat in strats:
       if num_strats_printed >= num_top_strats_to_print:
         break

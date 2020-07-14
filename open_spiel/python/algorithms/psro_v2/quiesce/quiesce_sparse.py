@@ -17,6 +17,7 @@ import itertools
 import copy
 import numpy as np
 import pandas as pd
+
 import time
 
 from open_spiel.python import policy
@@ -102,10 +103,12 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
     Given new payoff tables, we call self._meta_strategy_method to update the
     meta-probabilities.
     """
+
     if self._meta_strategy_str in ['nash','general_nash','prd']:
       start_time = time.time()
       self._meta_strategy_probabilities,self._non_marginalized_probabilities = self.inner_loop()
       return time.time()-start_time
+
     else:
       print("quiesce sparse only works with nash strategy due to the sparsity structure")
       raise
@@ -148,7 +151,9 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
     found_confirmed_eq = False
     while not found_confirmed_eq:
       maximum_subgame = self.get_complete_meta_game
+
       ne_subgame = meta_strategies.general_nash_strategy(solver=self, return_joint=False, NE_solver='replicator',game=maximum_subgame, checkpoint_dir=self.checkpoint_dir)
+
       # ne_support_num: list of list, index of where equilibrium is [[0,1],[2]]
       # cumsum: index ne_subgame with self._complete_ind
       cum_sum = [np.cumsum(ele) for ele in self._complete_ind]
@@ -171,6 +176,7 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
       maximum_subgame_index = [list(np.where(np.array(ele)==1)[0]) for ele in self._complete_ind]
       for i in range(self._game_num_players):
         if not len(dev_payoffs[i])==0 and max(dev_payoffs[i]) > ne_payoffs[i]+0.01:
+
           pol = dev_pol[i][np.argmax(dev_payoffs[i])]
           new_subgame_sample_ind = copy.deepcopy(maximum_subgame_index)
           maximum_subgame_index[i].append(pol)
@@ -183,6 +189,7 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
       found_confirmed_eq = (len(dev)==0)
       # debug: check maximum subgame remains the same
       # debug: check maximum game reached
+
     # return confirmed nash equilibrium
     eq = []
     policy_len = [len(self._policies) for _ in range(self._game_num_players)] if self.symmetric_game else [len(ele) for ele in self._policies]

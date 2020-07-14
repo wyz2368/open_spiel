@@ -56,13 +56,15 @@ from open_spiel.python.algorithms.psro_v2 import strategy_selectors
 from open_spiel.python.algorithms.psro_v2.quiesce.quiesce import PSROQuiesceSolver
 from open_spiel.python.algorithms.psro_v2 import meta_strategies
 from open_spiel.python.algorithms.psro_v2.quiesce import quiesce_sparse
+
 from open_spiel.python.algorithms.psro_v2.utils import set_seed
 from open_spiel.python.algorithms.psro_v2.eval_utils import save_strategies, save_nash, save_pkl
 
 
+
 FLAGS = flags.FLAGS
 # Game-related
-flags.DEFINE_string("game_name", "kuhn_poker", "Game name.")
+flags.DEFINE_string("game_name", "leduc_poker", "Game name.")
 flags.DEFINE_integer("n_players", 2, "The number of players.")
 flags.DEFINE_list("game_param",None,"game parameters") #game_param=v=1,"vmodule=a=0,b=2"
 # PSRO related
@@ -107,7 +109,9 @@ flags.DEFINE_integer("batch_size", 32, "Batch size")
 flags.DEFINE_float("sigma", 0.0, "Policy copy noise (Gaussian Dropout term).")
 flags.DEFINE_string("optimizer_str", "adam", "'adam' or 'sgd'")
 flags.DEFINE_integer("n_hidden_layers", 4, "# of hidden layers")
+
 flags.DEFINE_float("discount_factor",0.999,"discount factor")
+
 
 # Policy Gradient Oracle related
 flags.DEFINE_string("loss_str", "qpg", "Name of loss used for BR training.")
@@ -122,6 +126,7 @@ flags.DEFINE_integer("update_target_network_every", 500, "Update target "
                      "network every [X] steps")
 flags.DEFINE_integer("learn_every", 10, "Learn every [X] steps.")
 flags.DEFINE_integer("epsilon_decay_duration",3000000,"dqn decay")
+
 
 #ARS
 flags.DEFINE_float("ars_learning_rate", 0.02, "ARS learning rate.")
@@ -140,8 +145,10 @@ flags.DEFINE_integer("seed", None, "Seed.")
 flags.DEFINE_bool("local_launch", False, "Launch locally or not.")
 flags.DEFINE_bool("verbose", True, "Enables verbose printing and profiling.")
 flags.DEFINE_bool("log_train", False,"log training reward curve")
+
 flags.DEFINE_bool("test_reward",False,"evaluate test reward along training process")
 flags.DEFINE_bool("compute_exact_br",True,"compute and log exp with exact br. If false, than use combined game at the last iteration to evaluate")
+
 
 
 def init_pg_responder(sess, env):
@@ -165,6 +172,7 @@ def init_pg_responder(sess, env):
       "num_critic_before_pi": FLAGS.num_q_before_pi,
       "optimizer_str": FLAGS.optimizer_str,
       "additional_discount_factor": FLAGS.discount_factor
+
   }
   oracle = rl_oracle.RLOracle(
       env,
@@ -182,10 +190,12 @@ def init_pg_responder(sess, env):
   ]
   for agent in agents:
     agent.freeze()
+
  
   agent_kwargs_save = {key:val for key,val in agent_kwargs.items() if key!="session" }
   agent_kwargs_save["policy_class"] = "PG"
   return oracle, agents, agent_kwargs_save
+
 
 
 def init_br_responder(env):
@@ -194,9 +204,11 @@ def init_br_responder(env):
   oracle = best_response_oracle.BestResponseOracle(
       game=env.game, policy=random_policy)
   agents = [random_policy.__copy__() for _ in range(FLAGS.n_players)]
+
   agent_kwargs = {}
   agent_kwargs["policy_class"] = "BR"
   return oracle, agents, agent_kwargs
+
 
 
 def init_dqn_responder(sess, env):
@@ -217,6 +229,7 @@ def init_dqn_responder(sess, env):
       "optimizer_str": FLAGS.optimizer_str,
       "discount_factor": FLAGS.discount_factor,
       "epsilon_decay_duration":FLAGS.epsilon_decay_duration
+
   }
   oracle = rl_oracle.RLOracle(
       env,
@@ -357,12 +370,14 @@ def init_ars_parallel_responder(sess, env):
   ]
   for agent in agents:
     agent.freeze()
+
   agent_kwargs["policy_class"] = "ARS_parallel"
   return oracle, agents, agent_kwargs
 
 
 
 def print_policy_analysis(policies, game, verbose=False):
+
   """Function printing policy diversity within game's known policies.
 
   Warning : only works with deterministic policies.
@@ -441,67 +456,63 @@ def gpsro_looper(env, oracle, agents, writer, quiesce=False, checkpoint_dir=None
       print("\n===========================\n")
       print("Iteration : {}".format(gpsro_iteration))
       print("Time so far: {}".format(time.time() - start_time))
-    train_reward_curve, test_reward_curve, meta_strategy_time = g_psro_solver.iteration(seed=seed, test_reward=FLAGS.test_reward)
+
+    train_reward_curve = g_psro_solver.iteration(seed=seed)
     meta_game = g_psro_solver.get_meta_game()
     meta_probabilities = g_psro_solver.get_meta_strategies()
-    nash_meta_probabilities = g_psro_solver.get_nash_strategies()
+    # nash_meta_probabilities = g_psro_solver.get_nash_strategies()
+    nash_meta_probabilities = g_psro_solver.get_prd_strategies()
     policies = g_psro_solver.get_policies()
+   
     if FLAGS.verbose:
       # print("Meta game : {}".format(meta_game))
-      print("time required : {}".format(meta_strategy_time))
       print("Probabilities : {}".format(meta_probabilities))
-      #print("Nash Probabilities : {}".format(nash_meta_probabilities))
+      print("Nash Probabilities : {}".format(nash_meta_probabilities))
 
-    writer.add_scalar('meta_strategy_time',meta_strategy_time,gpsro_iteration)
-    if FLAGS.quiesce:
-      writer.add_scalar('sampled coverge',g_psro_solver.number_profile_sampled/g_psro_solver.num_profiles,gpsro_iteration)
+    aggregator = policy_aggregator.PolicyAggregator(env.game)
 
-    if FLAGS.compute_exact_br: #simple extensive form calculate best response
-      start_br_time = time.time()
-      aggregator = policy_aggregator.PolicyAggregator(env.game)
-      aggr_policies = aggregator.aggregate(
-          range(FLAGS.n_players), policies, nash_meta_probabilities)
+    ## Using NE-based NashConv
+    aggr_policies_Mike = aggregator.aggregate(
+            range(FLAGS.n_players), policies, nash_meta_probabilities)
+    ## Using heuristic-based NashConv
+    aggr_policies = aggregator.aggregate(
+        range(FLAGS.n_players), policies, meta_probabilities)
 
-      exploitabilities, expl_per_player = exploitability.nash_conv(
-          env.game, aggr_policies, return_only_nash_conv=False)
-      br_time = time.time()-start_br_time
-      writer.add_scalar('br_time',br_time,gpsro_iteration)
+    exploitabilities, expl_per_player = exploitability.nash_conv(
+        env.game, aggr_policies, return_only_nash_conv=False)
 
-      for p in range(len(expl_per_player)):
-        writer.add_scalar('player'+str(p)+'_exp',expl_per_player[p],gpsro_iteration)
-      writer.add_scalar('exp',exploitabilities,gpsro_iteration)
-      if FLAGS.verbose:
-        print("Exploitabilities : {}".format(exploitabilities))
-        print("Exploitabilities per player : {}".format(expl_per_player))
+    nash_Mike, expl_per_player = exploitability.nash_conv(
+            env.game, aggr_policies_Mike, return_only_nash_conv=False)
 
-      unique_policies = print_policy_analysis(policies, env.game, FLAGS.verbose)
-      for p, cur_set in enumerate(unique_policies):
-        writer.add_scalar('p'+str(p)+'_unique_p',len(cur_set),gpsro_iteration)
-
+    unique_policies = print_policy_analysis(policies, env.game, FLAGS.verbose)
+    for p, cur_set in enumerate(unique_policies):
+      writer.add_scalar('p'+str(p)+'_unique_p',len(cur_set),gpsro_iteration)
+      
     save_nash(nash_meta_probabilities, gpsro_iteration, checkpoint_dir)
 
-    if gpsro_iteration % 5 ==0:
+    if gpsro_iteration % 10 ==0:
       save_at_termination(solver=g_psro_solver, file_for_meta_game=checkpoint_dir+'/meta_game.pkl')
-      save_strategies(solver=g_psro_solver, checkpoint_dir=checkpoint_dir)
+      # save_strategies(solver=g_psro_solver, checkpoint_dir=checkpoint_dir)
     
-    if not FLAGS.quiesce:
-      beneficial_deviation = print_beneficial_deviation_analysis(last_meta_game, meta_game, last_meta_prob, FLAGS.verbose)
-      last_meta_prob, last_meta_game = meta_probabilities, meta_game
-      for p in range(len(beneficial_deviation)):
-        writer.add_scalar('p'+str(p)+'_beneficial_dev',int(beneficial_deviation[p]),gpsro_iteration)
-      writer.add_scalar('beneficial_devs',sum(beneficial_deviation),gpsro_iteration)
+    beneficial_deviation = print_beneficial_deviation_analysis(last_meta_game, meta_game, last_meta_prob, FLAGS.verbose)
+    last_meta_prob, last_meta_game = meta_probabilities, meta_game
+    for p in range(len(beneficial_deviation)):
+      writer.add_scalar('p'+str(p)+'_beneficial_dev',int(beneficial_deviation[p]),gpsro_iteration)
+    writer.add_scalar('beneficial_devs',sum(beneficial_deviation),gpsro_iteration)
 
-    if FLAGS.log_train and (gpsro_iteration<=10 or gpsro_iteration%5==0):
-      for p in range(len(train_reward_curve)):
-        for p_i in range(len(train_reward_curve[p])):
-          writer.add_scalar('player'+str(p)+'_'+str(gpsro_iteration),train_reward_curve[p][p_i],p_i)
+    # if FLAGS.log_train and (gpsro_iteration<=10 or gpsro_iteration%5==0):
+    #   for p in range(len(train_reward_curve)):
+    #     for p_i in range(len(train_reward_curve[p])):
+    #       writer.add_scalar('player'+str(p)+'_'+str(gpsro_iteration),train_reward_curve[p][p_i],p_i)
+    for p in range(len(expl_per_player)):
+      writer.add_scalar('player'+str(p)+'_exp', expl_per_player[p], gpsro_iteration)
+    writer.add_scalar('exp', exploitabilities, gpsro_iteration)
+    writer.add_scalar('exp_Mike', nash_Mike, gpsro_iteration)
+    if FLAGS.verbose:
+      print("Exploitabilities : {}".format(exploitabilities))
+      print("Exploitabilities_Mike : {}".format(nash_Mike))
+      print("Exploitabilities per player : {}".format(expl_per_player))
 
-    if FLAGS.log_train and FLAGS.test_reward and (gpsro_iteration<=10 or gpsro_iteration%5==0):
-      for p in range(len(test_reward_curve)):
-        for p_i in range(len(test_reward_curve[p])):
-          writer.add_scalar('player'+str(p)+'_t_'+str(gpsro_iteration),test_reward_curve[p][p_i],p_i)
-
-    
 def main(argv):
   if len(argv) > 1:
     raise app.UsageError("Too many command-line arguments.")
@@ -510,6 +521,8 @@ def main(argv):
     seed = np.random.randint(low=0, high=1e5)
   else:
     seed = FLAGS.seed
+
+# Begin Gary.
   set_seed(seed)
   
   checkpoint_dir = FLAGS.game_name
@@ -537,6 +550,22 @@ def main(argv):
     game_param_str += key+"="+str(val)+","
   game_param_str = game_param_str[:-1]+")"
   game = pyspiel.load_game(game_param_str)
+# =======
+#   np.random.seed(seed)
+#   random.seed(seed)
+
+#   tf.set_random_seed(seed)
+
+#   game_param = {"players": pyspiel.GameParameter(FLAGS.n_players)}
+#   checkpoint_dir = FLAGS.game_name
+#   if FLAGS.game_param is not None:
+#     for ele in FLAGS.game_param:
+#       ele_li = ele.split("=")
+#       game_param[ele_li[0]] = pyspiel.GameParameter(int(ele_li[1]))
+#       checkpoint_dir += '_'+ele_li[0]+'_'+ele_li[1]
+#     checkpoint_dir += '_'
+#   game = pyspiel.load_game_as_turn_based(FLAGS.game_name, game_param)
+# >>>>>>> master
 
   env = rl_environment.Environment(game,seed=seed)
   env.reset()
@@ -562,6 +591,7 @@ def main(argv):
   if FLAGS.sbatch_run:
     sys.stdout = open(checkpoint_dir+'/stdout.txt','w+')
 
+
   env_kwargs = {"game_name":FLAGS.game_name, "param": game_param_raw}
   strategy_path = os.path.join(checkpoint_dir, 'strategies')
   if not os.path.exists(strategy_path):
@@ -582,6 +612,7 @@ def main(argv):
       oracle, agents, agent_kwargs = init_ars_parallel_responder(sess, env)
     # sess.run(tf.global_variables_initializer())
     save_pkl(agent_kwargs, strategy_path+'/kwargs.pkl')
+
 
     gpsro_looper(env, oracle, agents, writer, quiesce=FLAGS.quiesce, checkpoint_dir=checkpoint_dir, seed=seed)
 

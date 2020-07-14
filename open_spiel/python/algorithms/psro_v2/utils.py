@@ -129,8 +129,10 @@ def sample_strategy_marginal(total_policies, probabilities_of_playing_policies):
 def sample_random_tensor_index(probabilities_of_index_tensor, shape=None):
   shape = probabilities_of_index_tensor.shape if not shape else shape
   reshaped_probas = probabilities_of_index_tensor.reshape(-1)
-  num_strats = list(range(len(reshaped_probas)))
-  chosen_index = random_choice(num_strats, reshaped_probas)
+
+  num_strats = len(reshaped_probas)
+  chosen_index = random_choice(list(range(num_strats)), reshaped_probas)
+
   return np.unravel_index(chosen_index, shape)
 
 
@@ -147,8 +149,11 @@ def sample_strategy_joint(total_policies, probabilities_of_playing_policies):
   Returns:
     sampled_policies: A list specifying a single sampled joint strategy.
   """
-  shape = tuple([len(ele) for ele in total_policies])
-  sampled_index = sample_random_tensor_index(probabilities_of_playing_policies, shape)
+
+  true_shape = tuple([len(a) for a in total_policies])
+  probabilities_of_playing_policies = probabilities_of_playing_policies.reshape(true_shape)
+  sampled_index = sample_random_tensor_index(probabilities_of_playing_policies)
+
   sampled_policies = []
   for player in range(len(sampled_index)):
     ind = sampled_index[player]

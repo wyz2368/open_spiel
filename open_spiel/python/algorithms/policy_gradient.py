@@ -568,3 +568,4 @@ class PolicyGradient(rl_agent.AbstractAgent):
             for va, vb in zip(old_vars, new_vars)
         ])
         self._session.run(copy_weights)
+

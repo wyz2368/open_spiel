@@ -1,4 +1,3 @@
-
 from open_spiel.python import policy
 from open_spiel.python.algorithms.psro_v2 import rl_policy
 from open_spiel.python.algorithms.psro_v2 import meta_strategies
@@ -46,6 +45,7 @@ def regret(meta_games, subgame_index, subgame_ne=None, start_index=0):
     nash = nash_solver(submeta_games, solver="gambit") if not subgame_ne else subgame_ne
     prob_matrix = meta_strategies.general_get_joint_strategy_from_marginals(nash)
     this_meta_prob = [np.concatenate(([0 for _ in range(start_index[i])], nash[i], [0 for _ in range(num_new_pol_back[i])])) for i in range(num_players)]
+
     nash_payoffs = []
     deviation_payoffs = []
 
@@ -53,6 +53,7 @@ def regret(meta_games, subgame_index, subgame_ne=None, start_index=0):
         ne_payoff = np.sum(submeta_games[i]*prob_matrix)
         # iterate through player's new policy
         dev_payoff = []
+
         for j in range(start_index[i] + num_new_pol_back[i]):
             dev_prob = this_meta_prob.copy()
             dev_prob[i] = np.zeros(num_policy[i])
@@ -60,12 +61,14 @@ def regret(meta_games, subgame_index, subgame_ne=None, start_index=0):
                 dev_prob[i][j] = 1
             else:
                 dev_prob[i][subgame_index[i]+j-start_index[i]+1] = 1
+
             new_prob_matrix = meta_strategies.general_get_joint_strategy_from_marginals(dev_prob)
             dev_payoff.append(np.sum(meta_games[i]*new_prob_matrix))
         deviation_payoffs.append(dev_payoff-ne_payoff)
         nash_payoffs.append(ne_payoff)
     
     regret = [np.max(ele) for ele in deviation_payoffs]
+
     return regret
 
 def strategy_regret(meta_games, subgame_index, ne=None, subgame_ne=None):
@@ -100,7 +103,9 @@ def strategy_regret(meta_games, subgame_index, ne=None, subgame_ne=None):
 
     return regrets
 
+
 def sample_episodes(env, agents, number_episodes=1):
+
     """
     sample pure strategy payoff in an env
     Params:
@@ -134,6 +139,7 @@ def sample_episodes(env, agents, number_episodes=1):
 
     return cumulative_rewards/number_episodes
 
+
 def rollout(env, strategies, strategy_support, sims_per_entry=1000):
     """
     Evaluate player's mixed strategy with support in env.
@@ -154,6 +160,7 @@ def rollout(env, strategies, strategy_support, sims_per_entry=1000):
         strat = [strategies[i][ind[i]] for i in range(num_players)]
         pure_payoff = sample_episodes(env, strat, sims_per_entry)
         payoff_tensor[tuple([...]+list(ind))] = pure_payoff
+
 
     return [np.sum(payoff_tensor[i]*prob_matrix) for i in range(num_players)]
 
@@ -209,6 +216,7 @@ def smoothing_kl(p, q, eps=0.001):
 
 
 def smoothing(p, eps):
+    p = np.array(p, dtype=np.float)
     zeros_pos_p = np.where(p == 0)[0]
     num_zeros = len(zeros_pos_p)
     x = eps * num_zeros / (len(p) - num_zeros)
@@ -263,6 +271,7 @@ def load_pkl(path):
 def kl_divergence(p, q):
     return np.sum(np.where(p != 0, p * np.log(p / q), 0))
 
+
 def save_nash(nash_prob, iteration, checkpoint_dir):
     """
     Save nash probabilities
@@ -271,6 +280,7 @@ def save_nash(nash_prob, iteration, checkpoint_dir):
     if not isExist(current_path):
         mkdir(current_path)
     save_pkl(nash_prob, current_path+str(iteration)+'.pkl')
+
 
 def save_strategies(solver, checkpoint_dir):
     """
@@ -285,6 +295,7 @@ def save_strategies(solver, checkpoint_dir):
             if isExist(current_path + str(i+1) + '.pkl'):
                 continue
             save_pkl(policy.get_weights(), current_path + str(i+1) + '.pkl')
+
 
 def load_strategy(strategy_type, strategy_kwargs, env, player_id, strategy_weight):
     """

@@ -4,7 +4,9 @@ import os
 import pickle
 import itertools
 import logging
+
 import time
+
 
 """
 This script connects meta-games with gambit. It translates a meta-game to a payoff matrix format 
@@ -112,10 +114,12 @@ def gambit_analysis(timeout, method="gnm", checkpoint_dir=None):
 
     if not isExist(gambit_NFG):
         raise ValueError(".nfg file does not exist!")
+
     if method!= 'simpdiv':
       command_str = "gambit-" + method + " -q " + gambit_NFG + " -d 8 > " + gambit_DIR + "/nash.txt"
     else:
       command_str = "gambit-" + method + " -q " + gambit_NFG + " > " + gambit_DIR + "/nash.txt"
+
     subproc.call_and_wait_with_timeout(command_str, timeout)
 
 def gambit_analysis_pure(timeout, method="enumpure", checkpoint_dir=None):
@@ -208,6 +212,7 @@ def do_gambit_analysis(meta_games, mode, timeout = 600, method="lcp", method_pur
         gambit_DIR = checkpoint_dir + '/nfg'
     if not isExist(gambit_DIR) and not checkpoint_dir is None:
         mkdir(gambit_DIR)
+
     
     # When using gnm and player utility the same, oops for gambit occurs.
     # The following line of codes is designed to help. But fails to catch it with gnm
@@ -219,6 +224,7 @@ def do_gambit_analysis(meta_games, mode, timeout = 600, method="lcp", method_pur
     encode_gambit_file(meta_games, checkpoint_dir)
 
     start_time = time.time()
+
     while True:
         if mode == 'pure':
             gambit_analysis_pure(timeout, method_pure_ne, checkpoint_dir)

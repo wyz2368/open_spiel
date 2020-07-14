@@ -65,6 +65,7 @@ def _replicator_dynamics_step(payoff_tensors, strategies, dt):
   Returns:
     A list of updated strategies for each player.
   """
+
   new_strategies = []
   for player in range(len(payoff_tensors)):
     current_payoff_tensor = payoff_tensors[player]
@@ -74,8 +75,10 @@ def _replicator_dynamics_step(payoff_tensors, strategies, dt):
                                              player)
     average_return = np.dot(values_per_strategy, current_strategy)
     delta = current_strategy * (values_per_strategy - average_return)
+
     updated_strategy = current_strategy + dt * delta
     updated_strategy = updated_strategy / np.sum(updated_strategy)
+
     new_strategies.append(updated_strategy)
   return new_strategies
 
@@ -118,11 +121,13 @@ def replicator_dynamics(payoff_tensors,
   average_over_last_n_strategies = average_over_last_n_strategies or prd_iterations
 
   meta_strategy_window = []
+
   li = []
   for i in range(prd_iterations):
     new_strategies = _replicator_dynamics_step(
         payoff_tensors, new_strategies, prd_dt)
     li.append(new_strategies)
+
     if i >= prd_iterations - average_over_last_n_strategies:
       meta_strategy_window.append(new_strategies)
   average_new_strategies = np.mean(meta_strategy_window, axis=0)

@@ -25,9 +25,11 @@ from open_spiel.python.algorithms.psro_v2 import strategy_selectors
 from open_spiel.python.algorithms.psro_v2 import utils
 from open_spiel.python.algorithms.psro_v2.eval_utils import SElogs
 from open_spiel.python.algorithms.psro_v2.exploration import pure_exp, Exp3
+
 import time
 import functools
 print = functools.partial(print, flush=True)
+
 
 _DEFAULT_STRATEGY_SELECTION_METHOD = "probabilistic"
 _DEFAULT_META_STRATEGY_METHOD = "prd"
@@ -118,6 +120,9 @@ class AbstractMetaTrainer(object):
                standard_regret=False,
                heuristic_list=None,
                gamma=0.0,
+               abs_value=False,
+               kl_reg=False,
+
                **kwargs):
     """Abstract Initialization for meta trainers.
 
@@ -244,9 +249,18 @@ class AbstractMetaTrainer(object):
       # Create weights of heuristics.
       self._exp3 = exp3
       if exp3:
-        self._heuristic_selector = Exp3(self._num_heuristic, gamma)
+        self._heuristic_selector = Exp3(self._num_heuristic,
+                                        self._num_players,
+                                        gamma)
       else:
-        self._heuristic_selector = pure_exp(self._num_heuristic, gamma)
+        self._heuristic_selector = pure_exp(self._num_heuristic,
+                                            self._num_players,
+                                            gamma,
+                                            slow_period=self._slow_oracle_period,
+                                            fast_period=self._fast_oracle_period,
+                                            abs_value=abs_value,
+                                            kl_regularization=kl_reg)
+
       self._heuristic_selector.arm_pulled = self._heuristic_list.index(self._meta_strategy_method_name)
 
   def _initialize_policy(self, initial_policies):
@@ -264,11 +278,13 @@ class AbstractMetaTrainer(object):
       seed: Seed for random BR noise generation.
     """
     self._iterations += 1
-    train_reward_curve, test_reward_curve = self.update_agents(test_reward)  # Generate new, Best Response agents via oracle.
+
+    train_reward_curve = self.update_agents()  # Generate new, Best Response agents via oracle.
     self.update_empirical_gamestate(seed=seed)  # Update gamestate matrix.
-    meta_strategy_time = self.update_meta_strategies()#seed=seed)  # Compute meta strategy (e.g. Nash)
+    self.update_meta_strategies()#seed=seed)  # Compute meta strategy (e.g. Nash)
     self.update_NE_list()
-    return train_reward_curve, test_reward_curve, meta_strategy_time
+    return train_reward_curve
+
 
   def update_meta_strategies(self):
     """
@@ -276,17 +292,17 @@ class AbstractMetaTrainer(object):
     If iteration is less than stopping time, fix meta_strategies at some iteration. And append zero to meta_strategies, for tuning ARS
     """
     if self._iterations <= self.stopping_time:
-      start_time = time.time()
+
       self._meta_strategy_probabilities = self._meta_strategy_method(self)
-      required_time = time.time()-start_time
       if self.symmetric_game:
         self._meta_strategy_probabilities = [self._meta_strategy_probabilities[0]]
-      return required_time
+
     else:
       for i, nash in enumerate(self._meta_strategy_probabilities):
         nash = np.append(nash, 0.0)
         self._meta_strategy_probabilities[i] = nash
       return 0
+
 
   def update_agents(self):
     return NotImplementedError("update_agents not implemented.")
@@ -316,10 +332,17 @@ class AbstractMetaTrainer(object):
   def get_nash_strategies(self):
     """Returns the nash meta-strategy distribution on meta game matrix. When other meta strategies in play, nash strategy is still needed for evaluation
     """
-    if self._meta_strategy_method_name in {'general_nash_strategy','nash_strategy','prd_strategy'}:
+
+    if self._meta_strategy_method_name in {'general_nash_strategy','nash_strategy'} or self._num_players > 2:
       return self.get_meta_strategies()
     meta_strategy_probabilities = meta_strategies.general_nash_strategy(self, checkpoint_dir=self.checkpoint_dir)
     return [np.copy(a) for a in meta_strategy_probabilities]
+
+
+  def get_prd_strategies(self):
+    meta_strategy_probabilities = meta_strategies.prd_strategy(self)
+    return [np.copy(a) for a in meta_strategy_probabilities]
+
 
   def get_meta_strategies(self):
     """Returns the meta-strategy distribution on meta game matrix."""
@@ -380,6 +403,7 @@ class AbstractMetaTrainer(object):
   def reset_slow_oracle_counter(self):
     self._slow_oracle_counter = self._slow_oracle_period
 
+
   def se_iteration(self, seed=None, test_reward=False):
     """Main trainer loop with strategy exploration.
     Evaluate the performance of current meta-strategy method every _meta_method_frequency and update the
@@ -401,8 +425,10 @@ class AbstractMetaTrainer(object):
       self.evaluate_and_pick_meta_method()
 
     self._iterations += 1
+
     
     train_reward_curve, test_reward_curve = self.update_agents(test_reward)  # Generate new, Best Response agents via oracle.
+
     self.update_empirical_gamestate(seed=seed)  # Update gamestate matrix.
     self.update_meta_strategies()  # Compute meta strategy (e.g. Nash)
     self.update_NE_list()
@@ -424,7 +450,9 @@ class AbstractMetaTrainer(object):
           self.reset_slow_oracle_counter()
           self._slow_model_nash = self.get_nash_strategies()
 
+
     return train_reward_curve, test_reward_curve
+
 
   def switch_oracle(self):
     """
@@ -450,6 +478,7 @@ class AbstractMetaTrainer(object):
     :return:
     """
     if self._switch_heuristic_regardless_of_oracle:
+
       ####### switch heuristics 1 alternatives in first 20 iterations
       if self._iterations >=40 and self._iterations<=60:
         new_meta_str_method = self._heuristic_list.pop(0)
@@ -463,6 +492,7 @@ class AbstractMetaTrainer(object):
       ####### uniform 65 and dqn 40. Assume that heuristic_list is [uniform, general_nash]
       #if self._iterations == 65:
       #  self.update_meta_strategy_method(self._heuristic_list[1])
+
     else:
       # Evaluation
       new_meta_str_method = self.evaluate_meta_method()
@@ -474,7 +504,9 @@ class AbstractMetaTrainer(object):
     raise NotImplementedError
 
   ################################# For Heuristic Blocks ########################
+
   def se_iteration_for_blocks(self, seed=None, test_reward=False):
+
     """Main trainer loop with strategy exploration.
     Evaluate the performance of current meta-strategy method every _meta_method_frequency and update the
     meta-strategy method.
@@ -493,7 +525,9 @@ class AbstractMetaTrainer(object):
 
     self._iterations += 1
 
+
     train_reward_curve, test_reward_curve = self.update_agents(test_reward)  # Generate new, Best Response agents via oracle.
+
     self.update_empirical_gamestate(seed=seed)  # Update gamestate matrix.
     self.update_meta_strategies()
     self.update_NE_list()
@@ -515,7 +549,9 @@ class AbstractMetaTrainer(object):
           self.reset_slow_oracle_counter()
           self._slow_model_nash = self.get_nash_strategies()
 
+
     return train_reward_curve, test_reward_curve
+
 
   def evaluate_meta_method_for_blocks(self):
     raise NotImplementedError

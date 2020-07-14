@@ -215,6 +215,7 @@ def nash_solver(meta_games,
         if num_rows == 1 or num_cols == 1:
             return [np.array([1.0]),np.array([1.0])]
             #equilibria = itertools.product(np.eye(num_rows), np.eye(num_cols))
+
         elif mode == 'pure':
             return pure_ne_solve(meta_games)
 
