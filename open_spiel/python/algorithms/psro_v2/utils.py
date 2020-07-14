@@ -126,11 +126,10 @@ def sample_strategy_marginal(total_policies, probabilities_of_playing_policies):
   return sampled_policies
 
 
-def sample_random_tensor_index(probabilities_of_index_tensor):
-  shape = probabilities_of_index_tensor.shape
+def sample_random_tensor_index(probabilities_of_index_tensor, shape=None):
+  shape = probabilities_of_index_tensor.shape if not shape else shape
   reshaped_probas = probabilities_of_index_tensor.reshape(-1)
-
-  num_strats = len(reshaped_probas)
+  num_strats = list(range(len(reshaped_probas)))
   chosen_index = random_choice(num_strats, reshaped_probas)
   return np.unravel_index(chosen_index, shape)
 
@@ -148,8 +147,8 @@ def sample_strategy_joint(total_policies, probabilities_of_playing_policies):
   Returns:
     sampled_policies: A list specifying a single sampled joint strategy.
   """
-
-  sampled_index = sample_random_tensor_index(probabilities_of_playing_policies)
+  shape = tuple([len(ele) for ele in total_policies])
+  sampled_index = sample_random_tensor_index(probabilities_of_playing_policies, shape)
   sampled_policies = []
   for player in range(len(sampled_index)):
     ind = sampled_index[player]
@@ -260,6 +259,7 @@ def alpharank_strategy(solver, return_joint=False, **unused_kwargs):
       strategy profiles.
   """
   meta_games = solver.get_meta_game()
+  meta_games = [np.array([[1.1,-10],[1,-1],[-1,1]]),np.array([[-1.1,10],[-1,1],[1,-1]])]
   meta_games = [np.asarray(x) for x in meta_games]
 
   if solver.symmetric_game:
@@ -280,7 +280,7 @@ def alpharank_strategy(solver, return_joint=False, **unused_kwargs):
   else:
     joint_distr = alpharank.sweep_pi_vs_epsilon(meta_games)
     joint_distr = remove_epsilon_negative_probs(joint_distr)
-
+  
     if return_joint:
       marginals = get_alpharank_marginals(meta_games, joint_distr)
       return marginals, joint_distr

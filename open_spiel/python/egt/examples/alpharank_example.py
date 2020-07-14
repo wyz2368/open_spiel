@@ -62,7 +62,7 @@ def main(unused_arg):
                                                 payoffs_are_hpt_format)
 
   # Run AlphaRank
-  rhos, rho_m, pi, _, _ = alpharank.compute(payoff_tables, alpha=1e2)
+  rhos, rho_m, pi, _, _ = alpharank.compute(payoff_tables, alpha=1e1)
 
   # Report & plot results
   alpharank.print_results(

@@ -25,6 +25,9 @@ import sonnet as snt
 import tensorflow.compat.v1 as tf
 
 from open_spiel.python import rl_agent
+import os
+import psutil
+from memory_profiler import profile
 
 Transition = collections.namedtuple(
     "Transition",
@@ -225,7 +228,6 @@ class DQN(rl_agent.AbstractAgent):
     Returns:
       A `rl_agent.StepOutput` containing the action probs and chosen action.
     """
-
     # Act step: don't act at terminal info states or if its not our turn.
     if (not time_step.last()) and (
         time_step.is_simultaneous_move() or
@@ -303,7 +305,8 @@ class DQN(rl_agent.AbstractAgent):
         tf.assign(target_v, v)
         for (target_v, v) in zip(target_variables, variables)
     ])
-
+  
+  #@profile
   def _epsilon_greedy(self, info_state, legal_actions, epsilon):
     """Returns a valid epsilon-greedy action and valid action probs.
 

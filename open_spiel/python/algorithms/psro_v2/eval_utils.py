@@ -3,6 +3,7 @@ from open_spiel.python import policy
 from open_spiel.python.algorithms.psro_v2 import rl_policy
 from open_spiel.python.algorithms.psro_v2 import meta_strategies
 from open_spiel.python.algorithms.nash_solver.general_nash_solver import nash_solver
+from open_spiel.python.algorithms.psro_v2 import utils
 
 import pandas as pd
 import numpy as np
@@ -10,6 +11,9 @@ import itertools
 import pickle
 import os
 import tensorflow.compat.v1 as tf
+import psutil
+
+
 
 def regret(meta_games, subgame_index, subgame_ne=None, start_index=0):
     """
@@ -61,7 +65,7 @@ def regret(meta_games, subgame_index, subgame_ne=None, start_index=0):
         deviation_payoffs.append(dev_payoff-ne_payoff)
         nash_payoffs.append(ne_payoff)
     
-    regret = np.maximum(np.max(deviation_payoffs,axis=1),0)
+    regret = [np.max(ele) for ele in deviation_payoffs]
     return regret
 
 def strategy_regret(meta_games, subgame_index, ne=None, subgame_ne=None):
@@ -105,6 +109,7 @@ def sample_episodes(env, agents, number_episodes=1):
     Returns:
         a list of length num_player containing players' strategies
     """
+
     cumulative_rewards = np.zeros(len(agents))
 
     for _ in range(number_episodes):
@@ -122,7 +127,7 @@ def sample_episodes(env, agents, number_episodes=1):
           action_list = utils.random_choice(outcomes, probs)
         else:
           player_id = time_step.observations["current_player"]
-          agent_output = agents[player_id].step(time_step, is_evaluation=False)
+          agent_output = agents[player_id].step(time_step, is_evaluation=True)
           action_list = [agent_output.action]
         time_step = env.step(action_list)
         cumulative_rewards += np.array(time_step.rewards)

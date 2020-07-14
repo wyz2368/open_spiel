@@ -153,6 +153,20 @@ def rl_policy_factory(rl_class):
 
       return copied_object
 
+    def copy_with_weights_frozen(self, weight):
+      copied_object = RLPolicy.__new__(RLPolicy)
+      super(RLPolicy, copied_object).__init__(self.game, self.player_ids)
+      setattr(copied_object, "_rl_class", self._rl_class)
+      setattr(copied_object, "_obs", self._obs)
+      setattr(copied_object, "_policy",
+              self._policy.copy_with_noise(sigma=0,copy_weights=False))
+      copied_object.set_weights(weight)
+      setattr(copied_object, "_env", self._env)
+      copied_object.freeze()
+
+      return copied_object
+
+
   return RLPolicy
 
 

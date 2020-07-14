@@ -25,6 +25,7 @@ from open_spiel.python.algorithms.psro_v2 import strategy_selectors
 from open_spiel.python.algorithms.psro_v2 import utils
 from open_spiel.python.algorithms.psro_v2.eval_utils import SElogs
 from open_spiel.python.algorithms.psro_v2.exploration import pure_exp, Exp3
+import time
 import functools
 print = functools.partial(print, flush=True)
 
@@ -265,9 +266,9 @@ class AbstractMetaTrainer(object):
     self._iterations += 1
     train_reward_curve, test_reward_curve = self.update_agents(test_reward)  # Generate new, Best Response agents via oracle.
     self.update_empirical_gamestate(seed=seed)  # Update gamestate matrix.
-    self.update_meta_strategies()#seed=seed)  # Compute meta strategy (e.g. Nash)
+    meta_strategy_time = self.update_meta_strategies()#seed=seed)  # Compute meta strategy (e.g. Nash)
     self.update_NE_list()
-    return train_reward_curve, test_reward_curve
+    return train_reward_curve, test_reward_curve, meta_strategy_time
 
   def update_meta_strategies(self):
     """
@@ -275,13 +276,17 @@ class AbstractMetaTrainer(object):
     If iteration is less than stopping time, fix meta_strategies at some iteration. And append zero to meta_strategies, for tuning ARS
     """
     if self._iterations <= self.stopping_time:
+      start_time = time.time()
       self._meta_strategy_probabilities = self._meta_strategy_method(self)
+      required_time = time.time()-start_time
       if self.symmetric_game:
         self._meta_strategy_probabilities = [self._meta_strategy_probabilities[0]]
+      return required_time
     else:
       for i, nash in enumerate(self._meta_strategy_probabilities):
         nash = np.append(nash, 0.0)
         self._meta_strategy_probabilities[i] = nash
+      return 0
 
   def update_agents(self):
     return NotImplementedError("update_agents not implemented.")
@@ -311,7 +316,7 @@ class AbstractMetaTrainer(object):
   def get_nash_strategies(self):
     """Returns the nash meta-strategy distribution on meta game matrix. When other meta strategies in play, nash strategy is still needed for evaluation
     """
-    if self._meta_strategy_method_name in {'general_nash_strategy','nash_strategy'}:
+    if self._meta_strategy_method_name in {'general_nash_strategy','nash_strategy','prd_strategy'}:
       return self.get_meta_strategies()
     meta_strategy_probabilities = meta_strategies.general_nash_strategy(self, checkpoint_dir=self.checkpoint_dir)
     return [np.copy(a) for a in meta_strategy_probabilities]

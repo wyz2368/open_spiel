@@ -4,6 +4,7 @@ import os
 import pickle
 import itertools
 import logging
+import time
 
 """
 This script connects meta-games with gambit. It translates a meta-game to a payoff matrix format 
@@ -111,7 +112,10 @@ def gambit_analysis(timeout, method="gnm", checkpoint_dir=None):
 
     if not isExist(gambit_NFG):
         raise ValueError(".nfg file does not exist!")
-    command_str = "gambit-" + method + " -q " + gambit_NFG + " -d 8 > " + gambit_DIR + "/nash.txt"
+    if method!= 'simpdiv':
+      command_str = "gambit-" + method + " -q " + gambit_NFG + " -d 8 > " + gambit_DIR + "/nash.txt"
+    else:
+      command_str = "gambit-" + method + " -q " + gambit_NFG + " > " + gambit_DIR + "/nash.txt"
     subproc.call_and_wait_with_timeout(command_str, timeout)
 
 def gambit_analysis_pure(timeout, method="enumpure", checkpoint_dir=None):
@@ -194,7 +198,7 @@ def do_gambit_analysis(meta_games, mode, timeout = 600, method="lcp", method_pur
     :param meta_games: meta-games in PSRO.
     :param mode: "all", "pure", "one" options
     :param timeout: Maximum time for the subprocess
-    :param method: The gamebit command line method.
+    :param method: The gamebit command line method, lcp does only for 2 player games
     :param method_pure_ne: The gamebit command line method for finding pure NE.
     :return: a list of NE.
     """
@@ -210,8 +214,11 @@ def do_gambit_analysis(meta_games, mode, timeout = 600, method="lcp", method_pur
     # switch to lcp and things shall work
     #if np.shape(meta_games[0]) == (1,1):
     #    return [np.array([1.]), np.array([1.])]
-
+    if method == 'lcp':
+      method = 'simpdiv' if len(meta_games)!=2 else method
     encode_gambit_file(meta_games, checkpoint_dir)
+
+    start_time = time.time()
     while True:
         if mode == 'pure':
             gambit_analysis_pure(timeout, method_pure_ne, checkpoint_dir)

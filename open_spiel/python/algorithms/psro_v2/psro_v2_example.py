@@ -299,8 +299,6 @@ def print_beneficial_deviation_analysis(last_meta_game, meta_game, last_meta_pro
   prob_matrix = meta_strategies.general_get_joint_strategy_from_marginals(last_meta_prob)
   this_meta_prob = [np.append(last_meta_prob[i],[0 for _ in range(num_new_pol[i])]) for i in range(num_player)]
   beneficial_deviation = [0 for _ in range(num_player)]
-  print(last_meta_game)
-  print(meta_game)
   for i in range(num_player): 
     ne_payoff = np.sum(last_meta_game[i]*prob_matrix)
     # iterate through player's new policy
@@ -443,25 +441,31 @@ def gpsro_looper(env, oracle, agents, writer, quiesce=False, checkpoint_dir=None
       print("\n===========================\n")
       print("Iteration : {}".format(gpsro_iteration))
       print("Time so far: {}".format(time.time() - start_time))
-    train_reward_curve, test_reward_curve = g_psro_solver.iteration(seed=seed, test_reward=FLAGS.test_reward)
+    train_reward_curve, test_reward_curve, meta_strategy_time = g_psro_solver.iteration(seed=seed, test_reward=FLAGS.test_reward)
     meta_game = g_psro_solver.get_meta_game()
     meta_probabilities = g_psro_solver.get_meta_strategies()
     nash_meta_probabilities = g_psro_solver.get_nash_strategies()
     policies = g_psro_solver.get_policies()
-   
     if FLAGS.verbose:
       # print("Meta game : {}".format(meta_game))
+      print("time required : {}".format(meta_strategy_time))
       print("Probabilities : {}".format(meta_probabilities))
-      print("Nash Probabilities : {}".format(nash_meta_probabilities))
-    
+      #print("Nash Probabilities : {}".format(nash_meta_probabilities))
+
+    writer.add_scalar('meta_strategy_time',meta_strategy_time,gpsro_iteration)
+    if FLAGS.quiesce:
+      writer.add_scalar('sampled coverge',g_psro_solver.number_profile_sampled/g_psro_solver.num_profiles,gpsro_iteration)
+
     if FLAGS.compute_exact_br: #simple extensive form calculate best response
+      start_br_time = time.time()
       aggregator = policy_aggregator.PolicyAggregator(env.game)
       aggr_policies = aggregator.aggregate(
           range(FLAGS.n_players), policies, nash_meta_probabilities)
-      
 
       exploitabilities, expl_per_player = exploitability.nash_conv(
           env.game, aggr_policies, return_only_nash_conv=False)
+      br_time = time.time()-start_br_time
+      writer.add_scalar('br_time',br_time,gpsro_iteration)
 
       for p in range(len(expl_per_player)):
         writer.add_scalar('player'+str(p)+'_exp',expl_per_player[p],gpsro_iteration)
@@ -474,18 +478,18 @@ def gpsro_looper(env, oracle, agents, writer, quiesce=False, checkpoint_dir=None
       for p, cur_set in enumerate(unique_policies):
         writer.add_scalar('p'+str(p)+'_unique_p',len(cur_set),gpsro_iteration)
 
-    else: # use combined game to evaluate exp, thus nash_ne for every iteration should be saved
-      save_nash(nash_meta_probabilities, gpsro_iteration, checkpoint_dir)
+    save_nash(nash_meta_probabilities, gpsro_iteration, checkpoint_dir)
 
     if gpsro_iteration % 5 ==0:
       save_at_termination(solver=g_psro_solver, file_for_meta_game=checkpoint_dir+'/meta_game.pkl')
       save_strategies(solver=g_psro_solver, checkpoint_dir=checkpoint_dir)
     
-    beneficial_deviation = print_beneficial_deviation_analysis(last_meta_game, meta_game, last_meta_prob, FLAGS.verbose)
-    last_meta_prob, last_meta_game = meta_probabilities, meta_game
-    for p in range(len(beneficial_deviation)):
-      writer.add_scalar('p'+str(p)+'_beneficial_dev',int(beneficial_deviation[p]),gpsro_iteration)
-    writer.add_scalar('beneficial_devs',sum(beneficial_deviation),gpsro_iteration)
+    if not FLAGS.quiesce:
+      beneficial_deviation = print_beneficial_deviation_analysis(last_meta_game, meta_game, last_meta_prob, FLAGS.verbose)
+      last_meta_prob, last_meta_game = meta_probabilities, meta_game
+      for p in range(len(beneficial_deviation)):
+        writer.add_scalar('p'+str(p)+'_beneficial_dev',int(beneficial_deviation[p]),gpsro_iteration)
+      writer.add_scalar('beneficial_devs',sum(beneficial_deviation),gpsro_iteration)
 
     if FLAGS.log_train and (gpsro_iteration<=10 or gpsro_iteration%5==0):
       for p in range(len(train_reward_curve)):

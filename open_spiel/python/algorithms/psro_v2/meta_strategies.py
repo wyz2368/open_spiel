@@ -19,6 +19,7 @@ import numpy as np
 
 from open_spiel.python.algorithms import lp_solver
 from open_spiel.python.algorithms import projected_replicator_dynamics
+from open_spiel.python.algorithms.nash_solver import replicator_dynamics_solver as rds
 from open_spiel.python.algorithms.nash_solver import general_nash_solver as gs
 import pyspiel
 
@@ -165,7 +166,7 @@ def nash_strategy(solver, return_joint=False, checkpoint_dir=None):
     return result, joint_strategies
 
 
-def general_nash_strategy(solver, return_joint=False, NE_solver="gambit", mode='one', game=None, checkpoint_dir=None):
+def general_nash_strategy(solver, return_joint=False, NE_solver="linear", mode='one', game=None, checkpoint_dir=None):
   """Returns nash distribution on meta game matrix.
 
   This method works for general-sum multi-player games.
@@ -184,7 +185,7 @@ def general_nash_strategy(solver, return_joint=False, NE_solver="gambit", mode='
   if not isinstance(meta_games, list):
     meta_games = [meta_games, -meta_games]
   equilibria = gs.nash_solver(meta_games, solver=NE_solver, mode=mode, checkpoint_dir=checkpoint_dir)
-
+  
   if not return_joint:
     return equilibria
   else:
@@ -196,28 +197,19 @@ def general_nash_strategy(solver, return_joint=False, NE_solver="gambit", mode='
       joint_strategies = get_joint_strategy_from_marginals(equilibria)
       return equilibria, joint_strategies
 
-
 def prd_strategy(solver, return_joint=False, checkpoint_dir=None):
-  """Computes Projected Replicator Dynamics strategies.
-  Args:
-    solver: GenPSROSolver instance.
-    return_joint: If true, only returns marginals. Otherwise marginals as well
-      as joint probabilities.
-
-  Returns:
-    PRD-computed strategies.
-  """
-  meta_games = solver.get_meta_game()
-  if not isinstance(meta_games, list):
-    meta_games = [meta_games, -meta_games]
-  kwargs = solver.get_kwargs()
-  result = projected_replicator_dynamics.projected_replicator_dynamics(
-      meta_games, **kwargs)
-  if not return_joint:
-    return result
-  else:
-    joint_strategies = get_joint_strategy_from_marginals(result)
-    return result, joint_strategies
+    """Computes Projected Replicator Dynamics strategies.  Args: solver: GenPSROSolver instance.  return_joint: If true, only returns marginals. Otherwise marginals as well as joint probabilities.  Returns: PRD-computed strategies. 
+    """ 
+    meta_games = solver.get_meta_game()
+    if not isinstance(meta_games, list):
+      meta_games = [meta_games, -meta_games]
+    kwargs = solver.get_kwargs()
+    result = projected_replicator_dynamics.projected_replicator_dynamics(meta_games, **kwargs)
+    if not return_joint:
+      return result
+    else:
+      joint_strategies = get_joint_strategy_from_marginals(result)
+      return result, joint_strategies
 
 
 def self_play_strategy(solver, return_joint=False, checkpoint_dir=None):

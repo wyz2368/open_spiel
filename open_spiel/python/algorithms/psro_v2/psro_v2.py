@@ -33,11 +33,12 @@ oracle.
 4) Updating meta game matrix with new game results.
 
 """
-
 import itertools
+import os
+import psutil
 
 import numpy as np
-
+import time
 from open_spiel.python import policy
 from open_spiel.python.algorithms.psro_v2 import abstract_meta_trainer
 from open_spiel.python.algorithms.psro_v2 import strategy_selectors
@@ -229,12 +230,16 @@ class PSROSolver(abstract_meta_trainer.AbstractMetaTrainer):
     #TODO: return_joint should be associated with alpha-rank.
     if self.symmetric_game:
       self._policies = self._policies * self._game_num_players
+    start_time = time.time()
     self._meta_strategy_probabilities, self._non_marginalized_probabilities =\
         self._meta_strategy_method(solver=self, return_joint=True, checkpoint_dir=self.checkpoint_dir)
+    required_time = time.time()-start_time
 
     if self.symmetric_game:
       self._policies = [self._policies[0]]
       self._meta_strategy_probabilities = [self._meta_strategy_probabilities[0]]
+
+    return required_time
 
   def get_policies_and_strategies(self):
     """Returns current policy sampler, policies and meta-strategies of the game.
@@ -467,6 +472,8 @@ class PSROSolver(abstract_meta_trainer.AbstractMetaTrainer):
                     permutation[player]] / len(player_permutations)
           else:
             utility_estimates = self.sample_episodes(estimated_policies,self._sims_per_entry)
+
+
           for k in range(self._num_players):
             meta_games[k][tuple(used_index)] = utility_estimates[k]
 
