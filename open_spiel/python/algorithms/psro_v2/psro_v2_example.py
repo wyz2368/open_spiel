@@ -522,50 +522,21 @@ def main(argv):
   else:
     seed = FLAGS.seed
 
-# Begin Gary.
-  set_seed(seed)
-  
+  np.random.seed(seed)
+  random.seed(seed)
+
+  tf.set_random_seed(seed)
+
+  game_param = {"players": pyspiel.GameParameter(FLAGS.n_players)}
   checkpoint_dir = FLAGS.game_name
-  if FLAGS.game_name in ['laser_tag']: # games where parameter does not have num_players
-    #game_param = {'zero_sum': pyspiel.GameParameter(False)}
-    game_param_raw = {'zero_sum': False,'horizon':30}
-  elif FLAGS.game_name in ['markov_soccer']:
-    game_param_raw = {'horizon':20}
-  else:
-    game_param_raw = {"players": FLAGS.n_players}
   if FLAGS.game_param is not None:
     for ele in FLAGS.game_param:
       ele_li = ele.split("=")
-      game_param_raw[ele_li[0]] = int(ele_li[1])
+      game_param[ele_li[0]] = pyspiel.GameParameter(int(ele_li[1]))
       checkpoint_dir += '_'+ele_li[0]+'_'+ele_li[1]
     checkpoint_dir += '_'
+  game = pyspiel.load_game_as_turn_based(FLAGS.game_name, game_param)
 
-  #game_param = {}
-  #for key, val in game_param_raw.items():
-  #  game_param[key] = pyspiel.GameParameter(val)
-  #game = pyspiel.load_game_as_turn_based(FLAGS.game_name, game_param)
-
-  game_param_str = FLAGS.game_name+"("
-  for key,val in game_param_raw.items():
-    game_param_str += key+"="+str(val)+","
-  game_param_str = game_param_str[:-1]+")"
-  game = pyspiel.load_game(game_param_str)
-# =======
-#   np.random.seed(seed)
-#   random.seed(seed)
-
-#   tf.set_random_seed(seed)
-
-#   game_param = {"players": pyspiel.GameParameter(FLAGS.n_players)}
-#   checkpoint_dir = FLAGS.game_name
-#   if FLAGS.game_param is not None:
-#     for ele in FLAGS.game_param:
-#       ele_li = ele.split("=")
-#       game_param[ele_li[0]] = pyspiel.GameParameter(int(ele_li[1]))
-#       checkpoint_dir += '_'+ele_li[0]+'_'+ele_li[1]
-#     checkpoint_dir += '_'
-#   game = pyspiel.load_game_as_turn_based(FLAGS.game_name, game_param)
-# >>>>>>> master
 
   env = rl_environment.Environment(game,seed=seed)
   env.reset()

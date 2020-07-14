@@ -24,9 +24,6 @@ import numpy as np
 import tensorflow.compat.v1 as tf
 
 from open_spiel.python import rl_agent
-import os
-import psutil
-from memory_profiler import profile
 from open_spiel.python import simple_nets
 
 # Temporarily disable TF2 behavior until code is updated.
