@@ -118,6 +118,8 @@ class AbstractMetaTrainer(object):
                standard_regret=False,
                heuristic_list=None,
                gamma=0.0,
+               abs_value=False,
+               kl_reg=False,
                **kwargs):
     """Abstract Initialization for meta trainers.
 
@@ -244,9 +246,17 @@ class AbstractMetaTrainer(object):
       # Create weights of heuristics.
       self._exp3 = exp3
       if exp3:
-        self._heuristic_selector = Exp3(self._num_heuristic, gamma)
+        self._heuristic_selector = Exp3(self._num_heuristic,
+                                        self._num_players,
+                                        gamma)
       else:
-        self._heuristic_selector = pure_exp(self._num_heuristic, gamma)
+        self._heuristic_selector = pure_exp(self._num_heuristic,
+                                            self._num_players,
+                                            gamma,
+                                            slow_period=self._slow_oracle_period,
+                                            fast_period=self._fast_oracle_period,
+                                            abs_value=abs_value,
+                                            kl_regularization=kl_reg)
       self._heuristic_selector.arm_pulled = self._heuristic_list.index(self._meta_strategy_method_name)
 
   def _initialize_policy(self, initial_policies):
@@ -316,9 +326,13 @@ class AbstractMetaTrainer(object):
   def get_nash_strategies(self):
     """Returns the nash meta-strategy distribution on meta game matrix. When other meta strategies in play, nash strategy is still needed for evaluation
     """
-    if self._meta_strategy_method_name in {'general_nash_strategy','nash_strategy','prd_strategy'}:
+    if self._meta_strategy_method_name in {'general_nash_strategy','nash_strategy'} or self._num_players > 2:
       return self.get_meta_strategies()
     meta_strategy_probabilities = meta_strategies.general_nash_strategy(self, checkpoint_dir=self.checkpoint_dir)
+    return [np.copy(a) for a in meta_strategy_probabilities]
+
+  def get_prd_strategies(self):
+    meta_strategy_probabilities = meta_strategies.prd_strategy(self)
     return [np.copy(a) for a in meta_strategy_probabilities]
 
   def get_meta_strategies(self):

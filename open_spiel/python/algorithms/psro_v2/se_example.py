@@ -154,6 +154,10 @@ flags.DEFINE_float("exploration_gamma",0.0,'gamma for heuristics selector like e
 flags.DEFINE_list("heuristic_list",'general_nash_strategy,uniform_strategy','heuristics to consider')
 flags.DEFINE_list("heuristic_to_add", '',"Heuristic to be added to heuristic list.") # could contail 'sp_strategy,'
 flags.DEFINE_bool("switch_heuristic_regardless_of_oracle",False,'switch heuristics with DQN all alone') # This could not be true with switch_fsat_slow at the same time!
+flags.DEFINE_bool("abs_reward", False,'use absolute reward for bandit arms') # This could not be true with switch_fsat_slow at the same time!
+flags.DEFINE_bool("kl_regularization", False,'add kl regularization to reward of arms.') # This could not be true with switch_fsat_slow at the same time!
+
+
 
 def init_pg_responder(sess, env):
   """Initializes the Policy Gradient-based responder and agents."""
@@ -400,7 +404,9 @@ def gpsro_looper(env, oracle, oracle_list, agents, writer, quiesce=False, checkp
       standard_regret=FLAGS.standard_regret,
       heuristic_list=heuristic_list,
       gamma=FLAGS.exploration_gamma,
-      switch_heuristic_regardless_of_oracle=FLAGS.switch_heuristic_regardless_of_oracle)
+      switch_heuristic_regardless_of_oracle=FLAGS.switch_heuristic_regardless_of_oracle,
+      abs_value=FLAGS.abs_reward,
+      kl_reg=FLAGS.kl_regularization)
   
   last_meta_prob = [np.array([1]) for _ in range(FLAGS.n_players)]
   last_meta_game = g_psro_solver.get_meta_game()
@@ -474,7 +480,7 @@ def gpsro_looper(env, oracle, oracle_list, agents, writer, quiesce=False, checkp
     ######### record meta_game into pkl
     if gpsro_iteration % 5 == 0:
       save_at_termination(solver=g_psro_solver, file_for_meta_game=checkpoint_dir+'/meta_game.pkl')
-      save_strategies(solver=g_psro_solver, checkpoint_dir=checkpoint_dir)
+      # save_strategies(solver=g_psro_solver, checkpoint_dir=checkpoint_dir)
    
     ######### analyze if this iteration found beneficial deviation
     beneficial_deviation = print_beneficial_deviation_analysis(last_meta_game, meta_game, last_meta_prob, FLAGS.verbose)

@@ -170,6 +170,7 @@ class RLOracle(optimization_oracle.AbstractOracle):
         action_list = [agent_output.action]
         time_step = self._env.step(action_list)
         cumulative_rewards += np.array(time_step.rewards)
+
     if not is_evaluation:
       for agent in agents:
         agent.step(time_step)

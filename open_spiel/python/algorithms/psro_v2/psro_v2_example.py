@@ -62,7 +62,7 @@ from open_spiel.python.algorithms.psro_v2.eval_utils import save_strategies, sav
 
 FLAGS = flags.FLAGS
 # Game-related
-flags.DEFINE_string("game_name", "kuhn_poker", "Game name.")
+flags.DEFINE_string("game_name", "leduc_poker", "Game name.")
 flags.DEFINE_integer("n_players", 2, "The number of players.")
 flags.DEFINE_list("game_param",None,"game parameters") #game_param=v=1,"vmodule=a=0,b=2"
 # PSRO related
@@ -444,39 +444,52 @@ def gpsro_looper(env, oracle, agents, writer, quiesce=False, checkpoint_dir=None
     train_reward_curve, test_reward_curve, meta_strategy_time = g_psro_solver.iteration(seed=seed, test_reward=FLAGS.test_reward)
     meta_game = g_psro_solver.get_meta_game()
     meta_probabilities = g_psro_solver.get_meta_strategies()
-    nash_meta_probabilities = g_psro_solver.get_nash_strategies()
+    if FLAGS.meta_strategy_method in ['general_nash','nash_strategy']:
+      nash_meta_probabilities = g_psro_solver.get_prd_strategies()
+    else:
+      nash_meta_probabilities = g_psro_solver.get_nash_strategies()
     policies = g_psro_solver.get_policies()
     if FLAGS.verbose:
       # print("Meta game : {}".format(meta_game))
       print("time required : {}".format(meta_strategy_time))
       print("Probabilities : {}".format(meta_probabilities))
-      #print("Nash Probabilities : {}".format(nash_meta_probabilities))
+      print("Nash Probabilities : {}".format(nash_meta_probabilities))
 
     writer.add_scalar('meta_strategy_time',meta_strategy_time,gpsro_iteration)
     if FLAGS.quiesce:
       writer.add_scalar('sampled coverge',g_psro_solver.number_profile_sampled/g_psro_solver.num_profiles,gpsro_iteration)
 
     if FLAGS.compute_exact_br: #simple extensive form calculate best response
-      start_br_time = time.time()
       aggregator = policy_aggregator.PolicyAggregator(env.game)
-      aggr_policies = aggregator.aggregate(
+      
+      ## Using NE-based NashConv
+      aggr_policies_Mike = aggregator.aggregate(
           range(FLAGS.n_players), policies, nash_meta_probabilities)
+      ## Using heuristic-based NashConv
+      aggr_policies = aggregator.aggregate(
+          range(FLAGS.n_players), policies, meta_probabilities)
 
-      exploitabilities, expl_per_player = exploitability.nash_conv(
+      heur_conv, expl_per_player_heur = exploitability.nash_conv(
           env.game, aggr_policies, return_only_nash_conv=False)
-      br_time = time.time()-start_br_time
-      writer.add_scalar('br_time',br_time,gpsro_iteration)
+      ne_conv, expl_per_player_ne = exploitability.nash_conv(
+            env.game, aggr_policies_Mike, return_only_nash_conv=False)
 
-      for p in range(len(expl_per_player)):
-        writer.add_scalar('player'+str(p)+'_exp',expl_per_player[p],gpsro_iteration)
-      writer.add_scalar('exp',exploitabilities,gpsro_iteration)
+      for p in range(len(expl_per_player_heur)):
+        writer.add_scalar('player'+str(p)+'_heur_exp',expl_per_player_heur[p],gpsro_iteration)
+        writer.add_scalar('player'+str(p)+'_ne_exp',expl_per_player_ne[p],gpsro_iteration)
+      writer.add_scalar('heur_exp',heur_conv,gpsro_iteration)
+      writer.add_scalar('ne_exp',ne_conv,gpsro_iteration)
+
       if FLAGS.verbose:
-        print("Exploitabilities : {}".format(exploitabilities))
-        print("Exploitabilities per player : {}".format(expl_per_player))
+        print("Heuristics conv : {}".format(heur_conv))
+        print("Heuristics conv per player : {}".format(expl_per_player_heur))
+        print("Ne conv : {}".format(ne_conv))
+        print("Ne conv per player : {}".format(expl_per_player_ne))
 
-      unique_policies = print_policy_analysis(policies, env.game, FLAGS.verbose)
-      for p, cur_set in enumerate(unique_policies):
-        writer.add_scalar('p'+str(p)+'_unique_p',len(cur_set),gpsro_iteration)
+
+    unique_policies = print_policy_analysis(policies, env.game, FLAGS.verbose)
+    for p, cur_set in enumerate(unique_policies):
+      writer.add_scalar('p'+str(p)+'_unique_p',len(cur_set),gpsro_iteration)
 
     save_nash(nash_meta_probabilities, gpsro_iteration, checkpoint_dir)
 

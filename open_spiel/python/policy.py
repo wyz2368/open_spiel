@@ -379,6 +379,7 @@ class PolicyFromCallable(Policy):
     raise NotImplementedError
 
 
+
 class FirstActionPolicy(Policy):
   """A policy that always takes the lowest-numbered legal action."""
 
@@ -393,12 +394,12 @@ class FirstActionPolicy(Policy):
     return {action: 1.0 if action == min_action else 0.0
             for action in legal_actions}
 
-
   def get_weights(self):
     return 'first_action'
 
   def set_weights(self, variables):
     raise NotImplementedError
+
 
 def tabular_policy_from_callable(game, callable_policy, players=None):
   """Converts a legacy callable policy into a TabularPolicy.

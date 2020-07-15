@@ -43,7 +43,8 @@ from open_spiel.python import policy
 from open_spiel.python.algorithms.psro_v2 import abstract_meta_trainer
 from open_spiel.python.algorithms.psro_v2 import strategy_selectors
 from open_spiel.python.algorithms.psro_v2 import utils
-from open_spiel.python.algorithms.psro_v2.eval_utils import regret, strategy_regret
+from open_spiel.python.algorithms.psro_v2.eval_utils import regret, strategy_regret, smoothing_kl
+
 
 
 TRAIN_TARGET_SELECTORS = {
@@ -567,8 +568,9 @@ class PSROSolver(abstract_meta_trainer.AbstractMetaTrainer):
       else:
           delta_nashconv = self._block_nashconv[-1] - slow_model_nashconv
 
+
       self._block_nashconv.append(slow_model_nashconv)
-      self._heuristic_selector.update_weights(delta_nashconv)
+      self._heuristic_selector.update_weights(delta_nashconv, NE_list=self._NE_list)
       new_heuristic_index = self._heuristic_selector.sample(self._iterations)
 
       return self._heuristic_list[new_heuristic_index]

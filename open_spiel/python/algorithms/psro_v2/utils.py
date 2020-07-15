@@ -129,8 +129,8 @@ def sample_strategy_marginal(total_policies, probabilities_of_playing_policies):
 def sample_random_tensor_index(probabilities_of_index_tensor, shape=None):
   shape = probabilities_of_index_tensor.shape if not shape else shape
   reshaped_probas = probabilities_of_index_tensor.reshape(-1)
-  num_strats = list(range(len(reshaped_probas)))
-  chosen_index = random_choice(num_strats, reshaped_probas)
+  num_strats = len(reshaped_probas)
+  chosen_index = random_choice(list(range(num_strats)), reshaped_probas)
   return np.unravel_index(chosen_index, shape)
 
 
