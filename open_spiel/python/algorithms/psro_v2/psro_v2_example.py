@@ -56,10 +56,7 @@ from open_spiel.python.algorithms.psro_v2 import strategy_selectors
 from open_spiel.python.algorithms.psro_v2.quiesce.quiesce import PSROQuiesceSolver
 from open_spiel.python.algorithms.psro_v2 import meta_strategies
 from open_spiel.python.algorithms.psro_v2.quiesce import quiesce_sparse
-
-from open_spiel.python.algorithms.psro_v2.utils import set_seed
-from open_spiel.python.algorithms.psro_v2.eval_utils import save_strategies, save_nash, save_pkl
-
+from open_spiel.python.algorithms.psro_v2.eval_utils import save_strategies
 
 
 FLAGS = flags.FLAGS
@@ -110,9 +107,6 @@ flags.DEFINE_float("sigma", 0.0, "Policy copy noise (Gaussian Dropout term).")
 flags.DEFINE_string("optimizer_str", "adam", "'adam' or 'sgd'")
 flags.DEFINE_integer("n_hidden_layers", 4, "# of hidden layers")
 
-flags.DEFINE_float("discount_factor",0.999,"discount factor")
-
-
 # Policy Gradient Oracle related
 flags.DEFINE_string("loss_str", "qpg", "Name of loss used for BR training.")
 flags.DEFINE_integer("num_q_before_pi", 8, "# critic updates before Pi update")
@@ -125,8 +119,6 @@ flags.DEFINE_float("dqn_learning_rate", 1e-2, "DQN learning rate.")
 flags.DEFINE_integer("update_target_network_every", 500, "Update target "
                      "network every [X] steps")
 flags.DEFINE_integer("learn_every", 10, "Learn every [X] steps.")
-flags.DEFINE_integer("epsilon_decay_duration",3000000,"dqn decay")
-
 
 #ARS
 flags.DEFINE_float("ars_learning_rate", 0.02, "ARS learning rate.")
@@ -145,10 +137,6 @@ flags.DEFINE_integer("seed", None, "Seed.")
 flags.DEFINE_bool("local_launch", False, "Launch locally or not.")
 flags.DEFINE_bool("verbose", True, "Enables verbose printing and profiling.")
 flags.DEFINE_bool("log_train", False,"log training reward curve")
-
-flags.DEFINE_bool("test_reward",False,"evaluate test reward along training process")
-flags.DEFINE_bool("compute_exact_br",True,"compute and log exp with exact br. If false, than use combined game at the last iteration to evaluate")
-
 
 
 def init_pg_responder(sess, env):
@@ -170,9 +158,7 @@ def init_pg_responder(sess, env):
       "critic_learning_rate": FLAGS.critic_learning_rate,
       "pi_learning_rate": FLAGS.pi_learning_rate,
       "num_critic_before_pi": FLAGS.num_q_before_pi,
-      "optimizer_str": FLAGS.optimizer_str,
-      "additional_discount_factor": FLAGS.discount_factor
-
+      "optimizer_str": FLAGS.optimizer_str
   }
   oracle = rl_oracle.RLOracle(
       env,
@@ -190,12 +176,7 @@ def init_pg_responder(sess, env):
   ]
   for agent in agents:
     agent.freeze()
-
- 
-  agent_kwargs_save = {key:val for key,val in agent_kwargs.items() if key!="session" }
-  agent_kwargs_save["policy_class"] = "PG"
-  return oracle, agents, agent_kwargs_save
-
+  return oracle, agents
 
 
 def init_br_responder(env):
@@ -204,11 +185,7 @@ def init_br_responder(env):
   oracle = best_response_oracle.BestResponseOracle(
       game=env.game, policy=random_policy)
   agents = [random_policy.__copy__() for _ in range(FLAGS.n_players)]
-
-  agent_kwargs = {}
-  agent_kwargs["policy_class"] = "BR"
-  return oracle, agents, agent_kwargs
-
+  return oracle, agents
 
 
 def init_dqn_responder(sess, env):
@@ -226,10 +203,7 @@ def init_dqn_responder(sess, env):
      "learning_rate": FLAGS.dqn_learning_rate,
       "update_target_network_every": FLAGS.update_target_network_every,
       "learn_every": FLAGS.learn_every,
-      "optimizer_str": FLAGS.optimizer_str,
-      "discount_factor": FLAGS.discount_factor,
-      "epsilon_decay_duration":FLAGS.epsilon_decay_duration
-
+      "optimizer_str": FLAGS.optimizer_str
   }
   oracle = rl_oracle.RLOracle(
       env,
@@ -248,11 +222,7 @@ def init_dqn_responder(sess, env):
   ]
   for agent in agents:
     agent.freeze()
-
-  agent_kwargs_save = {key:val for key,val in agent_kwargs.items() if key!="session" }
-  agent_kwargs_save["policy_class"] = "DQN"
-  return oracle, agents, agent_kwargs_save
-
+  return oracle, agents
 
 def init_ars_responder(sess, env):
   """
@@ -290,11 +260,7 @@ def init_ars_responder(sess, env):
   ]
   for agent in agents:
     agent.freeze()
-
-  agent_kwargs_save = {key:val for key,val in agent_kwargs.items() if key!="session" }
-  agent_kwargs_save["policy_class"] = "ARS"
-  return oracle, agents, agent_kwargs_save
-
+  return oracle, agents
 
 def print_beneficial_deviation_analysis(last_meta_game, meta_game, last_meta_prob, verbose=False):
   """
@@ -370,14 +336,11 @@ def init_ars_parallel_responder(sess, env):
   ]
   for agent in agents:
     agent.freeze()
-
-  agent_kwargs["policy_class"] = "ARS_parallel"
-  return oracle, agents, agent_kwargs
+  return oracle, agents
 
 
 
-def print_policy_analysis(policies, game, verbose=False):
-
+def print_policy_analysis(policies, game, verbose=False, pdb=False):
   """Function printing policy diversity within game's known policies.
 
   Warning : only works with deterministic policies.
@@ -456,12 +419,11 @@ def gpsro_looper(env, oracle, agents, writer, quiesce=False, checkpoint_dir=None
       print("\n===========================\n")
       print("Iteration : {}".format(gpsro_iteration))
       print("Time so far: {}".format(time.time() - start_time))
-
     train_reward_curve = g_psro_solver.iteration(seed=seed)
     meta_game = g_psro_solver.get_meta_game()
     meta_probabilities = g_psro_solver.get_meta_strategies()
-    nash_meta_probabilities = g_psro_solver.get_nash_strategies()
-    # nash_meta_probabilities = g_psro_solver.get_prd_strategies()
+    # nash_meta_probabilities = g_psro_solver.get_nash_strategies()
+    nash_meta_probabilities = g_psro_solver.get_prd_strategies()
     policies = g_psro_solver.get_policies()
    
     if FLAGS.verbose:
@@ -487,8 +449,6 @@ def gpsro_looper(env, oracle, agents, writer, quiesce=False, checkpoint_dir=None
     unique_policies = print_policy_analysis(policies, env.game, FLAGS.verbose)
     for p, cur_set in enumerate(unique_policies):
       writer.add_scalar('p'+str(p)+'_unique_p',len(cur_set),gpsro_iteration)
-      
-    save_nash(nash_meta_probabilities, gpsro_iteration, checkpoint_dir)
 
     if gpsro_iteration % 10 ==0:
       save_at_termination(solver=g_psro_solver, file_for_meta_game=checkpoint_dir+'/meta_game.pkl')
@@ -521,7 +481,6 @@ def main(argv):
     seed = np.random.randint(low=0, high=1e5)
   else:
     seed = FLAGS.seed
-
   np.random.seed(seed)
   random.seed(seed)
 
@@ -536,7 +495,6 @@ def main(argv):
       checkpoint_dir += '_'+ele_li[0]+'_'+ele_li[1]
     checkpoint_dir += '_'
   game = pyspiel.load_game_as_turn_based(FLAGS.game_name, game_param)
-
 
   env = rl_environment.Environment(game,seed=seed)
   env.reset()
@@ -562,29 +520,19 @@ def main(argv):
   if FLAGS.sbatch_run:
     sys.stdout = open(checkpoint_dir+'/stdout.txt','w+')
 
-
-  # env_kwargs = {"game_name":FLAGS.game_name, "param": game_param_raw}
-  # strategy_path = os.path.join(checkpoint_dir, 'strategies')
-  # if not os.path.exists(strategy_path):
-  #   os.makedirs(strategy_path)
-  # save_pkl(env_kwargs, strategy_path+'/env.pkl')
-
   # Initialize oracle and agents
   with tf.Session() as sess:
     if FLAGS.oracle_type == "DQN":
-      oracle, agents, agent_kwargs = init_dqn_responder(sess, env)
+      oracle, agents = init_dqn_responder(sess, env)
     elif FLAGS.oracle_type == "PG":
-      oracle, agents, agent_kwargs = init_pg_responder(sess, env)
+      oracle, agents = init_pg_responder(sess, env)
     elif FLAGS.oracle_type == "BR":
-      oracle, agents, agent_kwargs = init_br_responder(env)
+      oracle, agents = init_br_responder(env)
     elif FLAGS.oracle_type == "ARS":
-      oracle, agents, agent_kwargs = init_ars_responder(sess, env)
+      oracle, agents = init_ars_responder(sess, env)
     elif FLAGS.oracle_type == "ARS_parallel":
-      oracle, agents, agent_kwargs = init_ars_parallel_responder(sess, env)
+      oracle, agents = init_ars_parallel_responder(sess, env)
     # sess.run(tf.global_variables_initializer())
-    # save_pkl(agent_kwargs, strategy_path+'/kwargs.pkl')
-
-
     gpsro_looper(env, oracle, agents, writer, quiesce=FLAGS.quiesce, checkpoint_dir=checkpoint_dir, seed=seed)
 
   writer.close()

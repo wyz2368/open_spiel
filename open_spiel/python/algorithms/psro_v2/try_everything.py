@@ -3,7 +3,6 @@ import copy
 import os
 # from  open_spiel.python.algorithms.psro_v2.eval_utils import regret, strategy_regret
 
-
 a = np.array([0.00000000e+00, 0.00000000e+00, 0.00000000e+00, 0.00000000e+00,
        0.00000000e+00, 0.00000000e+00, 0.00000000e+00, 0.00000000e+00,
        1.46136407e-11, 2.43534746e-11, 0.00000000e+00, 0.00000000e+00,
@@ -46,4 +45,3 @@ a = np.array([0.00000000e+00, 0.00000000e+00, 0.00000000e+00, 0.00000000e+00,
 a[a < 0.001] = 0
 print(np.sum(a))
 print(len(np.where(a>0)[0]))
-

@@ -14,4 +14,3 @@ module load python3.6-anaconda/5.2.0
 cd ${SLURM_SUBMIT_DIR}
 python se_example.py --game_name=leduc_poker --n_players=2 --switch_blocks=True --standard_regret=True --fast_oracle_period=1 --slow_oracle_period=1 --meta_strategy_method=uniform --oracle_type=DQN --gpsro_iterations=150 --number_training_episodes=10000 --sbatch_run=True --root_result_folder=dqn_block
 
-

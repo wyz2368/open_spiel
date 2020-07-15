@@ -19,7 +19,7 @@ Treating RL Oracles as policies allows us to streamline their use with tabular
 policies and other policies in OpenSpiel, and freely mix populations using
 different types of oracles.
 """
-import numpy as np
+
 from open_spiel.python import policy
 from open_spiel.python import rl_environment
 from open_spiel.python.algorithms import dqn
@@ -69,22 +69,15 @@ def rl_policy_factory(rl_class):
       return time_step
 
     def action_probabilities(self, state, player_id=None, is_evaluation=True):
-      cur_player = state.current_player() if player_id is None else player_id
+      cur_player = state.current_player()
       legal_actions = state.legal_actions(cur_player)
-       
+
       step_type = rl_environment.StepType.LAST if state.is_terminal(
       ) else rl_environment.StepType.MID
 
       self._obs["current_player"] = cur_player
-      if self.game.get_type().provides_information_state_tensor:
-        self._obs["info_state"][cur_player] = (
-            state.information_state_tensor(cur_player))
-      else: 
-        # when information_state_tensor unimplemented but exist
-        # For laser_tag or markov_soccer
-        self._obs["info_state"][cur_player] = (
-            state.observation_tensor(cur_player))
-
+      self._obs["info_state"][cur_player] = (
+          state.information_state_tensor(cur_player))
       self._obs["legal_actions"][cur_player] = legal_actions
 
       # pylint: disable=protected-access
@@ -152,20 +145,6 @@ def rl_policy_factory(rl_class):
       copied_object.unfreeze()
 
       return copied_object
-
-    def copy_with_weights_frozen(self, weight):
-      copied_object = RLPolicy.__new__(RLPolicy)
-      super(RLPolicy, copied_object).__init__(self.game, self.player_ids)
-      setattr(copied_object, "_rl_class", self._rl_class)
-      setattr(copied_object, "_obs", self._obs)
-      setattr(copied_object, "_policy",
-              self._policy.copy_with_noise(sigma=0,copy_weights=False))
-      copied_object.set_weights(weight)
-      setattr(copied_object, "_env", self._env)
-      copied_object.freeze()
-
-      return copied_object
-
 
   return RLPolicy
 

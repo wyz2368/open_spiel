@@ -19,7 +19,6 @@ import numpy as np
 
 from open_spiel.python.algorithms import lp_solver
 from open_spiel.python.algorithms import projected_replicator_dynamics
-from open_spiel.python.algorithms.nash_solver import replicator_dynamics_solver as rds
 from open_spiel.python.algorithms.nash_solver import general_nash_solver as gs
 import pyspiel
 
@@ -166,26 +165,11 @@ def nash_strategy(solver, return_joint=False, checkpoint_dir=None):
     return result, joint_strategies
 
 
-
-def general_nash_strategy(solver, return_joint=False, NE_solver="linear", mode='one', game=None, checkpoint_dir=None):
+def general_nash_strategy(solver, return_joint=False, NE_solver="gambit", mode='one', game=None, checkpoint_dir=None):
   """Returns nash distribution on meta game matrix.
 
-  This method works for general-sum multi-player games."""
+  This method works for general-sum multi-player games.
 
-  if not return_joint:
-    return equilibria
-  else:
-    if mode == 'all' and type(equilibria[0]) == list:
-      # If multiple NE exist, return a list with joint strategies.
-      joint_strategies_list = [get_joint_strategy_from_marginals([ne]) for ne in equilibria]
-      return equilibria, joint_strategies_list
-    else:
-      joint_strategies = get_joint_strategy_from_marginals(equilibria)
-      return equilibria, joint_strategies
-
-
-def prd_strategy(solver, return_joint=False, checkpoint_dir=None):
-  """Computes Projected Replicator Dynamics strategies.
   Args:
     solver: GenPSROSolver instance.
     return_joint: If true, only returns marginals. Otherwise marginals as well
@@ -200,7 +184,7 @@ def prd_strategy(solver, return_joint=False, checkpoint_dir=None):
   if not isinstance(meta_games, list):
     meta_games = [meta_games, -meta_games]
   equilibria = gs.nash_solver(meta_games, solver=NE_solver, mode=mode, checkpoint_dir=checkpoint_dir)
-  
+
   if not return_joint:
     return equilibria
   else:
@@ -212,75 +196,28 @@ def prd_strategy(solver, return_joint=False, checkpoint_dir=None):
       joint_strategies = get_joint_strategy_from_marginals(equilibria)
       return equilibria, joint_strategies
 
+
 def prd_strategy(solver, return_joint=False, checkpoint_dir=None):
-    """Computes Projected Replicator Dynamics strategies.  Args: solver: GenPSROSolver instance.  return_joint: If true, only returns marginals. Otherwise marginals as well as joint probabilities.  Returns: PRD-computed strategies. 
-    """ 
-    meta_games = solver.get_meta_game()
-    if not isinstance(meta_games, list):
-      meta_games = [meta_games, -meta_games]
-    kwargs = solver.get_kwargs()
-    result = projected_replicator_dynamics.projected_replicator_dynamics(meta_games, **kwargs)
-    if not return_joint:
-      return result
-    else:
-      joint_strategies = get_joint_strategy_from_marginals(result)
-      return result, joint_strategies
-
-
-def self_play_strategy(solver, return_joint=False, checkpoint_dir=None):
-  """
-  Return a strategy with only the newest strategy in the support (played with probability 1).
-  :param solver: GenPSROSolver instance.
-  :param return_joint: If true, only returns marginals. Otherwise marginals as well
+  """Computes Projected Replicator Dynamics strategies.
+  Args:
+    solver: GenPSROSolver instance.
+    return_joint: If true, only returns marginals. Otherwise marginals as well
       as joint probabilities.
-  :return:
+
+  Returns:
+    PRD-computed strategies.
   """
-  policies = solver.get_policies()
-  policy_lengths = [len(pol) for pol in policies]
-  result = []
-  for pol_len in policy_lengths:
-    strategy = np.zeros(pol_len)
-    strategy[-1] = 1
-    result.append(strategy)
+  meta_games = solver.get_meta_game()
+  if not isinstance(meta_games, list):
+    meta_games = [meta_games, -meta_games]
+  kwargs = solver.get_kwargs()
+  result = projected_replicator_dynamics.projected_replicator_dynamics(
+      meta_games, **kwargs)
   if not return_joint:
     return result
   else:
     joint_strategies = get_joint_strategy_from_marginals(result)
     return result, joint_strategies
-
-def prioritized_fictitious_play(solver, return_joint=False):
-  """
-    Implementation of prioritized ficitious self-play.
-    :param solver: GenPSROSolver instance.
-    :param return_joint: If true, only returns marginals. Otherwise marginals as well
-        as joint probabilities.
-    :return:
-    """
-  raise NotImplementedError
-
-def weighted_NE_strategy(solver, return_joint=False, checkpoint_dir=None, gamma=0.4):
-  meta_games = solver.get_meta_game()
-  num_players = len(meta_games)
-  NE_list = solver._NE_list
-  if len(NE_list) == 0:
-    return [np.array([1])] * num_players, None
-
-  num_used_policies = len(NE_list[-1][0])
-
-  if not isinstance(meta_games, list):
-    meta_games = [meta_games, -meta_games]
-
-  num_strategies = len(meta_games[0])
-  equilibria = gs.nash_solver(meta_games, solver="gambit", mode="one", checkpoint_dir=checkpoint_dir)
-
-  result = [np.zeros(num_strategies)] * num_players
-  for player in range(num_players):
-    for i, NE in enumerate(NE_list):
-      result[player][:len(NE[player])] += NE[player] * gamma ** (num_used_policies - i)
-    result[player] += equilibria[player]
-    result[player] /= np.sum(result[player])
-
-  return result, None
 
 
 def self_play_strategy(solver, return_joint=False, checkpoint_dir=None):

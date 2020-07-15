@@ -33,12 +33,11 @@ oracle.
 4) Updating meta game matrix with new game results.
 
 """
+
 import itertools
-import os
-import psutil
 
 import numpy as np
-import time
+
 from open_spiel.python import policy
 from open_spiel.python.algorithms.psro_v2 import abstract_meta_trainer
 from open_spiel.python.algorithms.psro_v2 import strategy_selectors
@@ -231,16 +230,12 @@ class PSROSolver(abstract_meta_trainer.AbstractMetaTrainer):
     #TODO: return_joint should be associated with alpha-rank.
     if self.symmetric_game:
       self._policies = self._policies * self._game_num_players
-
     self._meta_strategy_probabilities, self._non_marginalized_probabilities =\
         self._meta_strategy_method(solver=self, return_joint=True, checkpoint_dir=self.checkpoint_dir)
-
 
     if self.symmetric_game:
       self._policies = [self._policies[0]]
       self._meta_strategy_probabilities = [self._meta_strategy_probabilities[0]]
-
-    return required_time
 
   def get_policies_and_strategies(self):
     """Returns current policy sampler, policies and meta-strategies of the game.
@@ -306,11 +301,10 @@ class PSROSolver(abstract_meta_trainer.AbstractMetaTrainer):
 
       return probability
 
-  def update_agents(self, test_reward=False):
+  def update_agents(self):
     """Updates policies for each player at the same time by calling the oracle.
 
     The resulting policies are appended to self._new_policies.
-    Also return test reward
     """
 
     # Sample strategies from current meta-strategies as initial policies for training BR.
@@ -335,7 +329,7 @@ class PSROSolver(abstract_meta_trainer.AbstractMetaTrainer):
             joint_policy[current_player] for joint_policy in used_policies
         ]
         current_indexes = used_indexes[current_player]
-      
+
       for i in range(len(currently_used_policies)):
         pol = currently_used_policies[i]
         ind = current_indexes[i]
@@ -363,7 +357,6 @@ class PSROSolver(abstract_meta_trainer.AbstractMetaTrainer):
     if self._train_loggable_oracle:
       # rl oracle return reward trace together with approximate best response policies
       self.oracle, reward_trace = self._oracle(self._game, training_parameters, strategy_sampler=sample_strategy, using_joint_strategies=self._rectify_training or not self.sample_from_marginals)
-
     else:
       # best response oracle does not return reward_trace
       self.oracle = self._oracle(self._game, training_parameters, strategy_sampler=sample_strategy, using_joint_strategies=self._rectify_training or not self.sample_from_marginals)
@@ -377,7 +370,6 @@ class PSROSolver(abstract_meta_trainer.AbstractMetaTrainer):
       self._num_players = 1
 
     return reward_trace if self._train_loggable_oracle else []
-
   
   def update_empirical_gamestate(self, seed=None):
     """Given new agents in _new_policies, update meta_games through simulations.
@@ -472,7 +464,6 @@ class PSROSolver(abstract_meta_trainer.AbstractMetaTrainer):
                     permutation[player]] / len(player_permutations)
           else:
             utility_estimates = self.sample_episodes(estimated_policies,self._sims_per_entry)
-
           for k in range(self._num_players):
             meta_games[k][tuple(used_index)] = utility_estimates[k]
 
@@ -569,7 +560,6 @@ class PSROSolver(abstract_meta_trainer.AbstractMetaTrainer):
 
       self._block_nashconv.append(slow_model_nashconv)
       self._heuristic_selector.update_weights(delta_nashconv, NE_list=self._NE_list)
-
       new_heuristic_index = self._heuristic_selector.sample(self._iterations)
 
       return self._heuristic_list[new_heuristic_index]

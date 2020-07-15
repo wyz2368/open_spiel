@@ -226,7 +226,6 @@ class PolicyAggregator(object):
         self._rec_aggregate(pid, new_state, my_reaches)
       return
     else:
-
       turn_player = state.current_player()
 
       state_key = self._state_key(state, turn_player)
