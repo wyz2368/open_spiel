@@ -404,7 +404,7 @@ class AbstractMetaTrainer(object):
     self._slow_oracle_counter = self._slow_oracle_period
 
 
-  def se_iteration(self, seed=None, test_reward=False):
+  def se_iteration(self, seed=None):
     """Main trainer loop with strategy exploration.
     Evaluate the performance of current meta-strategy method every _meta_method_frequency and update the
     meta-strategy method.
@@ -427,7 +427,7 @@ class AbstractMetaTrainer(object):
     self._iterations += 1
 
     
-    train_reward_curve, test_reward_curve = self.update_agents(test_reward)  # Generate new, Best Response agents via oracle.
+    train_reward_curve = self.update_agents()  # Generate new, Best Response agents via oracle.
 
     self.update_empirical_gamestate(seed=seed)  # Update gamestate matrix.
     self.update_meta_strategies()  # Compute meta strategy (e.g. Nash)
@@ -451,7 +451,7 @@ class AbstractMetaTrainer(object):
           self._slow_model_nash = self.get_nash_strategies()
 
 
-    return train_reward_curve, test_reward_curve
+    return train_reward_curve
 
 
   def switch_oracle(self):
@@ -505,7 +505,7 @@ class AbstractMetaTrainer(object):
 
   ################################# For Heuristic Blocks ########################
 
-  def se_iteration_for_blocks(self, seed=None, test_reward=False):
+  def se_iteration_for_blocks(self, seed=None):
 
     """Main trainer loop with strategy exploration.
     Evaluate the performance of current meta-strategy method every _meta_method_frequency and update the
@@ -526,7 +526,7 @@ class AbstractMetaTrainer(object):
     self._iterations += 1
 
 
-    train_reward_curve, test_reward_curve = self.update_agents(test_reward)  # Generate new, Best Response agents via oracle.
+    train_reward_curve = self.update_agents()  # Generate new, Best Response agents via oracle.
 
     self.update_empirical_gamestate(seed=seed)  # Update gamestate matrix.
     self.update_meta_strategies()
@@ -550,7 +550,7 @@ class AbstractMetaTrainer(object):
           self._slow_model_nash = self.get_nash_strategies()
 
 
-    return train_reward_curve, test_reward_curve
+    return train_reward_curve
 
 
   def evaluate_meta_method_for_blocks(self):

@@ -170,12 +170,12 @@ def nash_strategy(solver, return_joint=False, checkpoint_dir=None):
 def general_nash_strategy(solver, return_joint=False, NE_solver="linear", mode='one', game=None, checkpoint_dir=None):
   """Returns nash distribution on meta game matrix.
 
-  This method works for general-sum multi-player games.
+  This method works for general-sum multi-player games."""
 
   if not return_joint:
     return equilibria
   else:
-    if mode == 'all' and type(equilibria[0])==list:
+    if mode == 'all' and type(equilibria[0]) == list:
       # If multiple NE exist, return a list with joint strategies.
       joint_strategies_list = [get_joint_strategy_from_marginals([ne]) for ne in equilibria]
       return equilibria, joint_strategies_list

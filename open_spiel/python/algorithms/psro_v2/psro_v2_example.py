@@ -460,8 +460,8 @@ def gpsro_looper(env, oracle, agents, writer, quiesce=False, checkpoint_dir=None
     train_reward_curve = g_psro_solver.iteration(seed=seed)
     meta_game = g_psro_solver.get_meta_game()
     meta_probabilities = g_psro_solver.get_meta_strategies()
-    # nash_meta_probabilities = g_psro_solver.get_nash_strategies()
-    nash_meta_probabilities = g_psro_solver.get_prd_strategies()
+    nash_meta_probabilities = g_psro_solver.get_nash_strategies()
+    # nash_meta_probabilities = g_psro_solver.get_prd_strategies()
     policies = g_psro_solver.get_policies()
    
     if FLAGS.verbose:
@@ -563,11 +563,11 @@ def main(argv):
     sys.stdout = open(checkpoint_dir+'/stdout.txt','w+')
 
 
-  env_kwargs = {"game_name":FLAGS.game_name, "param": game_param_raw}
-  strategy_path = os.path.join(checkpoint_dir, 'strategies')
-  if not os.path.exists(strategy_path):
-    os.makedirs(strategy_path)
-  save_pkl(env_kwargs, strategy_path+'/env.pkl')
+  # env_kwargs = {"game_name":FLAGS.game_name, "param": game_param_raw}
+  # strategy_path = os.path.join(checkpoint_dir, 'strategies')
+  # if not os.path.exists(strategy_path):
+  #   os.makedirs(strategy_path)
+  # save_pkl(env_kwargs, strategy_path+'/env.pkl')
 
   # Initialize oracle and agents
   with tf.Session() as sess:
@@ -582,7 +582,7 @@ def main(argv):
     elif FLAGS.oracle_type == "ARS_parallel":
       oracle, agents, agent_kwargs = init_ars_parallel_responder(sess, env)
     # sess.run(tf.global_variables_initializer())
-    save_pkl(agent_kwargs, strategy_path+'/kwargs.pkl')
+    # save_pkl(agent_kwargs, strategy_path+'/kwargs.pkl')
 
 
     gpsro_looper(env, oracle, agents, writer, quiesce=FLAGS.quiesce, checkpoint_dir=checkpoint_dir, seed=seed)
