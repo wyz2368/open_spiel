@@ -21,9 +21,10 @@ from __future__ import print_function
 import collections
 import random
 import numpy as np
-import tensorflow.compat.v1 as tf
 
 from open_spiel.python import rl_agent
+
+import tensorflow.compat.v1 as tf
 from open_spiel.python import simple_nets
 
 # Temporarily disable TF2 behavior until code is updated.

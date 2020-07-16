@@ -56,7 +56,7 @@ from open_spiel.python.algorithms.psro_v2 import strategy_selectors
 from open_spiel.python.algorithms.psro_v2.quiesce.quiesce import PSROQuiesceSolver
 from open_spiel.python.algorithms.psro_v2 import meta_strategies
 from open_spiel.python.algorithms.psro_v2.quiesce import quiesce_sparse
-from open_spiel.python.algorithms.psro_v2.eval_utils import save_strategies
+from open_spiel.python.algorithms.psro_v2.eval_utils import save_strategies, save_nash, save_pkl
 
 
 FLAGS = flags.FLAGS
@@ -422,8 +422,8 @@ def gpsro_looper(env, oracle, agents, writer, quiesce=False, checkpoint_dir=None
     train_reward_curve = g_psro_solver.iteration(seed=seed)
     meta_game = g_psro_solver.get_meta_game()
     meta_probabilities = g_psro_solver.get_meta_strategies()
-    # nash_meta_probabilities = g_psro_solver.get_nash_strategies()
-    nash_meta_probabilities = g_psro_solver.get_prd_strategies()
+    nash_meta_probabilities = g_psro_solver.get_nash_strategies()
+    # nash_meta_probabilities = g_psro_solver.get_prd_strategies()
     policies = g_psro_solver.get_policies()
    
     if FLAGS.verbose:
@@ -450,9 +450,11 @@ def gpsro_looper(env, oracle, agents, writer, quiesce=False, checkpoint_dir=None
     for p, cur_set in enumerate(unique_policies):
       writer.add_scalar('p'+str(p)+'_unique_p',len(cur_set),gpsro_iteration)
 
+    save_nash(nash_meta_probabilities, gpsro_iteration, checkpoint_dir)
+
     if gpsro_iteration % 10 ==0:
       save_at_termination(solver=g_psro_solver, file_for_meta_game=checkpoint_dir+'/meta_game.pkl')
-      # save_strategies(solver=g_psro_solver, checkpoint_dir=checkpoint_dir)
+      save_strategies(solver=g_psro_solver, checkpoint_dir=checkpoint_dir)
     
     beneficial_deviation = print_beneficial_deviation_analysis(last_meta_game, meta_game, last_meta_prob, FLAGS.verbose)
     last_meta_prob, last_meta_game = meta_probabilities, meta_game
