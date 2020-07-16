@@ -412,7 +412,7 @@ def gpsro_looper(env, oracle, agents, writer, quiesce=False, checkpoint_dir=None
   
   last_meta_prob = [np.array([1]) for _ in range(FLAGS.n_players)]
   last_meta_game = g_psro_solver.get_meta_game()
-  #atexit.register(save_at_termination, solver=g_psro_solver, file_for_meta_game=checkpoint_dir+'/meta_game.pkl')
+
   start_time = time.time()
   for gpsro_iteration in range(1,FLAGS.gpsro_iterations+1):
     if FLAGS.verbose:
