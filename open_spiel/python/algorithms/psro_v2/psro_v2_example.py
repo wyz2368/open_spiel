@@ -450,7 +450,8 @@ def gpsro_looper(env, oracle, agents, writer, quiesce=False, checkpoint_dir=None
     for p, cur_set in enumerate(unique_policies):
       writer.add_scalar('p'+str(p)+'_unique_p',len(cur_set),gpsro_iteration)
 
-    save_nash(nash_meta_probabilities, gpsro_iteration, checkpoint_dir)
+    # save_nash(nash_meta_probabilities, gpsro_iteration, checkpoint_dir)
+    save_nash(meta_probabilities, gpsro_iteration, checkpoint_dir)
 
     if gpsro_iteration % 10 ==0:
       save_at_termination(solver=g_psro_solver, file_for_meta_game=checkpoint_dir+'/meta_game.pkl')
