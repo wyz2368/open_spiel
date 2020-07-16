@@ -422,8 +422,8 @@ def gpsro_looper(env, oracle, agents, writer, quiesce=False, checkpoint_dir=None
     train_reward_curve = g_psro_solver.iteration(seed=seed)
     meta_game = g_psro_solver.get_meta_game()
     meta_probabilities = g_psro_solver.get_meta_strategies()
-    nash_meta_probabilities = g_psro_solver.get_nash_strategies()
-    # nash_meta_probabilities = g_psro_solver.get_prd_strategies()
+    # nash_meta_probabilities = g_psro_solver.get_nash_strategies()
+    nash_meta_probabilities = g_psro_solver.get_prd_strategies()
     policies = g_psro_solver.get_policies()
    
     if FLAGS.verbose:
