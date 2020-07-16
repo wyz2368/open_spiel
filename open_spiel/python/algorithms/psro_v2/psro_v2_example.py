@@ -422,8 +422,8 @@ def gpsro_looper(env, oracle, agents, writer, quiesce=False, checkpoint_dir=None
     train_reward_curve = g_psro_solver.iteration(seed=seed)
     meta_game = g_psro_solver.get_meta_game()
     meta_probabilities = g_psro_solver.get_meta_strategies()
-    # nash_meta_probabilities = g_psro_solver.get_nash_strategies()
-    nash_meta_probabilities = g_psro_solver.get_prd_strategies()
+    nash_meta_probabilities = g_psro_solver.get_nash_strategies()
+    # nash_meta_probabilities = g_psro_solver.get_prd_strategies()
     policies = g_psro_solver.get_policies()
    
     if FLAGS.verbose:
@@ -433,12 +433,11 @@ def gpsro_looper(env, oracle, agents, writer, quiesce=False, checkpoint_dir=None
 
     aggregator = policy_aggregator.PolicyAggregator(env.game)
 
-    ## Using NE-based NashConv
-    aggr_policies_Mike = aggregator.aggregate(
-            range(FLAGS.n_players), policies, nash_meta_probabilities)
     ## Using heuristic-based NashConv
     aggr_policies = aggregator.aggregate(
         range(FLAGS.n_players), policies, meta_probabilities)
+    aggr_policies_Mike = aggregator.aggregate(
+        range(FLAGS.n_players), policies, nash_meta_probabilities)
 
     exploitabilities, expl_per_player = exploitability.nash_conv(
         env.game, aggr_policies, return_only_nash_conv=False)
@@ -450,8 +449,8 @@ def gpsro_looper(env, oracle, agents, writer, quiesce=False, checkpoint_dir=None
     for p, cur_set in enumerate(unique_policies):
       writer.add_scalar('p'+str(p)+'_unique_p',len(cur_set),gpsro_iteration)
 
-    # save_nash(nash_meta_probabilities, gpsro_iteration, checkpoint_dir)
-    save_nash(meta_probabilities, gpsro_iteration, checkpoint_dir)
+    save_nash(nash_meta_probabilities, gpsro_iteration, checkpoint_dir)
+    # save_nash(meta_probabilities, gpsro_iteration, checkpoint_dir)
 
     if gpsro_iteration % 10 ==0:
       save_at_termination(solver=g_psro_solver, file_for_meta_game=checkpoint_dir+'/meta_game.pkl')

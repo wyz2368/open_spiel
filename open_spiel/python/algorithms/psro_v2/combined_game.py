@@ -38,10 +38,10 @@ This creates a combined_game experiment folder in <root_result_folder_location> 
 2.
 after checking the sh file, modify the batch job file and submit it to greatlakes
 3.
-python --gather_subgame=True --num_run=<number of experiments> --num_evaluation_episodes=<number of desired strategy in each run> --root_result_folder=<combined_game_datetime folder>
+python combined_game.py --gather_subgame=True --num_run=<number of experiments> --num_evaluation_episodes=<number of desired strategy in each run> --root_result_folder=<combined_game_datetime folder>
 This essentially combines the pairwise combined game into the full combined game and save it in <combined_game_datetime> folder
 4.
-python --num_evaluation_episodes=<the number before-1> --evaluate_nash=<True/False> --evaluate_iters=<True/False> --combined_game_path=<The path above> --root_result_folder=<root_result_folder_location>
+python combined_game.py --num_evaluation_episodes=<the number before-1> --evaluate_nash=<True/False> --evaluate_iters=<True/False> --combined_game_path=<The path above> --root_result_folder=<root_result_folder_location>
 This finally evaluates the nash conv or the final nash performance of experiments and save them to csv in the original folder. Note the <num_evaluation_episode> is the previous one minus one, this value is the real epsiode number, previous ones are all number of strategies
 """
 
