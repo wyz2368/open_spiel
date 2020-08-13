@@ -55,6 +55,7 @@ import os
 import psutil
 import datetime
 import time
+import random
 import shutil
 import itertools
 from tqdm import tqdm
@@ -85,6 +86,10 @@ flags.DEFINE_string("combined_game_path","","provide combined game pkl if there 
 flags.DEFINE_integer("sims_per_entry", 1000,
                      ("Number of simulations to run to estimate each element"
                       "of the game outcome matrix."))
+
+# compare results using bootstrapping
+flags.DEFINE_bool("bootstrap_results",False,"compare heuristics with small combined game by bootstrapping the large full combined game")
+flags.DEFINE_integer("number_of_resample",0,"number of resample for bootstrapping. Default to exact resample: iterate over all possible unique resampling data points")
 
 ZERO_THRESHOLD = 0.001
 
@@ -268,7 +273,8 @@ def calculate_regret_from_combined_game(ne_dir,
                                         combined_game,
                                         strat_start,
                                         strat_end,
-                                        checkpoint_dir):
+                                        checkpoint_dir,
+                                        save_result=True):
     """
     Calculate the exploitability of all possible iterations
     The number of max iterations evaluatable depends on strat_start and strat_end
@@ -301,16 +307,17 @@ def calculate_regret_from_combined_game(ne_dir,
     # exploitability[1] carries gpsro_iteration
     # sort exploitibility according to iteration
     exploitability = [x for _, x in sorted(zip(exploitability[1],exploitability[0]))]
-
-    result_file = os.path.join(checkpoint_dir, 'exp_combined_game_epsiode'+str(max_gpsro_iter)+'.csv')
-    df = pd.DataFrame(exploitability)
-    df.to_csv(result_file,index=False)
-    print("NashConv saved to", result_file) 
+    
+    if save_result:
+        result_file = os.path.join(checkpoint_dir, 'exp_combined_game.csv')
+        df = pd.DataFrame(exploitability)
+        df.to_csv(result_file,index=False)
+        print("NashConv saved to", result_file) 
 
     return exploitability
 
 
-def calculate_iterations_regret_over_meta_game(checkpoint_dirs, combined_game, episode=None):
+def calculate_iterations_regret_over_meta_game(checkpoint_dirs, combined_game, episode=None,save_result=True):
     """
     Go over all experiments and calculate regret curves for each run
     assumes that combined game include all strategies inside each run
@@ -325,7 +332,8 @@ def calculate_iterations_regret_over_meta_game(checkpoint_dirs, combined_game, e
                                                            combined_game,
                                                            current_index,
                                                            current_index + snum-1,
-                                                           di)
+                                                           di,
+                                                           save_result=save_result)
         current_index += snum
         regret_curves.append(regret_curve)
 
@@ -515,15 +523,170 @@ def gather_subgame_matrix_into_combined_game_matrix(directory, episode, num_run)
 #  save_pkl(combined_game,save_path)
 #  print("combined game saved at {}".format(save_path))
 
+def argsort_two_dimensional_array_by_column(array):
+    """
+    Sort the array by columns, return an index 2D array indicating relative positions.
+    """
+    sidx = np.argsort(array,axis=0)
+    m,n = array.shape
+    out = np.empty((m,n),dtype=int)
+    out[sidx,np.arange(n)] = np.arange(m)[:,None]
+    return out
+
+def extract_regret_curve_from_tf(checkpoint_dirs,iterations,tag):
+    """
+    Extract absolute regret curves from tensorboard log data
+    Input:
+        checkpoint_dirs  : root_directory name containing tensorboard log data
+        iterations       : number of PSRO iterations to extract
+        tag              : tensorboard log data tag to extract
+    """
+    from tensorboard.backend.event_processing import event_accumulator
+    import pandas as pd
+    
+    regret_curves = []
+    for dir_name in checkpoint_dirs:
+        # grab the event file
+        log_file = os.path.join(dir_name, 'log')
+        log_file = os.path.join(log_file, os.listdir(log_file)[0])
+        assert 'events.out' in log_file
+        # read the entry tag. exp_Mike and exp is reversed for NE
+        run_tag = tag if 'nash' not in dir_name else 'exp'
+        ea = event_accumulator.EventAccumulator(log_file,\
+            size_guidance={event_accumulator.SCALARS: 0,})
+        ea.Reload()
+        regret_br = list(pd.DataFrame(ea.Scalars(run_tag))['value'])
+        regret_curves.append(regret_br[:iterations])
+    
+    return regret_curves
+
+def bootstrap_runs(run_name_list,
+                   num_strategies, 
+                   combined_game, 
+                   number_of_resample=0, 
+                   heuristic_names=['nash','prd','uniform']):
+    """
+    Use bootstrapping to sample one run from each heuristics within combined games into smaller combined games and then evaluate different heuristics based on this smaller combined game. Bootstrap the results
+    Input:
+        root_name_list      : a list of name for the run folders
+                              and run names. Full path,assume sorted by first index
+        num_strategies      : number of strategy each run have
+        combined_game       : the combined game matrix.
+        number_of_resample  : number of time a num_empirical_gamexnum_strategies
+                              *num_empirical_gamexnum_strategies tiny combined_game
+                              is selected and evaluation done upon it. If 0, 
+                              automatically calculate the exact resample to guarantee
+                              that no two resamples are identical.
+        heuristic_names     : folder with heuristics names to consider. Could be a
+                              list such as ['nash','prd','uniform'] to identify the
+                              folders. num_empirical_game is the cardinality of the
+                              available strategies in the list
+        
+    Output:
+        bootstrap_regret_curves    : a list containing regret curves of heuristics's
+                                     empirical game in number_of_resample small combined
+                                     games
+        all_regret_curves_br       : exact best response regret curves for all empirical
+                                     games
+        index                      : the resampled indexes
+        brcg_regret_correspondence : for all resamples, magnitude of regret order for 
+                                     combined game is (not) the same with br regret curve
+    """
+    run_name_list = [ele for ele in run_name_list if any(x in ele for x in heuristic_names)]
+    num_runs = len(run_name_list)
+    assert combined_game[0].shape[0] == num_strategies * num_runs, 'combined game given is not of the same shape specified by heuristic names and strategies'
+    heuristic_occurence = '_'.join(run_name_list)
+    heuristic_occurence = [heuristic_occurence.count(x) for x in heuristic_names]
+
+    heuristic_occurence = []
+    for ele in heuristic_names:
+        # NOTE HERE WE ASSUME RUN_NAME_LIST IS SORTED by some index
+        li = [run_name_list.index(x) for x in run_name_list if ele in x]
+        if len(li)>0:
+            heuristic_occurence.append(li)
+    
+    # construct index for selection in combined game
+    if number_of_resample==0: # exact resample
+        index = itertools.product(*heuristic_occurence)
+    else: # bootstrap resample for number_of_resample times
+        index = [ set([random.choice(sublist) for sublist in heuristic_occurence]) \
+                for _ in range(number_of_resample)]
+
+    # extract absolute regret from the tensorboard regret matrix
+    all_regret_curves_br = extract_regret_curve_from_tf(run_name_list,num_strategies-1,'exp_Mike')
+    
+    bootstrap_regret_curves = []
+    bootstrap_regret_curves_br = []
+    brcg_regret_correspondence = []
+    for ind in index:
+        # select the tiny combined game out of the large overall combined game
+        bstrp_slice = list(itertools.chain(*[range(ele,ele+num_strategies) for ele in ind]))
+        bstrp_cg = [x[np.ix_(bstrp_slice,bstrp_slice)] for x in combined_game]
+
+        # Then perform regret evaluation on this tiny combined game
+        checkpoint_dirs = [run_name_list[x] for x in ind]
+        regret_curves_cg = calculate_iterations_regret_over_meta_game(checkpoint_dirs, bstrp_cg, episode=num_strategies-1, save_result=False)
+        regret_curves_br = np.array([all_regret_curves_br[ele] for ele in ind])
+
+        # TODO: test the order of the regret curve: nash, prd and then uniform! Don't mix it up
+
+        # analyze the regret curve and compare it against the absolute curve
+        # order_of_regret_* documents rankings of heuristics.
+        # columns_correspondence documents if ranking from combined game and best 
+        # response is the same
+        order_of_regret_cg = argsort_two_dimensional_array_by_column(np.array(regret_curves_cg))
+        order_of_regret_br = argsort_two_dimensional_array_by_column(regret_curves_br)
+        columns_correspondence = np.sum(order_of_regret_cg==order_of_regret_br,axis=0)
+        columns_correspondence = columns_correspondence == len(order_of_regret_cg)
+       
+        # save the results into a combined stream
+        bootstrap_regret_curves.append(regret_curves_cg)
+        bootstrap_regret_curves_br.append(regret_curves_br)
+        brcg_regret_correspondence.append(columns_correspondence)
+
+    return bootstrap_regret_curves, all_regret_curves_br, index, brcg_regret_correspondence
+
+def bootstrap_control_center(path, checkpoint_dirs, num_strategies,
+                             combined_game, number_of_resample, heuristic_names):
+    """
+    Wrap around the function so that the main is not overcrowded with saving pandas
+    """
+    
+    if os.path.exists(path):
+        shutil.rmtree(path)
+    os.mkdir(path)
+    bstrp_rcurves, all_rcurves_br, r_index, brcg_r_corr = \
+        bootstrap_runs(checkpoint_dirs,\
+                       num_strategies,\
+                       combined_game,\
+                       number_of_resample,\
+                       heuristic_names)
+
+    df_brcg_r_corr = pd.DataFrame(brcg_r_corr).transpose()
+    df_brcg_r_corr.columns = r_index
+    df_brcg_r_corr.to_csv(os.path.join(path,'relationship_correspondence.csv'),index=False)
+    df_all_rcurves_br = pd.DataFrame(all_rcurves_br).transpose()
+    df_all_rcurves_br.to_csv(os.path.join(path,'all_true_best_response_curves_for_tf.csv'),index=False)
+
+    df_bstrp_rcurves = pd.DataFrame(bstrp_rcurves[0]).transpose()
+    df_bstrp_rcurves.columns = [str(r_index[0])+'_'+str(ele) for ele in r_index[0]]
+    for i in range(1,len(bstrp_rcurves)):
+        df = pd.DataFrame(bstrp_rcurves[i]).transpose()
+        df.columns = [str(r_index[i])+'_'+str(ele) for ele in r_index[i]]
+        df_bstrp_rcurves = pd.concat([df_bstrp_rcurves,df],axis=1)
+    df_bstrp_rcurves.to_csv(os.path.join(path,'bootstrapping_regret_curves_in_subcombined_game.csv'),index=False)
+
+
 def main(argv):
     if len(argv) > 1:
       raise app.UsageError("Too many command-line arguments.")
     
     assert os.path.isdir(FLAGS.root_result_folder), "no such directory"
 
+    #erase folders other than runs folder
     run_names = [x for x in os.listdir(FLAGS.root_result_folder) if \
         os.path.isdir(os.path.join(FLAGS.root_result_folder, x)) and \
-        'combined_game' not in x] #erase the calculate combined_game folder
+        ('combined_game' not in x) and ('bootstrap' not in x)] 
     checkpoint_dirs = [os.path.join(FLAGS.root_result_folder, x) for x in run_names]
     # checkpoint_dirs might be ordered, try to order if first char is int
     if run_names[0][0].isnumeric():
@@ -580,5 +743,12 @@ def main(argv):
                                                    combined_game,
                                                    FLAGS.num_evaluation_episodes)
     
+    if FLAGS.bootstrap_results:
+        path = os.path.join(FLAGS.root_result_folder,"bootstrap_compare_results")  
+        bootstrap_control_center(path,checkpoint_dirs,FLAGS.num_evaluation_episodes+1,
+                                 combined_game,FLAGS.number_of_resample,
+                                 heuristic_names=['nash','prd','uniform'])
+
+
 if __name__ == "__main__":
     app.run(main)

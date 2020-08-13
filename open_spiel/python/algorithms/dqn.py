@@ -26,7 +26,6 @@ import tensorflow.compat.v1 as tf
 from open_spiel.python import rl_agent
 import os
 import psutil
-from memory_profiler import profile
 from open_spiel.python import simple_nets
 
 # Temporarily disable TF2 behavior until code is updated.
@@ -317,7 +316,6 @@ class DQN(rl_agent.AbstractAgent):
         for (target_v, v) in zip(self._target_variables, self._variables)
     ])
   
-  #@profile
   def _epsilon_greedy(self, info_state, legal_actions, epsilon):
     """Returns a valid epsilon-greedy action and valid action probs.
 
