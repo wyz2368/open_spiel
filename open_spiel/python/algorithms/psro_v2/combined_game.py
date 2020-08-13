@@ -302,7 +302,7 @@ def calculate_regret_from_combined_game(ne_dir,
     # sort exploitibility according to iteration
     exploitability = [x for _, x in sorted(zip(exploitability[1],exploitability[0]))]
 
-    result_file = os.path.join(checkpoint_dir, 'exp_combined_game.csv')
+    result_file = os.path.join(checkpoint_dir, 'exp_combined_game_epsiode'+str(max_gpsro_iter)+'.csv')
     df = pd.DataFrame(exploitability)
     df.to_csv(result_file,index=False)
     print("NashConv saved to", result_file) 
@@ -439,19 +439,9 @@ def break_into_subcombine_games(directory, base_slurm, num_evaluation_episodes=1
 
 def gather_subgame_matrix_into_combined_game_matrix(directory, episode, num_run):
   """
-  combine sub combined games into one large combined game matrix
-  Params:
-    directory     : root experiments folder, like "combined_gamedatetime"
-    episode       : number of episodes for each player
-    num_run       : number of runs to combine
-  Note that in fact both episode and num_run could be automatically filterd out.
-  I am just sloppy here and specify it by hand
+  combine sub combined games with restricted indexes
+  assume that the subgame is formed by two players and square matrix
   """
-  # for checking whether combined game combined maintains the same structure
-  # as the originla meta_game in each run
-  #cg0=load_pkl("/home/qmaai/se/open_spiel/open_spiel/python/algorithms/psro_v2/slurm_scripts/combined_game/0_2_leduc_poker2_sims_1000_it_250_ep_10000_or_DQN_heur_uniform_hl_256_bs_32_nhl_4_dqnlr_0.01_tnuf_500_lf_10_se_43912_2020-07-02_18-22-38/meta_game.pkl")
-  #cg1=load_pkl("/home/qmaai/se/open_spiel/open_spiel/python/algorithms/psro_v2/slurm_scripts/combined_game/1_0_leduc_poker2_sims_1000_it_250_ep_10000_or_DQN_heur_uniform_hl_256_bs_32_nhl_4_dqnlr_0.01_tnuf_500_lf_10_se_21939_2020-07-02_18-29-02/meta_game.pkl")
-  #cg2=load_pkl("/home/qmaai/se/open_spiel/open_spiel/python/algorithms/psro_v2/slurm_scripts/combined_game/2_1_leduc_poker2_sims_1000_it_250_ep_10000_or_DQN_heur_nash_hl_256_bs_32_nhl_4_dqnlr_0.01_tnuf_500_lf_10_se_36619_2020-07-02_18-22-39/meta_game.pkl")
   total_size = episode * num_run
   combined_game = [np.ones([total_size,total_size])*np.nan for _ in range(2)]
   for run in os.listdir(directory):
@@ -462,26 +452,68 @@ def gather_subgame_matrix_into_combined_game_matrix(directory, episode, num_run)
           continue
         matrix_file = [x for x in os.listdir(run_dir) if 'pkl' in x]
         meta_game = load_pkl(run_dir+'/'+matrix_file[0])
+        p_stra_len = int(meta_game[0].shape[0]/2)   # assume that subgame has 2 parts
         print()
         print("filling out run",ind1,ind2)
-        print("{}:{},{}:{}--{}:{},{}:{}".format(ind1*episode,(1+ind1)*episode,ind1*episode,(1+ind1)*episode,0,episode,0,episode))
-        print("{}:{},{}:{}--{}:{},{}:{}".format(ind1*episode,(1+ind1)*episode,ind2*episode,(1+ind2)*episode,0,episode,episode,meta_game[0].shape[0]))
-        print("{}:{},{}:{}--{}:{},{}:{}".format(ind2*episode,(1+ind2)*episode,ind1*episode,(1+ind1)*episode,episode,meta_game[0].shape[0],0,episode))
-        print("{}:{},{}:{}--{}:{},{}:{}".format(ind2*episode,(1+ind2)*episode,ind2*episode,(1+ind2)*episode,episode,meta_game[0].shape[0],episode,meta_game[0].shape[0]))
         for p in range(2):
           combined_game[p][ind1*episode:(1+ind1)*episode,\
               ind1*episode:(1+ind1)*episode] = meta_game[p][0:episode,0:episode]
           combined_game[p][ind1*episode:(1+ind1)*episode,\
-              ind2*episode:(1+ind2)*episode] = meta_game[p][0:episode,episode:]
+              ind2*episode:(1+ind2)*episode] = meta_game[p][0:episode,p_stra_len:episode+p_stra_len]
           combined_game[p][ind2*episode:(1+ind2)*episode,\
-              ind1*episode:(1+ind1)*episode] = meta_game[p][episode:,0:episode]
+              ind1*episode:(1+ind1)*episode] = meta_game[p][p_stra_len:p_stra_len+episode,0:episode]
           combined_game[p][ind2*episode:(1+ind2)*episode,\
-              ind2*episode:(1+ind2)*episode] = meta_game[p][episode:,episode:]
-
+              ind2*episode:(1+ind2)*episode] = meta_game[p][p_stra_len:p_stra_len+episode,p_stra_len:p_stra_len+episode]
   assert not np.any(np.isnan(combined_game[0])), 'filling is run'
-  save_path = os.path.join(directory,'combined_game.pkl')
+  save_path = os.path.join(directory,'combined_game_episode'+str(episode)+'.pkl')
   save_pkl(combined_game,save_path)
   print("combined game saved at {}".format(save_path))
+
+
+#def gather_subgame_matrix_into_combined_game_matrix(directory, episode, num_run):
+#  """
+#  combine sub combined games into one large combined game matrix
+#  Params:
+#    directory     : root experiments folder, like "combined_gamedatetime"
+#    episode       : number of episodes for each player
+#    num_run       : number of runs to combine
+#  Note that in fact both episode and num_run could be automatically filterd out.
+#  I am just sloppy here and specify it by hand
+#  """
+#  # for checking whether combined game combined maintains the same structure
+#  # as the originla meta_game in each run
+#  #cg0=load_pkl("/home/qmaai/se/open_spiel/open_spiel/python/algorithms/psro_v2/slurm_scripts/combined_game/0_2_leduc_poker2_sims_1000_it_250_ep_10000_or_DQN_heur_uniform_hl_256_bs_32_nhl_4_dqnlr_0.01_tnuf_500_lf_10_se_43912_2020-07-02_18-22-38/meta_game.pkl")
+#  #cg1=load_pkl("/home/qmaai/se/open_spiel/open_spiel/python/algorithms/psro_v2/slurm_scripts/combined_game/1_0_leduc_poker2_sims_1000_it_250_ep_10000_or_DQN_heur_uniform_hl_256_bs_32_nhl_4_dqnlr_0.01_tnuf_500_lf_10_se_21939_2020-07-02_18-29-02/meta_game.pkl")
+#  #cg2=load_pkl("/home/qmaai/se/open_spiel/open_spiel/python/algorithms/psro_v2/slurm_scripts/combined_game/2_1_leduc_poker2_sims_1000_it_250_ep_10000_or_DQN_heur_nash_hl_256_bs_32_nhl_4_dqnlr_0.01_tnuf_500_lf_10_se_36619_2020-07-02_18-22-39/meta_game.pkl")
+#  total_size = episode * num_run
+#  combined_game = [np.ones([total_size,total_size])*np.nan for _ in range(2)]
+#  for run in os.listdir(directory):
+#    run_dir = os.path.join(directory,run)
+#    if os.path.isdir(run_dir) and 'runs_' in run:
+#        ind1,ind2 = int(run.split('_')[1]),int(run.split('_')[2])
+#        if ind1>=num_run or ind2>=num_run:
+#          continue
+#        matrix_file = [x for x in os.listdir(run_dir) if 'pkl' in x]
+#        meta_game = load_pkl(run_dir+'/'+matrix_file[0])
+#        print()
+#        print("filling out run",ind1,ind2)
+#        print("{}:{},{}:{}--{}:{},{}:{}".format(ind1*episode,(1+ind1)*episode,ind1*episode,(1+ind1)*episode,0,episode,0,episode))
+#        print("{}:{},{}:{}--{}:{},{}:{}".format(ind1*episode,(1+ind1)*episode,ind2*episode,(1+ind2)*episode,0,episode,episode,meta_game[0].shape[0]))
+#        print("{}:{},{}:{}--{}:{},{}:{}".format(ind2*episode,(1+ind2)*episode,ind1*episode,(1+ind1)*episode,episode,meta_game[0].shape[0],0,episode))
+#        print("{}:{},{}:{}--{}:{},{}:{}".format(ind2*episode,(1+ind2)*episode,ind2*episode,(1+ind2)*episode,episode,meta_game[0].shape[0],episode,meta_game[0].shape[0]))
+#        for p in range(2):
+#          combined_game[p][ind1*episode:(1+ind1)*episode,\
+#              ind1*episode:(1+ind1)*episode] = meta_game[p][0:episode,0:episode]
+#          combined_game[p][ind1*episode:(1+ind1)*episode,\
+#              ind2*episode:(1+ind2)*episode] = meta_game[p][0:episode,episode:]
+#          combined_game[p][ind2*episode:(1+ind2)*episode,\
+#              ind1*episode:(1+ind1)*episode] = meta_game[p][episode:,0:episode]
+#          combined_game[p][ind2*episode:(1+ind2)*episode,\
+#              ind2*episode:(1+ind2)*episode] = meta_game[p][episode:,episode:]
+#  assert not np.any(np.isnan(combined_game[0])), 'filling is run'
+#  save_path = os.path.join(directory,'combined_game_episode'+str(episode)+'.pkl')
+#  save_pkl(combined_game,save_path)
+#  print("combined game saved at {}".format(save_path))
 
 def main(argv):
     if len(argv) > 1:
@@ -537,7 +569,7 @@ def main(argv):
             FLAGS.num_evaluation_episodes,\
             combined_game_only_contains_ne=combined_game_only_contains_ne)
         print("nash exp ne only:", exp) 
-        path = os.path.join(FLAGS.root_result_folder, "nash_exp_neonly_"+str(combined_game_only_contains_ne)+".pkl")
+        path = os.path.join(FLAGS.root_result_folder, "nash_exp_neonly_"+str(combined_game_only_contains_ne)+'_episode_'+str(FLAGS.num_evaluation_episodes+1)+".pkl")
         save_pkl(exp, path)
         print("final nash exp performance saved to",path)
     
