@@ -33,15 +33,15 @@ The script calculate combined game and evaluates ne performance of each run or e
 
 The following documents the procedure for calculating combined game and evaluating nash conv using combined game
 1. 
-python combined_game.py --break_into_subcombine_game=True --base_slurm=<base_slurm_file> --num_evaluation_episodes=<number of desired strategy in each run> --root_result_folder=<root_result_folder_location>
+python combined_game.py --break_into_subcombine_game=True --base_slurm=<base_slurm_file> --num_evaluation_episodes=<number of desired strategy in each run-1> --root_result_folder=<root_result_folder_location>
 This creates a combined_game experiment folder in <root_result_folder_location> and create job file and their working directories for pairwise runs, as indicated in the chart above. The purpose is that one huge combined game is too large to load and too slow to simulate. Advise to break up a huge combined game into multiple pair-wise combined game when each player has >150 strategies
 2.
 after checking the sh file, modify the batch job file and submit it to greatlakes
 3.
-python --gather_subgame=True --num_run=<number of experiments> --num_evaluation_episodes=<number of desired strategy in each run> --root_result_folder=<combined_game_datetime folder>
+python combined_game.py --gather_subgame=True --num_run=<number of experiments> --num_evaluation_episodes=<number of desired strategy in each run> --root_result_folder=<combined_game_datetime folder>
 This essentially combines the pairwise combined game into the full combined game and save it in <combined_game_datetime> folder
 4.
-python --num_evaluation_episodes=<the number before-1> --evaluate_nash=<True/False> --evaluate_iters=<True/False> --combined_game_path=<The path above> --root_result_folder=<root_result_folder_location>
+python combined_game.py --num_evaluation_episodes=<the number before-1> --evaluate_nash=<True/False> --evaluate_iters=<True/False> --combined_game_path=<The path above> --root_result_folder=<root_result_folder_location>
 This finally evaluates the nash conv or the final nash performance of experiments and save them to csv in the original folder. Note the <num_evaluation_episode> is the previous one minus one, this value is the real epsiode number, previous ones are all number of strategies
 """
 
@@ -82,7 +82,7 @@ flags.DEFINE_bool("evaluate_iters",False, "evaluate regret curve for all runs ag
 flags.DEFINE_integer("seed", None, "seed")
 flags.DEFINE_string("root_result_folder","","root result folder that contains the experiments runs to be calculated into combined game")
 flags.DEFINE_string("combined_game_path","","provide combined game pkl if there already is an existing combined game, in this case, only need to calculate exploitabilities of each run")
-flags.DEFINE_integer("sims_per_entry", 200,
+flags.DEFINE_integer("sims_per_entry", 1000,
                      ("Number of simulations to run to estimate each element"
                       "of the game outcome matrix."))
 
@@ -147,7 +147,10 @@ def calculate_combined_game(checkpoint_dirs,
     for i in range(num_runs): # traverse all runs
         
         # assume directories are all labeled with the first char
-        indexes.append(int(checkpoint_dirs[i].split('/')[-1][0]))
+        if checkpoint_dirs[i].split('/')[-1][0].isnumeric():
+          indexes.append(int(checkpoint_dirs[i].split('/')[-1][0]))
+        else:
+          indexes.append(i)
         strat_root_dir = checkpoint_dirs[i] + "/strategies"
         player_dir = [x for x in os.listdir(strat_root_dir) \
             if os.path.isdir(os.path.join(strat_root_dir,x))]
@@ -386,10 +389,11 @@ def calculate_final_ne_performance_over_meta_game(checkpoint_dirs,
                                        subgame_ne=ne,
                                        start_index=current_index))
         current_index += snum_ne if combined_game_only_contains_ne else snum
+        print('finished calculating for dir',di)
 
     return np.array(exploitabilities).sum(axis=1)
 
-def break_into_subcombine_games(directory, base_slurm, num_evaluation_episodes=150, sims_per_entry=200):
+def break_into_subcombine_games(directory, base_slurm, num_evaluation_episodes=150, sims_per_entry=1000):
   """
   Console to create job to break down combined game into several smaller combined games. It generates slurm scripts for sbatch to run. Note the usage of symlink here because we do not want to copy multiple copies of runs 
 
@@ -461,9 +465,9 @@ def gather_subgame_matrix_into_combined_game_matrix(directory, episode, num_run)
         print()
         print("filling out run",ind1,ind2)
         print("{}:{},{}:{}--{}:{},{}:{}".format(ind1*episode,(1+ind1)*episode,ind1*episode,(1+ind1)*episode,0,episode,0,episode))
-        print("{}:{},{}:{}--{}:{},{}:{}".format(ind1*episode,(1+ind1)*episode,ind2*episode,(1+ind2)*episode,0,episode,episode,20))
-        print("{}:{},{}:{}--{}:{},{}:{}".format(ind2*episode,(1+ind2)*episode,ind1*episode,(1+ind1)*episode,episode,20,0,episode))
-        print("{}:{},{}:{}--{}:{},{}:{}".format(ind2*episode,(1+ind2)*episode,ind2*episode,(1+ind2)*episode,episode,20,episode,20))
+        print("{}:{},{}:{}--{}:{},{}:{}".format(ind1*episode,(1+ind1)*episode,ind2*episode,(1+ind2)*episode,0,episode,episode,meta_game[0].shape[0]))
+        print("{}:{},{}:{}--{}:{},{}:{}".format(ind2*episode,(1+ind2)*episode,ind1*episode,(1+ind1)*episode,episode,meta_game[0].shape[0],0,episode))
+        print("{}:{},{}:{}--{}:{},{}:{}".format(ind2*episode,(1+ind2)*episode,ind2*episode,(1+ind2)*episode,episode,meta_game[0].shape[0],episode,meta_game[0].shape[0]))
         for p in range(2):
           combined_game[p][ind1*episode:(1+ind1)*episode,\
               ind1*episode:(1+ind1)*episode] = meta_game[p][0:episode,0:episode]
@@ -500,12 +504,12 @@ def main(argv):
     num_strategies = FLAGS.num_evaluation_episodes + 1
     # automatically append order integer in checkpoint directories
     if FLAGS.break_into_subcombine_game:
-        break_into_subcombine_games(FLAGS.root_result_folder, FLAGS.base_slurm, num_strategies, FLAGS.sims_per_entry)
+        break_into_subcombine_games(FLAGS.root_result_folder, FLAGS.base_slurm, FLAGS.num_evaluation_episodes, FLAGS.sims_per_entry)
         return
 
     if FLAGS.gather_subgame:
         gather_subgame_matrix_into_combined_game_matrix(FLAGS.root_result_folder,
-            num_strategies, FLAGS.num_run)
+            FLAGS.num_evaluation_episodes, FLAGS.num_run)
         return
 
     if FLAGS.combined_game_path == "":
