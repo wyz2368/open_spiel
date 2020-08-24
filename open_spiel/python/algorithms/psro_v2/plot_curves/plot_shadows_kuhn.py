@@ -33,7 +33,7 @@ axes.set_ylim([0,0.4])
 
 X = np.arange(1, 151)
 
-plt.plot(X, Mike_fic_mean, color="C2", label='Uniform')
+plt.plot(X, Mike_fic_mean, color="C2", label='FP')
 plt.fill_between(X, Mike_fic_mean+Mike_fic_std, Mike_fic_mean-Mike_fic_std, alpha=0.1, color="C2")
 
 plt.plot(X, dqn_do_mean, color="C1", label='DO')
@@ -47,9 +47,9 @@ plt.xticks(size = 17)
 plt.yticks(size = 17)
 
 plt.xlabel('Number of Iterations', fontsize = 22)
-plt.ylabel('NashConv', fontsize = 19)
+plt.ylabel('Regret', fontsize = 19)
 
-plt.legend(loc="best")
+plt.legend(loc="best", prop={'size': 16})
 
 plt.show()
 
