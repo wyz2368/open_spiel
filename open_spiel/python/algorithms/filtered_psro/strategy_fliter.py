@@ -99,7 +99,7 @@ def etrace_filter(solver, gamma=0.5, threshold=0.001):
     for player in range(num_players):
         solver.etrace[player] *= gamma
     solver.update_meta_strategies()
-    nash = solver.get_meta_strategies()
+    nash = solver.get_nash_strategies()
     for player in range(num_players):
         one_pos = np.where(nash[player] > 0.005)[0]
         zero_pos = np.where(nash[player] <= 0.005)[0]
