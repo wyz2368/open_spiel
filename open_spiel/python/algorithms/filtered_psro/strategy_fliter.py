@@ -4,7 +4,7 @@ from open_spiel.python.algorithms.psro_v2.utils import alpharank_strategy
 
 def strategy_filter(solver, stopping_time=None):
     """
-
+    The main function that selects which filter to use.
     :param solver:
     :param stopping_time: time step when we stop filtering strategies.
     :return:
@@ -84,6 +84,16 @@ def alpharank_filter_test():
     print("policies:", policies)
 
 def etrace_filter(solver, gamma=0.5, threshold=0.001):
+    """
+    Etrace filter considers the frequency of a strategy appearing in the NE support.
+    Frequency decays according to the discount factor gamma.
+    The strategy with lowest trace is filtered.
+    :param solver: PSRO solver.
+    :param gamma: eligibility trace decay factor.
+    :param threshold: threshold for strategy with low prob in the support.
+    :return:
+    """
+
     num_players = solver._num_players
     filtered_idx_list = []
     for player in range(num_players):
@@ -129,6 +139,13 @@ def etrace_filter(solver, gamma=0.5, threshold=0.001):
     return meta_games, policies
 
 def one_nash_filter(solver, threshold=0.001):
+    """
+    Filtering out all strategies not in the support of NE.
+    This method is for curiosity only since strategies outside the support definitely matter, e.g., PRD performance.
+    :param solver:
+    :param threshold:
+    :return:
+    """
     num_players = solver._num_players
     filtered_idx_list = []
     len_filtered_strategies = []
