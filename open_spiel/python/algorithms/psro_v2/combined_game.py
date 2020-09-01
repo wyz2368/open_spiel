@@ -55,6 +55,7 @@ import os
 import psutil
 import datetime
 import time
+import random
 import shutil
 import itertools
 from tqdm import tqdm
@@ -446,19 +447,9 @@ def break_into_subcombine_games(directory, base_slurm, num_evaluation_episodes=1
 
 def gather_subgame_matrix_into_combined_game_matrix(directory, episode, num_run):
   """
-  combine sub combined games into one large combined game matrix
-  Params:
-    directory     : root experiments folder, like "combined_gamedatetime"
-    episode       : number of episodes for each player
-    num_run       : number of runs to combine
-  Note that in fact both episode and num_run could be automatically filterd out.
-  I am just sloppy here and specify it by hand
+  combine sub combined games with restricted indexes
+  assume that the subgame is formed by two players and square matrix
   """
-  # for checking whether combined game combined maintains the same structure
-  # as the originla meta_game in each run
-  #cg0=load_pkl("/home/qmaai/se/open_spiel/open_spiel/python/algorithms/psro_v2/slurm_scripts/combined_game/0_2_leduc_poker2_sims_1000_it_250_ep_10000_or_DQN_heur_uniform_hl_256_bs_32_nhl_4_dqnlr_0.01_tnuf_500_lf_10_se_43912_2020-07-02_18-22-38/meta_game.pkl")
-  #cg1=load_pkl("/home/qmaai/se/open_spiel/open_spiel/python/algorithms/psro_v2/slurm_scripts/combined_game/1_0_leduc_poker2_sims_1000_it_250_ep_10000_or_DQN_heur_uniform_hl_256_bs_32_nhl_4_dqnlr_0.01_tnuf_500_lf_10_se_21939_2020-07-02_18-29-02/meta_game.pkl")
-  #cg2=load_pkl("/home/qmaai/se/open_spiel/open_spiel/python/algorithms/psro_v2/slurm_scripts/combined_game/2_1_leduc_poker2_sims_1000_it_250_ep_10000_or_DQN_heur_nash_hl_256_bs_32_nhl_4_dqnlr_0.01_tnuf_500_lf_10_se_36619_2020-07-02_18-22-39/meta_game.pkl")
   total_size = episode * num_run
   combined_game = [np.ones([total_size,total_size])*np.nan for _ in range(2)]
   for run in os.listdir(directory):
@@ -469,26 +460,68 @@ def gather_subgame_matrix_into_combined_game_matrix(directory, episode, num_run)
           continue
         matrix_file = [x for x in os.listdir(run_dir) if 'pkl' in x]
         meta_game = load_pkl(run_dir+'/'+matrix_file[0])
+        p_stra_len = int(meta_game[0].shape[0]/2)   # assume that subgame has 2 parts
         print()
         print("filling out run",ind1,ind2)
-        print("{}:{},{}:{}--{}:{},{}:{}".format(ind1*episode,(1+ind1)*episode,ind1*episode,(1+ind1)*episode,0,episode,0,episode))
-        print("{}:{},{}:{}--{}:{},{}:{}".format(ind1*episode,(1+ind1)*episode,ind2*episode,(1+ind2)*episode,0,episode,episode,meta_game[0].shape[0]))
-        print("{}:{},{}:{}--{}:{},{}:{}".format(ind2*episode,(1+ind2)*episode,ind1*episode,(1+ind1)*episode,episode,meta_game[0].shape[0],0,episode))
-        print("{}:{},{}:{}--{}:{},{}:{}".format(ind2*episode,(1+ind2)*episode,ind2*episode,(1+ind2)*episode,episode,meta_game[0].shape[0],episode,meta_game[0].shape[0]))
         for p in range(2):
           combined_game[p][ind1*episode:(1+ind1)*episode,\
               ind1*episode:(1+ind1)*episode] = meta_game[p][0:episode,0:episode]
           combined_game[p][ind1*episode:(1+ind1)*episode,\
-              ind2*episode:(1+ind2)*episode] = meta_game[p][0:episode,episode:]
+              ind2*episode:(1+ind2)*episode] = meta_game[p][0:episode,p_stra_len:episode+p_stra_len]
           combined_game[p][ind2*episode:(1+ind2)*episode,\
-              ind1*episode:(1+ind1)*episode] = meta_game[p][episode:,0:episode]
+              ind1*episode:(1+ind1)*episode] = meta_game[p][p_stra_len:p_stra_len+episode,0:episode]
           combined_game[p][ind2*episode:(1+ind2)*episode,\
-              ind2*episode:(1+ind2)*episode] = meta_game[p][episode:,episode:]
-
+              ind2*episode:(1+ind2)*episode] = meta_game[p][p_stra_len:p_stra_len+episode,p_stra_len:p_stra_len+episode]
   assert not np.any(np.isnan(combined_game[0])), 'filling is run'
-  save_path = os.path.join(directory,'combined_game.pkl')
+  save_path = os.path.join(directory,'combined_game_episode'+str(episode)+'.pkl')
   save_pkl(combined_game,save_path)
   print("combined game saved at {}".format(save_path))
+
+
+#def gather_subgame_matrix_into_combined_game_matrix(directory, episode, num_run):
+#  """
+#  combine sub combined games into one large combined game matrix
+#  Params:
+#    directory     : root experiments folder, like "combined_gamedatetime"
+#    episode       : number of episodes for each player
+#    num_run       : number of runs to combine
+#  Note that in fact both episode and num_run could be automatically filterd out.
+#  I am just sloppy here and specify it by hand
+#  """
+#  # for checking whether combined game combined maintains the same structure
+#  # as the originla meta_game in each run
+#  #cg0=load_pkl("/home/qmaai/se/open_spiel/open_spiel/python/algorithms/psro_v2/slurm_scripts/combined_game/0_2_leduc_poker2_sims_1000_it_250_ep_10000_or_DQN_heur_uniform_hl_256_bs_32_nhl_4_dqnlr_0.01_tnuf_500_lf_10_se_43912_2020-07-02_18-22-38/meta_game.pkl")
+#  #cg1=load_pkl("/home/qmaai/se/open_spiel/open_spiel/python/algorithms/psro_v2/slurm_scripts/combined_game/1_0_leduc_poker2_sims_1000_it_250_ep_10000_or_DQN_heur_uniform_hl_256_bs_32_nhl_4_dqnlr_0.01_tnuf_500_lf_10_se_21939_2020-07-02_18-29-02/meta_game.pkl")
+#  #cg2=load_pkl("/home/qmaai/se/open_spiel/open_spiel/python/algorithms/psro_v2/slurm_scripts/combined_game/2_1_leduc_poker2_sims_1000_it_250_ep_10000_or_DQN_heur_nash_hl_256_bs_32_nhl_4_dqnlr_0.01_tnuf_500_lf_10_se_36619_2020-07-02_18-22-39/meta_game.pkl")
+#  total_size = episode * num_run
+#  combined_game = [np.ones([total_size,total_size])*np.nan for _ in range(2)]
+#  for run in os.listdir(directory):
+#    run_dir = os.path.join(directory,run)
+#    if os.path.isdir(run_dir) and 'runs_' in run:
+#        ind1,ind2 = int(run.split('_')[1]),int(run.split('_')[2])
+#        if ind1>=num_run or ind2>=num_run:
+#          continue
+#        matrix_file = [x for x in os.listdir(run_dir) if 'pkl' in x]
+#        meta_game = load_pkl(run_dir+'/'+matrix_file[0])
+#        print()
+#        print("filling out run",ind1,ind2)
+#        print("{}:{},{}:{}--{}:{},{}:{}".format(ind1*episode,(1+ind1)*episode,ind1*episode,(1+ind1)*episode,0,episode,0,episode))
+#        print("{}:{},{}:{}--{}:{},{}:{}".format(ind1*episode,(1+ind1)*episode,ind2*episode,(1+ind2)*episode,0,episode,episode,meta_game[0].shape[0]))
+#        print("{}:{},{}:{}--{}:{},{}:{}".format(ind2*episode,(1+ind2)*episode,ind1*episode,(1+ind1)*episode,episode,meta_game[0].shape[0],0,episode))
+#        print("{}:{},{}:{}--{}:{},{}:{}".format(ind2*episode,(1+ind2)*episode,ind2*episode,(1+ind2)*episode,episode,meta_game[0].shape[0],episode,meta_game[0].shape[0]))
+#        for p in range(2):
+#          combined_game[p][ind1*episode:(1+ind1)*episode,\
+#              ind1*episode:(1+ind1)*episode] = meta_game[p][0:episode,0:episode]
+#          combined_game[p][ind1*episode:(1+ind1)*episode,\
+#              ind2*episode:(1+ind2)*episode] = meta_game[p][0:episode,episode:]
+#          combined_game[p][ind2*episode:(1+ind2)*episode,\
+#              ind1*episode:(1+ind1)*episode] = meta_game[p][episode:,0:episode]
+#          combined_game[p][ind2*episode:(1+ind2)*episode,\
+#              ind2*episode:(1+ind2)*episode] = meta_game[p][episode:,episode:]
+#  assert not np.any(np.isnan(combined_game[0])), 'filling is run'
+#  save_path = os.path.join(directory,'combined_game_episode'+str(episode)+'.pkl')
+#  save_pkl(combined_game,save_path)
+#  print("combined game saved at {}".format(save_path))
 
 def argsort_two_dimensional_array_by_column(array):
     """
@@ -515,11 +548,12 @@ def extract_regret_curve_from_tf(checkpoint_dirs,iterations,tag):
     for dir_name in checkpoint_dirs:
         # grab the event file
         log_file = os.path.join(dir_name, 'log')
-        log_file = os.listdir(log_file)[0]
+        log_file = os.path.join(log_file, os.listdir(log_file)[0])
         assert 'events.out' in log_file
         # read the entry tag. exp_Mike and exp is reversed for NE
         run_tag = tag if 'nash' not in dir_name else 'exp'
-        ea = event_accumulator(log_file,size_guidnance={event_accumulator.SCALARS: 0})
+        ea = event_accumulator.EventAccumulator(log_file,\
+            size_guidance={event_accumulator.SCALARS: 0,})
         ea.Reload()
         regret_br = list(pd.DataFrame(ea.Scalars(run_tag))['value'])
         regret_curves.append(regret_br[:iterations])
@@ -535,7 +569,7 @@ def bootstrap_runs(run_name_list,
     Use bootstrapping to sample one run from each heuristics within combined games into smaller combined games and then evaluate different heuristics based on this smaller combined game. Bootstrap the results
     Input:
         root_name_list      : a list of name for the run folders
-                              and run names
+                              and run names. Full path,assume sorted by first index
         num_strategies      : number of strategy each run have
         combined_game       : the combined game matrix.
         number_of_resample  : number of time a num_empirical_gamexnum_strategies
@@ -558,7 +592,7 @@ def bootstrap_runs(run_name_list,
         brcg_regret_correspondence : for all resamples, magnitude of regret order for 
                                      combined game is (not) the same with br regret curve
     """
-    run_name_list = [ele for ele in run_name_list if ele[0].isnumeric() and any(x in ele for x in heuristic_names)]
+    run_name_list = [ele for ele in run_name_list if any(x in ele for x in heuristic_names)]
     num_runs = len(run_name_list)
     assert combined_game[0].shape[0] == num_strategies * num_runs, 'combined game given is not of the same shape specified by heuristic names and strategies'
     heuristic_occurence = '_'.join(run_name_list)
@@ -566,7 +600,8 @@ def bootstrap_runs(run_name_list,
 
     heuristic_occurence = []
     for ele in heuristic_names:
-        li = [int(x[0]) for x in run_name_list if ele in x]
+        # NOTE HERE WE ASSUME RUN_NAME_LIST IS SORTED by some index
+        li = [run_name_list.index(x) for x in run_name_list if ele in x]
         if len(li)>0:
             heuristic_occurence.append(li)
     
@@ -578,28 +613,31 @@ def bootstrap_runs(run_name_list,
                 for _ in range(number_of_resample)]
 
     # extract absolute regret from the tensorboard regret matrix
-    all_regret_curves_br = extract_regret_curve_from_tf(run_name_list,'exp_Mike',num_strategies-1)
+    all_regret_curves_br = extract_regret_curve_from_tf(run_name_list,num_strategies-1,'exp_Mike')
     
     bootstrap_regret_curves = []
     bootstrap_regret_curves_br = []
     brcg_regret_correspondence = []
     for ind in index:
         # select the tiny combined game out of the large overall combined game
-        bstrp_slice = list(itertools.chain(*[range(ele,ele_num_strategies) for ele in ind]))
+        bstrp_slice = list(itertools.chain(*[range(ele,ele+num_strategies) for ele in ind]))
         bstrp_cg = [x[np.ix_(bstrp_slice,bstrp_slice)] for x in combined_game]
 
         # Then perform regret evaluation on this tiny combined game
         checkpoint_dirs = [run_name_list[x] for x in ind]
         regret_curves_cg = calculate_iterations_regret_over_meta_game(checkpoint_dirs, bstrp_cg, episode=num_strategies-1, save_result=False)
-        regret_curves_br = [all_regret_curves_br[ele] for ele in ind]
+        regret_curves_br = np.array([all_regret_curves_br[ele] for ele in ind])
 
         # TODO: test the order of the regret curve: nash, prd and then uniform! Don't mix it up
 
         # analyze the regret curve and compare it against the absolute curve
-        order_of_regret_cg = argsort_two_dimensional_array_by_column(regret_curves_cg)
+        # order_of_regret_* documents rankings of heuristics.
+        # columns_correspondence documents if ranking from combined game and best 
+        # response is the same
+        order_of_regret_cg = argsort_two_dimensional_array_by_column(np.array(regret_curves_cg))
         order_of_regret_br = argsort_two_dimensional_array_by_column(regret_curves_br)
-        columns_correspondence = np.sum(order_of_regret_cg=order_of_regret_br,axis=0)
-        columns_correspondence = columns_correspondence == columns_correspondence.shape[0]
+        columns_correspondence = np.sum(order_of_regret_cg==order_of_regret_br,axis=0)
+        columns_correspondence = columns_correspondence == len(order_of_regret_cg)
        
         # save the results into a combined stream
         bootstrap_regret_curves.append(regret_curves_cg)
@@ -608,6 +646,36 @@ def bootstrap_runs(run_name_list,
 
     return bootstrap_regret_curves, all_regret_curves_br, index, brcg_regret_correspondence
 
+def bootstrap_control_center(path, checkpoint_dirs, num_strategies,
+                             combined_game, number_of_resample, heuristic_names):
+    """
+    Wrap around the function so that the main is not overcrowded with saving pandas
+    """
+    
+    if os.path.exists(path):
+        shutil.rmtree(path)
+    os.mkdir(path)
+    bstrp_rcurves, all_rcurves_br, r_index, brcg_r_corr = \
+        bootstrap_runs(checkpoint_dirs,\
+                       num_strategies,\
+                       combined_game,\
+                       number_of_resample,\
+                       heuristic_names)
+
+    df_brcg_r_corr = pd.DataFrame(brcg_r_corr).transpose()
+    df_brcg_r_corr.columns = r_index
+    df_brcg_r_corr.to_csv(os.path.join(path,'relationship_correspondence.csv'),index=False)
+    df_all_rcurves_br = pd.DataFrame(all_rcurves_br).transpose()
+    df_all_rcurves_br.to_csv(os.path.join(path,'all_true_best_response_curves_for_tf.csv'),index=False)
+
+    df_bstrp_rcurves = pd.DataFrame(bstrp_rcurves[0]).transpose()
+    df_bstrp_rcurves.columns = [str(r_index[0])+'_'+str(ele) for ele in r_index[0]]
+    for i in range(1,len(bstrp_rcurves)):
+        df = pd.DataFrame(bstrp_rcurves[i]).transpose()
+        df.columns = [str(r_index[i])+'_'+str(ele) for ele in r_index[i]]
+        df_bstrp_rcurves = pd.concat([df_bstrp_rcurves,df],axis=1)
+    df_bstrp_rcurves.to_csv(os.path.join(path,'bootstrapping_regret_curves_in_subcombined_game.csv'),index=False)
+
 
 def main(argv):
     if len(argv) > 1:
@@ -615,9 +683,10 @@ def main(argv):
     
     assert os.path.isdir(FLAGS.root_result_folder), "no such directory"
 
+    #erase folders other than runs folder
     run_names = [x for x in os.listdir(FLAGS.root_result_folder) if \
         os.path.isdir(os.path.join(FLAGS.root_result_folder, x)) and \
-        'combined_game' not in x] #erase the calculate combined_game folder
+        ('combined_game' not in x) and ('bootstrap' not in x)] 
     checkpoint_dirs = [os.path.join(FLAGS.root_result_folder, x) for x in run_names]
     # checkpoint_dirs might be ordered, try to order if first char is int
     if run_names[0][0].isnumeric():
@@ -663,7 +732,7 @@ def main(argv):
             FLAGS.num_evaluation_episodes,\
             combined_game_only_contains_ne=combined_game_only_contains_ne)
         print("nash exp ne only:", exp) 
-        path = os.path.join(FLAGS.root_result_folder, "nash_exp_neonly_"+str(combined_game_only_contains_ne)+".pkl")
+        path = os.path.join(FLAGS.root_result_folder, "nash_exp_neonly_"+str(combined_game_only_contains_ne)+'_episode_'+str(FLAGS.num_evaluation_episodes+1)+".pkl")
         save_pkl(exp, path)
         print("final nash exp performance saved to",path)
     
@@ -676,18 +745,9 @@ def main(argv):
     
     if FLAGS.bootstrap_results:
         path = os.path.join(FLAGS.root_result_folder,"bootstrap_compare_results")  
-        if os.isdir(path):
-            shutil.rmtree(path)
-        os.mkdir(path)
-        bstrp_rcurves, all_rcurves_br, index, brcg_r_corr = \
-            bootstrap_runs(checkpoint_dirs,\
-                           FLAGS.num_evaluation_episodes+1,\
-                           combined_game,\
-                           number_of_resample=FLAGS.number_of_resample,\
-                           heuristic_names=['nash','prd','uniform']):
-        
-        df = pd.DataFrame(brcg_r_corr)
-        df.to_csv(os.path.join(path,'relationship_correspondnece.csv'),index=False)
+        bootstrap_control_center(path,checkpoint_dirs,FLAGS.num_evaluation_episodes+1,
+                                 combined_game,FLAGS.number_of_resample,
+                                 heuristic_names=['nash','prd','uniform'])
 
 
 if __name__ == "__main__":
