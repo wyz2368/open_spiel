@@ -1,4 +1,4 @@
-# Copyright 2019 DeepMind Technologies Ltd. All rights reserved.
+## Copyright 2019 DeepMind Technologies Ltd. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -201,9 +201,9 @@ def playthrough_lines(game_string, alsologtostdout=False, action_sequence=None):
   while True:
     add_line("")
     add_line("# State {}".format(state_idx))
-    if state_idx == 4 or state == 5:
-        import pdb
-        pdb.set_trace()
+    #if state_idx == 4 or state == 5:
+    #    import pdb
+    #    pdb.set_trace()
     for line in str(state).splitlines():
       add_line("# {}".format(line).rstrip())
     add_line("IsTerminal() = {}".format(state.is_terminal()))
@@ -254,9 +254,9 @@ def playthrough_lines(game_string, alsologtostdout=False, action_sequence=None):
           "{{{}, {:.12f}}}".format(outcome, prob)
           for outcome, prob in state.chance_outcomes())))
 
-    if state_idx == 4 or state_idx == 5:
-        import pdb
-        pdb.set_trace()
+    #if state_idx == 4 or state_idx == 5:
+    #    import pdb
+    #    pdb.set_trace()
 
     if state.is_simultaneous_node():
       for player in players:
