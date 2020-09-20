@@ -69,7 +69,7 @@ x = np.arange(1, 151)
 plt.plot(x, dqn_do_mean, '-b', label= "NE-based regret of DO")
 plt.fill_between(x, dqn_do_mean+dqn_do_std, dqn_do_mean-dqn_do_std, alpha=0.1, color="b")
 
-plt.plot(x, deepmind_fic_mean, '-C2', label= "FP-based regret of FP")
+plt.plot(x, deepmind_fic_mean, '-C2', label= "uniform-based regret of FP")
 plt.fill_between(x, deepmind_fic_mean+deepmind_fic_std, deepmind_fic_mean-deepmind_fic_std, alpha=0.1, color="C2")
 #
 plt.plot(x, Mike_fic_mean, '-C1', label= "NE-based regret of FP")
