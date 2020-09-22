@@ -90,8 +90,7 @@ class LaserTagState : public SimMoveState {
     SPIEL_CHECK_LT(player, num_players_);
     return ToString();
   }
-  void ObservationTensor(int player,
-                         std::vector<double>* values) const override;
+  void ObservationTensor(int player, absl::Span<float> values) const override;
   int CurrentPlayer() const override {
     return IsTerminal() ? kTerminalPlayerId : cur_player_;
   }
@@ -143,9 +142,6 @@ class LaserTagGame : public SimMoveGame {
   double MinUtility() const override;
   double MaxUtility() const override;
   double UtilitySum() const override { return 0; }
-  std::shared_ptr<const Game> Clone() const override {
-    return std::shared_ptr<const Game>(new LaserTagGame(*this));
-  }
   std::vector<int> ObservationTensorShape() const override;
   int MaxGameLength() const override { return horizon_; }
 

@@ -134,7 +134,7 @@ class BackgammonState : public State {
   std::vector<double> Returns() const override;
   std::string ObservationString(Player player) const override;
   void ObservationTensor(Player player,
-                         std::vector<double>* values) const override;
+                         absl::Span<float> values) const override;
   std::unique_ptr<State> Clone() const override;
 
   // Setter function used for debugging and tests. Note: this does not set the
@@ -269,9 +269,6 @@ class BackgammonGame : public Game {
   double MinUtility() const override { return -MaxUtility(); }
   double UtilitySum() const override { return 0; }
   double MaxUtility() const override;
-  std::shared_ptr<const Game> Clone() const override {
-    return std::shared_ptr<const Game>(new BackgammonGame(*this));
-  }
 
   std::vector<int> ObservationTensorShape() const override {
     // Encode each point on the board as four doubles:

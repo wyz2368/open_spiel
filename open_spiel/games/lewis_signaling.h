@@ -67,12 +67,12 @@ class LewisSignalingState : public State {
   std::vector<double> Returns() const override;
   std::string ObservationString(Player player) const override;
   void ObservationTensor(Player player,
-                         std::vector<double>* values) const override;
+                         absl::Span<float> values) const override;
   std::string InformationStateString(Player player) const override {
     return ObservationString(player);
   }
   void InformationStateTensor(Player player,
-                              std::vector<double>* values) const override {
+                              absl::Span<float> values) const override {
     return ObservationTensor(player, values);
   }
 
@@ -111,9 +111,6 @@ class LewisSignalingGame : public Game {
   }
   double MinUtility() const override {
     return *std::min_element(payoffs_.begin(), payoffs_.end());
-  }
-  std::shared_ptr<const Game> Clone() const override {
-    return std::make_shared<const LewisSignalingGame>(*this);
   }
   std::vector<int> ObservationTensorShape() const override;
   std::vector<int> InformationStateTensorShape() const override {

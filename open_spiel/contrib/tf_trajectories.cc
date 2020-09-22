@@ -39,7 +39,7 @@ TFBatchTrajectoryRecorder::TFBatchTrajectoryRecorder(
       states_(),
       terminal_flags_(std::vector<int>(batch_size, 0)),
       num_terminals_(0),
-      game_(game.Clone()),
+      game_(game.shared_from_this()),
       graph_filename_(graph_filename),
       rng_(),
       dist_(0.0, 1.0),
@@ -118,7 +118,7 @@ void TFBatchTrajectoryRecorder::FillInputsAndMasks() {
   TensorMap inputs_matrix = tf_inputs_.matrix<float>();
   TensorMap mask_matrix = tf_legal_mask_.matrix<float>();
 
-  std::vector<double> info_state_vector;
+  std::vector<float> info_state_vector(game_->InformationStateTensorSize());
   for (int b = 0; b < batch_size_; ++b) {
     if (!terminal_flags_[b]) {
       std::vector<int> mask = states_[b]->LegalActionsMask();
@@ -128,7 +128,7 @@ void TFBatchTrajectoryRecorder::FillInputsAndMasks() {
       }
 
       states_[b]->InformationStateTensor(states_[b]->CurrentPlayer(),
-                                         &info_state_vector);
+                                         absl::MakeSpan(info_state_vector));
       for (int i = 0; i < info_state_vector.size(); ++i) {
         inputs_matrix(b, i) = info_state_vector[i];
       }

@@ -38,6 +38,7 @@ export BUILD_WITH_ACPC=${BUILD_WITH_ACPC:-$DEFAULT_OPTIONAL_DEPENDENCY}
 export BUILD_WITH_JULIA=${BUILD_WITH_JULIA:-$DEFAULT_OPTIONAL_DEPENDENCY}
 export BUILD_WITH_EIGEN=${BUILD_WITH_EIGEN:-$DEFAULT_OPTIONAL_DEPENDENCY}
 export BUILD_WITH_XINXIN=${BUILD_WITH_XINXIN:-$DEFAULT_OPTIONAL_DEPENDENCY}
+export BUILD_WITH_ROSHAMBO=${BUILD_WITH_ROSHAMBO:-$DEFAULT_OPTIONAL_DEPENDENCY}
 
 # Download precompiled binaries for libtorch (PyTorch C++ API).
 # See https://pytorch.org/cppdocs/ for C++ documentation.
@@ -55,3 +56,7 @@ export BUILD_WITH_LIBTORCH="${BUILD_WITH_LIBTORCH:-OFF}"
 
 # Turn off public states as it is Work-In-Progress.
 export BUILD_WITH_PUBLIC_STATES="${BUILD_WITH_PUBLIC_STATES:-OFF}"
+
+# Enable integration with GAMUT game generator (see games/gamut).
+# Requires java and GAMUT, so disabled by default.
+export BUILD_WITH_GAMUT="${BUILD_WITH_GAMUT:-OFF}"

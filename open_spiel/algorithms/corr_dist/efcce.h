@@ -33,8 +33,7 @@ namespace algorithms {
 // The main difference in the EFCCE auxiliary game (from the EFCE game) is that
 // players must decide whether to accept or reject the recommendation *before*
 // seeing it. This changes the action space of the game, adding two new actions
-// that must be taken at each state before the actual
-// decision is made.
+// that must be taken at each state before the actual decision is made.
 class EFCCEState : public WrappedState {
  public:
   EFCCEState(std::shared_ptr<const Game> game, std::unique_ptr<State> state,
@@ -94,10 +93,6 @@ class EFCCEGame : public WrappedGame {
     return std::make_unique<EFCCEState>(shared_from_this(),
                                         game_->NewInitialState(), config_, mu_,
                                         FollowAction(), DefectAction());
-  }
-
-  std::shared_ptr<const Game> Clone() const override {
-    return std::shared_ptr<const Game>(new EFCCEGame(*this));
   }
 
   int NumDistinctActions() const override {
