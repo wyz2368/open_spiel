@@ -59,4 +59,5 @@ export BUILD_WITH_PUBLIC_STATES="${BUILD_WITH_PUBLIC_STATES:-OFF}"
 
 # Enable integration with GAMUT game generator (see games/gamut).
 # Requires java and GAMUT, so disabled by default.
-export BUILD_WITH_GAMUT="${BUILD_WITH_GAMUT:-OFF}"
+# export BUILD_WITH_GAMUT="${BUILD_WITH_GAMUT:-OFF}"
+export BUILD_WITH_GAMUT="${BUILD_WITH_GAMUT:-ON}"
