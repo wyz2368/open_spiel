@@ -352,7 +352,7 @@ class State {
   }
 
   // The full (player, action) history.
-  std::vector<PlayerAction> FullHistory() const { return history_; }
+  const std::vector<PlayerAction>& FullHistory() const { return history_; }
 
   // A string representation for the history. There should be a one to one
   // mapping between histories (i.e. sequences of actions for all players,
@@ -757,6 +757,35 @@ class Game : public std::enable_shared_from_this<Game> {
   // of chance nodes are not included in this length.
   virtual int MaxGameLength() const = 0;
 
+  // The maximum number of chance nodes occurring in any history of the game.
+  // This is typically something like the number of times dice are rolled.
+  virtual int MaxChanceNodesInHistory() const {
+    if (GetType().chance_mode == GameType::ChanceMode::kDeterministic) {
+      return 0;
+    }
+    SpielFatalError("MaxChanceNodesInHistory() is not implemented");
+  }
+
+  // The maximum number of moves in the game. The value State::MoveNumber()
+  // must never be higher than this value.
+  virtual int MaxMoveNumber() const {
+    return MaxGameLength() + MaxChanceNodesInHistory();
+  }
+
+  // The maximum length of any history in the game.
+  // The value State::History().size() must never be higher than this value.
+  virtual int MaxHistoryLength() const {
+    if (GetType().dynamics == GameType::Dynamics::kSimultaneous) {
+      // The history of simultaneous move games is flattened, so count number
+      // of actions of each player.
+      return MaxGameLength() * NumPlayers() + MaxChanceNodesInHistory();
+    }
+    if (GetType().dynamics == GameType::Dynamics::kSequential) {
+      return MaxGameLength() + MaxChanceNodesInHistory();
+    }
+    SpielFatalError("Unknown game dynamics.");
+  }
+
   // A string representation of the game, which can be passed to
   // DeserializeGame. The difference with Game::ToString is that it also
   // serializes internal RNG state used with sampled stochastic game
@@ -793,6 +822,12 @@ class Game : public std::enable_shared_from_this<Game> {
   virtual std::shared_ptr<Observer> MakeObserver(
       absl::optional<IIGObservationType> iig_obs_type,
       const GameParameters& params) const;
+
+  // Returns a string representation of the specified action for the player,
+  // independent of the state.
+  virtual std::string ActionToString(Player player, Action action_id) const {
+    return absl::StrCat("Action(id=", action_id, ", player=", player, ")");
+  }
 
  protected:
   Game(GameType game_type, GameParameters game_parameters)
@@ -971,6 +1006,18 @@ DeserializeGameAndState(const std::string& serialized_state);
 // details.
 std::string GameTypeToString(const GameType& game_type);
 GameType GameTypeFromString(const std::string& game_type_str);
+
+std::ostream& operator<<(std::ostream& os, const State::PlayerAction& action);
+
+// Utility functions used mostly for debugging. This calls State::ActionToString
+// for every action.
+std::vector<std::string> ActionsToStrings(const State& state,
+                                          const std::vector<Action>& actions);
+
+// Calls ActionsToStrings and then calls absl::StrJoin to concatenate all the
+// strings together.
+std::string ActionsToString(const State& state,
+                            const std::vector<Action>& actions);
 
 }  // namespace open_spiel
 

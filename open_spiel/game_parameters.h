@@ -34,6 +34,7 @@ class GameParameter;
 
 using GameParameters = std::map<std::string, GameParameter>;
 std::string GameParametersToString(const GameParameters& game_params);
+GameParameter GameParameterFromString(const std::string& str);
 GameParameters GameParametersFromString(const std::string& game_string);
 
 class GameParameter {
@@ -52,6 +53,20 @@ class GameParameter {
         type_(Type::kDouble) {}
 
   explicit GameParameter(std::string value, bool is_mandatory = false)
+      : is_mandatory_(is_mandatory),
+        string_value_(value),
+        type_(Type::kString) {}
+
+  // Allows construction of a `GameParameter` from a string literal. This method
+  // is not subsumed by the previous method, even if value can be converted to a
+  // std::string, because the [C++ standard][iso] requires that the *standard
+  // conversion sequence* (see §13.3.3.1.1)
+  // `(const char[]) -> const char* -> bool` take precedence over the
+  // *user-defined conversion sequence*
+  // `(const char[]) -> const char* -> std::string` defined in the standard
+  // library.
+  // [iso]: http://www.open-std.org/JTC1/SC22/WG21/docs/papers/2011/n3242.pdf
+  explicit GameParameter(const char* value, bool is_mandatory = false)
       : is_mandatory_(is_mandatory),
         string_value_(value),
         type_(Type::kString) {}

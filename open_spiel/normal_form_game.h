@@ -89,6 +89,22 @@ class NormalFormGame : public SimMoveGame {
 
   // Game lasts one turn.
   int MaxGameLength() const override { return 1; }
+  // There aren't chance nodes in these games.
+  int MaxChanceNodesInHistory() const override { return 0; }
+
+  // Direct access to utility. This is just a default implementation, which is
+  // overridden in subclasses for faster access.
+  virtual std::vector<double> GetUtilities(
+      const std::vector<Action>& joint_action) const {
+    std::unique_ptr<State> state = NewInitialState();
+    state->ApplyActions(joint_action);
+    return state->Returns();
+  }
+
+  virtual double GetUtility(Player player,
+                            const std::vector<Action>& joint_action) const {
+    return GetUtilities(joint_action)[player];
+  }
 
  protected:
   NormalFormGame(GameType game_type, GameParameters game_parameters)

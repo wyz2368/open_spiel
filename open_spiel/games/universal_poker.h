@@ -15,6 +15,7 @@
 #ifndef OPEN_SPIEL_GAMES_UNIVERSAL_POKER_H_
 #define OPEN_SPIEL_GAMES_UNIVERSAL_POKER_H_
 
+#include <algorithm>
 #include <array>
 #include <memory>
 #include <string>
@@ -177,25 +178,26 @@ class UniversalPokerGame : public Game {
   std::vector<int> InformationStateTensorShape() const override;
   std::vector<int> ObservationTensorShape() const override;
   int MaxGameLength() const override;
+  // TODO: verify whether this bound is tight and/or tighten it.
+  int MaxChanceNodesInHistory() const override { return MaxGameLength(); }
   BettingAbstraction betting_abstraction() const {
     return betting_abstraction_;
   }
 
   int big_blind() const { return big_blind_; }
-  int starting_stack_big_blinds() const { return starting_stack_big_blinds_; }
 
  private:
+  double MaxCommitment() const;
   std::string gameDesc_;
   const acpc_cpp::ACPCGame acpc_game_;
   absl::optional<int> max_game_length_;
   BettingAbstraction betting_abstraction_ = BettingAbstraction::kFULLGAME;
+  int big_blind_;
+  int max_stack_size_;
 
  public:
   const acpc_cpp::ACPCGame *GetACPCGame() const { return &acpc_game_; }
-
   std::string parseParameters(const GameParameters &map);
-  int big_blind_;
-  int starting_stack_big_blinds_;
 };
 
 // Only supported for UniversalPoker. Randomly plays an action from a fixed list

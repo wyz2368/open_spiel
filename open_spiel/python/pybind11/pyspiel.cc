@@ -32,6 +32,7 @@
 #include "open_spiel/python/pybind11/game_transforms.h"
 #include "open_spiel/python/pybind11/games_bridge.h"
 #include "open_spiel/python/pybind11/games_negotiation.h"
+#include "open_spiel/python/pybind11/games_tarok.h"
 #include "open_spiel/python/pybind11/observation_history.h"
 #include "open_spiel/python/pybind11/observer.h"
 #include "open_spiel/python/pybind11/policy.h"
@@ -52,7 +53,7 @@
 #include "open_spiel/public_states/pybind11/public_states.h"
 #endif
 #if BUILD_WITH_XINXIN
-#include "open_spiel/games/hearts/xinxin_pybind11.h"
+#include "open_spiel/bots/xinxin/xinxin_pybind11.h"
 #endif
 
 // This file contains OpenSpiel's Python API. The best place to see an overview
@@ -239,6 +240,10 @@ PYBIND11_MODULE(pyspiel, m) {
       .value("HWC", open_spiel::TensorLayout::kHWC)
       .value("CHW", open_spiel::TensorLayout::kCHW);
 
+  py::class_<State::PlayerAction> player_action(m, "PlayerAction");
+  player_action.def_readonly("player", &State::PlayerAction::player)
+      .def_readonly("action", &State::PlayerAction::action);
+
   py::class_<State> state(m, "State");
   state.def("current_player", &State::CurrentPlayer)
       .def("apply_action", &State::ApplyAction)
@@ -274,6 +279,7 @@ PYBIND11_MODULE(pyspiel, m) {
       .def("is_player_node", &State::IsPlayerNode)
       .def("history", &State::History)
       .def("history_str", &State::HistoryString)
+      .def("full_history", &State::FullHistory)
       .def("information_state_string",
            (std::string(State::*)(int) const) & State::InformationStateString)
       .def("information_state_string",
@@ -335,6 +341,10 @@ PYBIND11_MODULE(pyspiel, m) {
       .def("policy_tensor_shape", &Game::PolicyTensorShape)
       .def("deserialize_state", &Game::DeserializeState)
       .def("max_game_length", &Game::MaxGameLength)
+      .def("action_to_string", &Game::ActionToString)
+      .def("max_chance_nodes_in_history", &Game::MaxChanceNodesInHistory)
+      .def("max_move_number", &Game::MaxMoveNumber)
+      .def("max_history_length", &Game::MaxHistoryLength)
       .def("make_observer", &Game::MakeObserver,
            py::arg("imperfect_information_observation_type") = absl::nullopt,
            py::arg("params") = GameParameters())
@@ -356,17 +366,19 @@ PYBIND11_MODULE(pyspiel, m) {
 
   py::class_<NormalFormGame, std::shared_ptr<NormalFormGame>> normal_form_game(
       m, "NormalFormGame", game);
-  normal_form_game.def(py::pickle(                      // Pickle support
-      [](std::shared_ptr<const NormalFormGame> game) {  // __getstate__
-        return game->ToString();
-      },
-      [](const std::string& data) {  // __setstate__
-        // Have to remove the const here for this to compile, presumably
-        // because the holder type is non-const. But seems like you can't
-        // set the holder type to std::shared_ptr<const Game> either.
-        return std::const_pointer_cast<NormalFormGame>(
-            std::static_pointer_cast<const NormalFormGame>(LoadGame(data)));
-      }));
+  normal_form_game.def("get_utilities", &NormalFormGame::GetUtilities)
+      .def("get_utility", &NormalFormGame::GetUtility)
+      .def(py::pickle(                      // Pickle support
+          [](std::shared_ptr<const NormalFormGame> game) {  // __getstate__
+            return game->ToString();
+          },
+          [](const std::string& data) {  // __setstate__
+            // Have to remove the const here for this to compile, presumably
+            // because the holder type is non-const. But seems like you can't
+            // set the holder type to std::shared_ptr<const Game> either.
+            return std::const_pointer_cast<NormalFormGame>(
+                std::static_pointer_cast<const NormalFormGame>(LoadGame(data)));
+          }));
 
   py::class_<MatrixGame, std::shared_ptr<MatrixGame>> matrix_game(
       m, "MatrixGame", normal_form_game);
@@ -555,6 +567,7 @@ PYBIND11_MODULE(pyspiel, m) {
   // exceptions - the process will be terminated instead.
   open_spiel::SetErrorHandler(
       [](const std::string& string) { throw SpielException(string); });
+  py::register_exception<SpielException>(m, "SpielError", PyExc_RuntimeError);
 
   // Register other bits of the API.
   init_pyspiel_bots(m);                   // Bots and bot-related algorithms.
@@ -564,6 +577,7 @@ PYBIND11_MODULE(pyspiel, m) {
   init_pyspiel_algorithms_trajectories(m);  // Trajectories.
   init_pyspiel_games_negotiation(m);        // Negotiation game.
   init_pyspiel_games_bridge(m);  // Game-specific functions for bridge.
+  init_pyspiel_games_tarok(m);   // Game-specific functions for tarok.
   init_pyspiel_observer(m);      // Observers and observations.
 
   // List of optional python submodules.

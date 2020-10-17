@@ -98,10 +98,6 @@ PERFECT_RECALL_NUM_STATES = {
     "nf_auction": 2,
 }
 
-# Some tests run for a fixed time budget.
-# This specified approximately how many seconds they should run.
-TIMEABLE_TEST_RUNTIME = 1
-
 
 class EnforceAPIOnFullTreeBase(parameterized.TestCase):
   """Test properties on the full game tree, instantiating the tree only once.
@@ -276,13 +272,34 @@ class EnforceAPIOnPartialTreeBase(parameterized.TestCase):
   def setUpClass(cls):
     super(EnforceAPIOnPartialTreeBase, cls).setUpClass()
 
-    cls.some_states = set(
-        sample_some_states.sample_some_states(
-            cls.game,
-            max_states=-1,  # Limit only by time.
-            time_limit=TIMEABLE_TEST_RUNTIME,
-            depth_limit=7).values())
+    cls.some_states = sample_some_states.sample_some_states(cls.game,
+                                                            max_states=400)
     cls.game_type = cls.game.get_type()
+
+  def test_sequence_lengths(self):
+    try:
+      max_history_len = self.game.max_history_length()
+      max_move_number = self.game.max_move_number()
+      max_chance_nodes_in_history = self.game.max_chance_nodes_in_history()
+    except RuntimeError:
+      return  # The function is likely not implemented, so skip the test.
+
+    self.assertGreater(max_history_len, 0)
+    self.assertGreater(max_move_number, 0)
+    if self.game_type.chance_mode == pyspiel.GameType.ChanceMode.DETERMINISTIC:
+      self.assertEqual(max_chance_nodes_in_history, 0)
+    else:
+      self.assertGreater(max_chance_nodes_in_history, 0)
+
+    for state in self.some_states:
+      self.assertLessEqual(len(state.full_history()), max_history_len)
+      self.assertLessEqual(state.move_number(), max_move_number)
+
+      chance_nodes_in_history = 0
+      for item in state.full_history():
+        if item.player == pyspiel.PlayerId.CHANCE:
+          chance_nodes_in_history += 1
+      self.assertLessEqual(chance_nodes_in_history, max_chance_nodes_in_history)
 
   def test_observations_raises_error_on_invalid_player(self):
     game = self.game
