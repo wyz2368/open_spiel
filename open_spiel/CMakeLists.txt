@@ -128,9 +128,6 @@ enable_testing()
 set (OPEN_SPIEL_CORE_FILES
   canonical_game_strings.cc
   canonical_game_strings.h
-  fog/fog_constants.h
-  fog/observation_history.cc
-  fog/observation_history.h
   game_parameters.cc
   game_parameters.h
   matrix_game.cc
