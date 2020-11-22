@@ -200,7 +200,7 @@ def init_dqn_responder(sess, env):
       "num_actions": num_actions,
       "hidden_layers_sizes": [FLAGS.hidden_layer_size] * FLAGS.n_hidden_layers,
       "batch_size": FLAGS.batch_size,
-     "learning_rate": FLAGS.dqn_learning_rate,
+      "learning_rate": FLAGS.dqn_learning_rate,
       "update_target_network_every": FLAGS.update_target_network_every,
       "learn_every": FLAGS.learn_every,
       "optimizer_str": FLAGS.optimizer_str
