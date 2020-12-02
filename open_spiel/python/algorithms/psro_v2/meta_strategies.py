@@ -165,7 +165,7 @@ def nash_strategy(solver, return_joint=False, checkpoint_dir=None):
     return result, joint_strategies
 
 
-def general_nash_strategy(solver, return_joint=False, NE_solver="gambit", mode='maxent', game=None, checkpoint_dir=None):
+def general_nash_strategy(solver, return_joint=False, NE_solver="gambit", mode='minent', game=None, checkpoint_dir=None):
   """Returns nash distribution on meta game matrix.
 
   This method works for general-sum multi-player games.
@@ -184,6 +184,8 @@ def general_nash_strategy(solver, return_joint=False, NE_solver="gambit", mode='
   if not isinstance(meta_games, list):
     meta_games = [meta_games, -meta_games]
   equilibria = gs.nash_solver(meta_games, solver=NE_solver, mode=mode, checkpoint_dir=checkpoint_dir)
+
+  # print("NE:", equilibria)
 
   if not return_joint:
     return equilibria
