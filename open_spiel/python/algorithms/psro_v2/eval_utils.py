@@ -14,6 +14,7 @@ import tensorflow.compat.v1 as tf
 
 def regret(meta_games, subgame_index, subgame_ne=None, start_index=0):
     """
+    (Only used in block switch.)
     Calculate the regret based on a complete payoff matrix for PSRO
     In subgame, each player could have different number of strategies
     :param meta_games: meta_games in PSRO

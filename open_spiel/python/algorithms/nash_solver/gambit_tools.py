@@ -184,6 +184,8 @@ def decode_gambit_file(meta_games, mode="all", max_num_nash=10, checkpoint_dir=N
         return equilibria
     elif mode == "one":
         return equilibria[0]
+    elif mode in ["maxent", "minent"]:
+        return entropy_select(equilibria, mode)
     else:
         logging.info("mode is beyond all/pure/one.")
 
@@ -255,6 +257,33 @@ def file_len(fname):
     """
     num_lines = sum(1 for line in open(fname))
     return num_lines
+
+def entropy_select(equilibria, mode):
+    ent = []
+    for ne in equilibria:
+        profile_probs = np.outer(ne[0], ne[1])
+        profile_probs = np.reshape(profile_probs, -1)
+        ent.append(entropy_NE(profile_probs))
+    if mode == "maxent":
+        idx = np.argmax(ent)
+        return equilibria[idx]
+    elif mode == "minent":
+        idx = np.argmin(ent)
+        return equilibria[idx]
+    else:
+        raise ValueError
+
+
+def entropy_NE(nash):
+    # This function calculates an approximated entropy since
+    # it sets a shreshold for probability.
+    H = 0
+    for p in nash:
+        if p <= 1e-6:
+            continue
+        H -= p*np.log(p)
+    return H
+
 
 
 

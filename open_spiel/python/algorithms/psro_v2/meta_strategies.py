@@ -165,7 +165,7 @@ def nash_strategy(solver, return_joint=False, checkpoint_dir=None):
     return result, joint_strategies
 
 
-def general_nash_strategy(solver, return_joint=False, NE_solver="gambit", mode='one', game=None, checkpoint_dir=None):
+def general_nash_strategy(solver, return_joint=False, NE_solver="gambit", mode='maxent', game=None, checkpoint_dir=None):
   """Returns nash distribution on meta game matrix.
 
   This method works for general-sum multi-player games.
