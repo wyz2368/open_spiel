@@ -323,3 +323,43 @@ def load_strategy(strategy_type, strategy_kwargs, env, player_id, strategy_weigh
     agent.freeze()
 
     return agent
+
+def deviation_strategy(meta_games, probs):
+    dev_strs = []
+    dev_payoff = []
+    prob1 = probs[0]
+    prob1 = np.reshape(prob1, newshape=(len(prob1), 1))
+    prob2 = probs[1]
+
+    payoff_vec = np.sum(meta_games[0] * prob2, axis=1)
+    payoff_vec = np.reshape(payoff_vec, -1)
+    idx = np.argmax(payoff_vec)
+    dev_strs.append(idx)
+    dev_payoff.append(payoff_vec[idx])
+
+    payoff_vec = np.sum(prob1 * meta_games[1], axis=0)
+    payoff_vec = np.reshape(payoff_vec, -1)
+    idx = np.argmax(payoff_vec)
+    dev_strs.append(idx)
+    dev_payoff.append(payoff_vec[idx])
+
+    return dev_strs, dev_payoff
+
+def mixed_strategy_payoff_2p(meta_games, probs):
+   payoffs = []
+   prob1 = probs[0]
+   prob1 = np.reshape(prob1, newshape=(len(prob1), 1))
+   prob2 = probs[1]
+   for meta_game in meta_games:
+       payoffs.append(np.sum(prob1 * meta_game * prob2))
+   return payoffs
+
+def dev_regret(meta_games, probs):
+    num_players = 2
+    payoffs = mixed_strategy_payoff_2p(meta_games, probs)
+    dev_strs, dev_payoff = deviation_strategy(meta_games, probs)
+    nashconv = 0
+    for player in range(num_players):
+        nashconv += np.maximum(dev_payoff[player] - payoffs[player], 0)
+
+    return nashconv

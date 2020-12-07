@@ -56,7 +56,7 @@ from open_spiel.python.algorithms.psro_v2 import strategy_selectors
 from open_spiel.python.algorithms.psro_v2.quiesce.quiesce import PSROQuiesceSolver
 from open_spiel.python.algorithms.psro_v2 import meta_strategies
 from open_spiel.python.algorithms.psro_v2.quiesce import quiesce_sparse
-from open_spiel.python.algorithms.psro_v2.eval_utils import save_strategies, save_nash, save_pkl
+from open_spiel.python.algorithms.psro_v2.eval_utils import save_strategies, save_nash, save_pkl, dev_regret
 
 
 FLAGS = flags.FLAGS
@@ -425,6 +425,10 @@ def gpsro_looper(env, oracle, agents, writer, quiesce=False, checkpoint_dir=None
     nash_meta_probabilities = g_psro_solver.get_nash_strategies()
     # nash_meta_probabilities = g_psro_solver.get_prd_strategies()
     policies = g_psro_solver.get_policies()
+
+    # Check whether the profile is a NE in the empirical game. Only for 2-player.
+    regret_in_EG = dev_regret(meta_game, meta_probabilities)
+    writer.add_scalar('regret within the empirical game', regret_in_EG, gpsro_iteration)
    
     if FLAGS.verbose:
       # print("Meta game : {}".format(meta_game))
