@@ -428,8 +428,10 @@ def gpsro_looper(env, oracle, agents, writer, quiesce=False, checkpoint_dir=None
 
     # Check whether the profile is a NE in the empirical game. Only for 2-player.
     regret_in_EG = dev_regret(meta_game, meta_probabilities)
+    regret_NE_in_EG = dev_regret(meta_game, nash_meta_probabilities)
     writer.add_scalar('regret within the empirical game', regret_in_EG, gpsro_iteration)
-   
+    writer.add_scalar('regret of NE within the empirical game', regret_NE_in_EG, gpsro_iteration)
+
     if FLAGS.verbose:
       # print("Meta game : {}".format(meta_game))
       print("Probabilities : {}".format(meta_probabilities))
