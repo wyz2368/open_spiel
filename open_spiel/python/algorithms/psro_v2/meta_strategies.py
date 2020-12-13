@@ -277,7 +277,7 @@ def weighted_NE_strategy(solver, return_joint=False, checkpoint_dir=None, gamma=
 
   return result, None
 
-def projected_DO(solver, return_joint=False, checkpoint_dir=None, gamma=1e-6):
+def projected_DO(solver, return_joint=False, checkpoint_dir=None, gamma=1e-3):
   """Returns nash distribution on meta game matrix.
 
   This method only works for two player zero-sum games.
