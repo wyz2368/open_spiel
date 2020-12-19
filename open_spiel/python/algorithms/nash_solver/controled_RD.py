@@ -7,7 +7,7 @@ from __future__ import division
 from __future__ import print_function
 
 import numpy as np
-from open_spiel.python.algorithms.nash_solver.replicator_dynamics_solver import _replicator_dynamics_step
+from open_spiel.python.algorithms.projected_replicator_dynamics import _projected_replicator_dynamics_step
 from open_spiel.python.algorithms.psro_v2.eval_utils import dev_regret
 
 
@@ -16,6 +16,7 @@ def controled_replicator_dynamics(payoff_tensors,
                                   prd_initial_strategies=None,
                                   prd_iterations=int(5e6),
                                   prd_dt=1e-3,
+                                  prd_gamma=0,
                                   average_over_last_n_strategies=None,
                                   **unused_kwargs):
 
@@ -53,8 +54,9 @@ def controled_replicator_dynamics(payoff_tensors,
 
   meta_strategy_window = []
   for i in range(prd_iterations):
-    new_strategies = _replicator_dynamics_step(
-        payoff_tensors, new_strategies, prd_dt)
+    new_strategies = _projected_replicator_dynamics_step(
+        payoff_tensors, new_strategies, prd_dt, prd_gamma, use_approx=False)
+
     if i >= prd_iterations - average_over_last_n_strategies:
       meta_strategy_window.append(new_strategies)
 
