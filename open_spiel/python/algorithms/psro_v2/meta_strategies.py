@@ -318,12 +318,12 @@ def projected_DO(solver, return_joint=False, checkpoint_dir=None, gamma=1e-3):
     return result, joint_strategies
 
 
-def regret_controled_RD(solver, return_joint=False, checkpoint_dir=None, threshold=0.08):
+def regret_controled_RD(solver, return_joint=False, checkpoint_dir=None, regret_threshold=0.1):
   meta_games = solver.get_meta_game()
   if not isinstance(meta_games, list):
     meta_games = [meta_games, -meta_games]
   kwargs = solver.get_kwargs()
-  result = controled_RD.controled_replicator_dynamics(meta_games, threshold=threshold, **kwargs)
+  result = controled_RD.controled_replicator_dynamics(meta_games, regret_threshold=regret_threshold, **kwargs)
 
   if not return_joint:
     return result
