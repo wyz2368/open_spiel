@@ -20,6 +20,7 @@ import numpy as np
 from open_spiel.python.algorithms import lp_solver
 from open_spiel.python.algorithms import projected_replicator_dynamics
 from open_spiel.python.algorithms.nash_solver import general_nash_solver as gs
+from open_spiel.python.algorithms.nash_solver import controled_RD
 import pyspiel
 
 
@@ -317,6 +318,21 @@ def projected_DO(solver, return_joint=False, checkpoint_dir=None, gamma=1e-3):
     return result, joint_strategies
 
 
+def regret_controled_RD(solver, return_joint=False, checkpoint_dir=None, threshold=0.1):
+  meta_games = solver.get_meta_game()
+  if not isinstance(meta_games, list):
+    meta_games = [meta_games, -meta_games]
+  kwargs = solver.get_kwargs()
+  result = controled_RD.controled_replicator_dynamics(meta_games, threshold=threshold, **kwargs)
+
+  if not return_joint:
+    return result
+  else:
+    joint_strategies = get_joint_strategy_from_marginals(result)
+    return result, joint_strategies
+
+
+
 META_STRATEGY_METHODS = {
     "uniform_biased": uniform_biased_strategy,
     "uniform": uniform_strategy,
@@ -325,7 +341,8 @@ META_STRATEGY_METHODS = {
     "general_nash": general_nash_strategy,
     "sp": self_play_strategy,
     "weighted_ne": weighted_NE_strategy,
-    "pDO": projected_DO
+    "pDO": projected_DO,
+    "CRD": regret_controled_RD
 }
 
 
@@ -336,5 +353,6 @@ META_STRATEGY_METHODS_SE = {
     "general_nash": general_nash_strategy,
     "sp": self_play_strategy,
     "weighted_ne": weighted_NE_strategy,
-    "pDO": projected_DO
+    "pDO": projected_DO,
+    "CRD": regret_controled_RD
 }

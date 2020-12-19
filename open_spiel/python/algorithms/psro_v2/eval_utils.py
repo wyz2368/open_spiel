@@ -355,11 +355,16 @@ def mixed_strategy_payoff_2p(meta_games, probs):
    return payoffs
 
 def dev_regret(meta_games, probs):
+    """
+    Calculate the regret of a profile in an empirical game.
+    :param meta_games:
+    :param probs:
+    :return:
+    """
     num_players = 2
     payoffs = mixed_strategy_payoff_2p(meta_games, probs)
     dev_strs, dev_payoff = deviation_strategy(meta_games, probs)
     nashconv = 0
     for player in range(num_players):
         nashconv += np.maximum(dev_payoff[player] - payoffs[player], 0)
-
     return nashconv

@@ -55,7 +55,7 @@ def _partial_multi_dot(player_payoff_tensor, strategies, index_avoided):
 
 
 def _replicator_dynamics_step(payoff_tensors, strategies, dt):
-  """Does one step of the projected replicator dynamics algorithm.
+  """Does one step of the replicator dynamics algorithm.
 
   Args:
     payoff_tensors: List of payoff tensors for each player.
