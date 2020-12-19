@@ -325,6 +325,11 @@ def regret_controled_RD(solver, return_joint=False, checkpoint_dir=None, regret_
   kwargs = solver.get_kwargs()
   result = controled_RD.controled_replicator_dynamics(meta_games, regret_threshold=regret_threshold, **kwargs)
 
+  result = [
+    renormalize(result[0]),
+    renormalize(result[1])
+  ]
+
   if not return_joint:
     return result
   else:
