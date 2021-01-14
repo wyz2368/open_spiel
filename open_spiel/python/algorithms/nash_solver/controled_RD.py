@@ -45,10 +45,19 @@ def controled_replicator_dynamics(payoff_tensors,
   action_space_shapes = payoff_tensors[0].shape
 
   # If no initial starting position is given, start with uniform probabilities.
-  new_strategies = prd_initial_strategies or [
-      np.ones(action_space_shapes[k]) / action_space_shapes[k]
-      for k in range(number_players)
-  ]
+  # new_strategies = prd_initial_strategies or [
+  #     np.ones(action_space_shapes[k]) / action_space_shapes[k]
+  #     for k in range(number_players)
+  # ]
+
+  # Random pick one as initial strategy.
+  new_strategies = []
+  for player in range(number_players):
+      new_strategy = np.zeros(action_space_shapes[player])
+      selected_idx = np.random.choice(np.arange(action_space_shapes[player]))
+      new_strategy[selected_idx] = 1
+      new_strategies.append(new_strategy)
+
 
   average_over_last_n_strategies = average_over_last_n_strategies or prd_iterations
 
