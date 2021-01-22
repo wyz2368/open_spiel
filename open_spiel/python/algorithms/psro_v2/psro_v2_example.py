@@ -423,14 +423,14 @@ def gpsro_looper(env, oracle, agents, writer, quiesce=False, checkpoint_dir=None
     meta_game = g_psro_solver.get_meta_game()
     meta_probabilities = g_psro_solver.get_meta_strategies()
     nash_meta_probabilities = g_psro_solver.get_nash_strategies()
-    # nash_meta_probabilities = g_psro_solver.get_prd_strategies()
+    prd_meta_probabilities = g_psro_solver.get_prd_strategies()
     policies = g_psro_solver.get_policies()
 
     # Check whether the profile is a NE in the empirical game. Only for 2-player.
-    regret_in_EG = dev_regret(meta_game, meta_probabilities)
-    regret_NE_in_EG = dev_regret(meta_game, nash_meta_probabilities)
-    writer.add_scalar('regret within the empirical game', regret_in_EG, gpsro_iteration)
-    writer.add_scalar('regret of NE within the empirical game', regret_NE_in_EG, gpsro_iteration)
+    # regret_in_EG = dev_regret(meta_game, meta_probabilities)
+    # regret_NE_in_EG = dev_regret(meta_game, nash_meta_probabilities)
+    # writer.add_scalar('regret within the empirical game', regret_in_EG, gpsro_iteration)
+    # writer.add_scalar('regret of NE within the empirical game', regret_NE_in_EG, gpsro_iteration)
 
     if FLAGS.verbose:
       # print("Meta game : {}".format(meta_game))
@@ -444,12 +444,17 @@ def gpsro_looper(env, oracle, agents, writer, quiesce=False, checkpoint_dir=None
         range(FLAGS.n_players), policies, meta_probabilities)
     aggr_policies_Mike = aggregator.aggregate(
         range(FLAGS.n_players), policies, nash_meta_probabilities)
+    aggr_policies_prd = aggregator.aggregate(
+        range(FLAGS.n_players), policies, prd_meta_probabilities)
 
     exploitabilities, expl_per_player = exploitability.nash_conv(
         env.game, aggr_policies, return_only_nash_conv=False)
 
     nash_Mike, expl_per_player = exploitability.nash_conv(
             env.game, aggr_policies_Mike, return_only_nash_conv=False)
+
+    prd_regret, expl_per_player = exploitability.nash_conv(
+            env.game, aggr_policies_prd, return_only_nash_conv=False)
 
     unique_policies = print_policy_analysis(policies, env.game, FLAGS.verbose)
     for p, cur_set in enumerate(unique_policies):
@@ -476,6 +481,8 @@ def gpsro_looper(env, oracle, agents, writer, quiesce=False, checkpoint_dir=None
       writer.add_scalar('player'+str(p)+'_exp', expl_per_player[p], gpsro_iteration)
     writer.add_scalar('exp', exploitabilities, gpsro_iteration)
     writer.add_scalar('exp_Mike', nash_Mike, gpsro_iteration)
+    writer.add_scalar('exp_prd', prd_regret, gpsro_iteration)
+
     if FLAGS.verbose:
       print("Exploitabilities : {}".format(exploitabilities))
       print("Exploitabilities_Mike : {}".format(nash_Mike))
