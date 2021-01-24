@@ -22,14 +22,14 @@ plt.figure()
 # Mike_fic_mean = genfromtxt('./data/2Nash_merged_csv/dqn_fic_Mike_mean.csv', delimiter=',')
 # Mike_fic_std = genfromtxt('./data/2Nash_merged_csv/dqn_fic_Mike_std.csv', delimiter=',')
 
-Mike_fic_mean = genfromtxt('./data/2Nash_merged_csv/dqn_crd_0.35_Mike_mean.csv', delimiter=',')
-Mike_fic_std = genfromtxt('./data/2Nash_merged_csv/dqn_crd_0.35_Mike_std.csv', delimiter=',')
+Mike_fic_mean = genfromtxt('./data/2Nash_merged_csv/dqn_crd_0.35_Deepmind_mean.csv', delimiter=',')
+Mike_fic_std = genfromtxt('./data/2Nash_merged_csv/dqn_crd_0.35_Deepmind_std.csv', delimiter=',')
 
 dqn_do_mean = genfromtxt('./data/2Nash_merged_csv/dqn_DO_mean.csv', delimiter=',')[:103]
 dqn_do_std = genfromtxt('./data/2Nash_merged_csv/dqn_DO_std.csv', delimiter=',')[:103]
 
-Mike_prd_mean = genfromtxt('./data/2Nash_merged_csv/dqn_prd_Mike_mean.csv', delimiter=',')[:103]
-Mike_prd_std = genfromtxt('./data/2Nash_merged_csv/dqn_prd_Mike_std.csv', delimiter=',')[:103]
+Mike_prd_mean = genfromtxt('./data/2Nash_merged_csv/dqn_prd_new_0gamma_deepmind_mean.csv', delimiter=',')[:103]
+Mike_prd_std = genfromtxt('./data/2Nash_merged_csv/dqn_prd_new_0gamma_deepmind_std.csv', delimiter=',')[:103]
 
 axes = plt.gca()
 axes.set_ylim([0.5,2])
@@ -42,10 +42,10 @@ X = np.arange(1, 104)
 plt.plot(X, dqn_do_mean, color="C1", label='DO')
 plt.fill_between(X, dqn_do_mean+dqn_do_std, dqn_do_mean-dqn_do_std, alpha=0.1, color="C1")
 
-plt.plot(X, Mike_fic_mean, color="C2", label='NE-based RDO')
+plt.plot(X, Mike_fic_mean, color="C2", label='RDO')
 plt.fill_between(X, Mike_fic_mean+Mike_fic_std, Mike_fic_mean-Mike_fic_std, alpha=0.1, color="C2")
 
-plt.plot(X, Mike_prd_mean, color="C0", label='NE-based PRD')
+plt.plot(X, Mike_prd_mean, color="C0", label='PRD')
 plt.fill_between(X, Mike_prd_mean+Mike_prd_std, Mike_prd_mean-Mike_prd_std, alpha=0.1, color="C0")
 
 

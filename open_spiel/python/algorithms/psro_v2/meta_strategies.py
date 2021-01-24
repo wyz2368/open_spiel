@@ -318,7 +318,7 @@ def projected_DO(solver, return_joint=False, checkpoint_dir=None, gamma=1e-3):
     return result, joint_strategies
 
 
-def regret_controled_RD(solver, return_joint=False, checkpoint_dir=None, regret_threshold=0.35):
+def regret_controled_RD(solver, return_joint=False, checkpoint_dir=None, regret_threshold=1e-5):
   meta_games = solver.get_meta_game()
   if not isinstance(meta_games, list):
     meta_games = [meta_games, -meta_games]
