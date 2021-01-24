@@ -14,7 +14,7 @@ from open_spiel.python.algorithms.psro_v2.eval_utils import dev_regret
 def controled_replicator_dynamics(payoff_tensors,
                                   regret_threshold,
                                   prd_initial_strategies=None,
-                                  prd_iterations=int(5e6),
+                                  prd_iterations=int(1e5),
                                   prd_dt=1e-3,
                                   prd_gamma=0,
                                   average_over_last_n_strategies=None,
