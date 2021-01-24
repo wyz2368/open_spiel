@@ -404,7 +404,7 @@ def gpsro_looper(env, oracle, agents, writer, quiesce=False, checkpoint_dir=None
       sims_per_entry=FLAGS.sims_per_entry,
       number_policies_selected=FLAGS.number_policies_selected,
       meta_strategy_method=FLAGS.meta_strategy_method,
-      prd_iterations=50000,
+      prd_iterations=1e6, # 50000
       prd_gamma=1e-10,
       sample_from_marginals=sample_from_marginals,
       symmetric_game=FLAGS.symmetric_game,
