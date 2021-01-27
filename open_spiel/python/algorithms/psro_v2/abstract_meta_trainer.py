@@ -329,6 +329,10 @@ class AbstractMetaTrainer(object):
     meta_strategy_probabilities = meta_strategies.prd_strategy(self)
     return [np.copy(a) for a in meta_strategy_probabilities]
 
+  def get_crd_strategies(self):
+    meta_strategy_probabilities = meta_strategies.regret_controled_RD(self)
+    return [np.copy(a) for a in meta_strategy_probabilities]
+
   def get_meta_strategies(self):
     """Returns the meta-strategy distribution on meta game matrix."""
     meta_strategy_probabilities = self._meta_strategy_probabilities

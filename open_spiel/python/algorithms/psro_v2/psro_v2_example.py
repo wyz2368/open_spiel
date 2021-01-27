@@ -404,8 +404,8 @@ def gpsro_looper(env, oracle, agents, writer, quiesce=False, checkpoint_dir=None
       sims_per_entry=FLAGS.sims_per_entry,
       number_policies_selected=FLAGS.number_policies_selected,
       meta_strategy_method=FLAGS.meta_strategy_method,
-      prd_iterations=int(1e6), # 50000
-      prd_gamma=1e-10,
+      prd_iterations=int(100000), # 50000
+      prd_gamma=1e-6,
       sample_from_marginals=sample_from_marginals,
       symmetric_game=FLAGS.symmetric_game,
       checkpoint_dir=checkpoint_dir)
@@ -423,7 +423,7 @@ def gpsro_looper(env, oracle, agents, writer, quiesce=False, checkpoint_dir=None
     meta_game = g_psro_solver.get_meta_game()
     meta_probabilities = g_psro_solver.get_meta_strategies()
     nash_meta_probabilities = g_psro_solver.get_nash_strategies()
-    prd_meta_probabilities = g_psro_solver.get_prd_strategies()
+    prd_meta_probabilities = g_psro_solver.get_crd_strategies()
     policies = g_psro_solver.get_policies()
 
     # Check whether the profile is a NE in the empirical game. Only for 2-player.
