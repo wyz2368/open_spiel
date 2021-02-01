@@ -41,7 +41,7 @@ def generate_meta_game(player_num, policy_num, payoff_scale):
   Params:
     policy_num : a one dimensional list containing number of policy each player has
   """
-  assert player_num==len(policy_num)
+  assert player_num == len(policy_num)
   meta_games = []
   for i in range(player_num):
     meta_games.append(payoff_scale*2*(np.random.rand(*policy_num)-0.5))
