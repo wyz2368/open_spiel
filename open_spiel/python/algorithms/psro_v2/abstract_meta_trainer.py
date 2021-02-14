@@ -204,7 +204,7 @@ class AbstractMetaTrainer(object):
     self._initialize_policy(initial_policies)
     self._initialize_game_state()
     self.update_meta_strategies()
-    self.update_NE_list()
+    # self.update_NE_list()
 
 
     
