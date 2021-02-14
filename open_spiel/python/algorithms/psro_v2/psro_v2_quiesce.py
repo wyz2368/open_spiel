@@ -53,9 +53,8 @@ from open_spiel.python.algorithms.psro_v2 import psro_v2
 from open_spiel.python.algorithms.psro_v2 import rl_oracle
 from open_spiel.python.algorithms.psro_v2 import rl_policy
 from open_spiel.python.algorithms.psro_v2 import strategy_selectors
-from open_spiel.python.algorithms.psro_v2.quiesce.quiesce import PSROQuiesceSolver
+from open_spiel.python.algorithms.psro_v2.quiesce.profile_search import PSROQuiesceSolver
 from open_spiel.python.algorithms.psro_v2 import meta_strategies
-from open_spiel.python.algorithms.psro_v2.quiesce import quiesce_sparse
 from open_spiel.python.algorithms.psro_v2.eval_utils import save_strategies, save_nash, save_pkl, dev_regret
 
 
@@ -391,8 +390,6 @@ def gpsro_looper(env, oracle, agents, writer, quiesce=False, checkpoint_dir=None
   
   if not quiesce:
     solver = psro_v2.PSROSolver
-  elif FLAGS.sparse_quiesce:
-    solver = quiesce_sparse.PSROQuiesceSolver
   else:
     solver = PSROQuiesceSolver
 
@@ -423,70 +420,39 @@ def gpsro_looper(env, oracle, agents, writer, quiesce=False, checkpoint_dir=None
     train_reward_curve = g_psro_solver.iteration(seed=seed)
     meta_game = g_psro_solver.get_meta_game()
     meta_probabilities = g_psro_solver.get_meta_strategies()
-    # nash_meta_probabilities = g_psro_solver.get_nash_strategies()
-    # prd_meta_probabilities = g_psro_solver.get_crd_strategies()
     policies = g_psro_solver.get_policies()
 
-    # Check whether the profile is a NE in the empirical game. Only for 2-player.
-    # regret_in_EG = dev_regret(meta_game, meta_probabilities)
-    # regret_NE_in_EG = dev_regret(meta_game, nash_meta_probabilities)
-    # writer.add_scalar('regret within the empirical game', regret_in_EG, gpsro_iteration)
-    # writer.add_scalar('regret of NE within the empirical game', regret_NE_in_EG, gpsro_iteration)
-
     if FLAGS.verbose:
-      # print("Meta game : {}".format(meta_game))
       print("Probabilities : {}".format(meta_probabilities))
-      # print("Nash Probabilities : {}".format(nash_meta_probabilities))
+      print("Number of simulated profiles : {}".format(g_psro_solver.number_profile_sampled))
 
     aggregator = policy_aggregator.PolicyAggregator(env.game)
 
     ## Using heuristic-based NashConv
     aggr_policies = aggregator.aggregate(
         range(FLAGS.n_players), policies, meta_probabilities)
-    # aggr_policies_Mike = aggregator.aggregate(
-    #     range(FLAGS.n_players), policies, nash_meta_probabilities)
-    # aggr_policies_prd = aggregator.aggregate(
-    #     range(FLAGS.n_players), policies, prd_meta_probabilities)
 
     exploitabilities, expl_per_player = exploitability.nash_conv(
         env.game, aggr_policies, return_only_nash_conv=False)
 
-    # nash_Mike, expl_per_player = exploitability.nash_conv(
-    #         env.game, aggr_policies_Mike, return_only_nash_conv=False)
-    #
-    # prd_regret, expl_per_player = exploitability.nash_conv(
-    #         env.game, aggr_policies_prd, return_only_nash_conv=False)
-
     unique_policies = print_policy_analysis(policies, env.game, FLAGS.verbose)
     for p, cur_set in enumerate(unique_policies):
-      writer.add_scalar('p'+str(p)+'_unique_p',len(cur_set),gpsro_iteration)
+      writer.add_scalar('p'+str(p)+'_unique_p',len(cur_set), gpsro_iteration)
 
-    # save_nash(nash_meta_probabilities, gpsro_iteration, checkpoint_dir)
-    save_nash(meta_probabilities, gpsro_iteration, checkpoint_dir)
 
     if gpsro_iteration % 10 ==0:
       save_at_termination(solver=g_psro_solver, file_for_meta_game=checkpoint_dir+'/meta_game.pkl')
       # save_strategies(solver=g_psro_solver, checkpoint_dir=checkpoint_dir)
-    
-    beneficial_deviation = print_beneficial_deviation_analysis(last_meta_game, meta_game, last_meta_prob, FLAGS.verbose)
-    last_meta_prob, last_meta_game = meta_probabilities, meta_game
-    for p in range(len(beneficial_deviation)):
-      writer.add_scalar('p'+str(p)+'_beneficial_dev',int(beneficial_deviation[p]),gpsro_iteration)
-    writer.add_scalar('beneficial_devs',sum(beneficial_deviation),gpsro_iteration)
 
-    # if FLAGS.log_train and (gpsro_iteration<=10 or gpsro_iteration%5==0):
-    #   for p in range(len(train_reward_curve)):
-    #     for p_i in range(len(train_reward_curve[p])):
-    #       writer.add_scalar('player'+str(p)+'_'+str(gpsro_iteration),train_reward_curve[p][p_i],p_i)
     for p in range(len(expl_per_player)):
       writer.add_scalar('player'+str(p)+'_exp', expl_per_player[p], gpsro_iteration)
     writer.add_scalar('exp', exploitabilities, gpsro_iteration)
-    # writer.add_scalar('exp_Mike', nash_Mike, gpsro_iteration)
-    # writer.add_scalar('exp_prd', prd_regret, gpsro_iteration)
+
+    # Save number of simulated profiles.
+    writer.add_scalar('Num of simulated profiles', g_psro_solver.number_profile_sampled, gpsro_iteration)
 
     if FLAGS.verbose:
       print("Exploitabilities : {}".format(exploitabilities))
-      # print("Exploitabilities_Mike : {}".format(nash_Mike))
       print("Exploitabilities per player : {}".format(expl_per_player))
 
 def main(argv):
