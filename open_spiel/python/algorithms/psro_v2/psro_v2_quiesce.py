@@ -69,7 +69,7 @@ flags.DEFINE_string("meta_strategy_method", "prd",
                     "Name of meta strategy computation method.")
 flags.DEFINE_integer("number_policies_selected", 1,
                      "Number of new strategies trained at each PSRO iteration.")
-flags.DEFINE_integer("sims_per_entry", 1000,
+flags.DEFINE_integer("sims_per_entry", 100,
                      ("Number of simulations to run to estimate each element"
                       "of the game outcome matrix."))
 
@@ -408,8 +408,8 @@ def gpsro_looper(env, oracle, agents, writer, quiesce=False, checkpoint_dir=None
       symmetric_game=FLAGS.symmetric_game,
       checkpoint_dir=checkpoint_dir)
   
-  last_meta_prob = [np.array([1]) for _ in range(FLAGS.n_players)]
-  last_meta_game = g_psro_solver.get_meta_game()
+  # last_meta_prob = [np.array([1]) for _ in range(FLAGS.n_players)]
+  # last_meta_game = g_psro_solver.get_meta_game()
 
   start_time = time.time()
   for gpsro_iteration in range(1,FLAGS.gpsro_iterations+1):
@@ -418,7 +418,7 @@ def gpsro_looper(env, oracle, agents, writer, quiesce=False, checkpoint_dir=None
       print("Iteration : {}".format(gpsro_iteration))
       print("Time so far: {}".format(time.time() - start_time))
     train_reward_curve = g_psro_solver.iteration(seed=seed)
-    meta_game = g_psro_solver.get_meta_game()
+    # meta_game = g_psro_solver.get_meta_game()
     meta_probabilities = g_psro_solver.get_meta_strategies()
     policies = g_psro_solver.get_policies()
 
@@ -434,10 +434,6 @@ def gpsro_looper(env, oracle, agents, writer, quiesce=False, checkpoint_dir=None
 
     exploitabilities, expl_per_player = exploitability.nash_conv(
         env.game, aggr_policies, return_only_nash_conv=False)
-
-    unique_policies = print_policy_analysis(policies, env.game, FLAGS.verbose)
-    for p, cur_set in enumerate(unique_policies):
-      writer.add_scalar('p'+str(p)+'_unique_p',len(cur_set), gpsro_iteration)
 
 
     if gpsro_iteration % 10 ==0:
