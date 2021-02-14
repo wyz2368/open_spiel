@@ -9,6 +9,7 @@ from open_spiel.python import policy
 from open_spiel.python.algorithms.psro_v2 import utils
 from open_spiel.python.algorithms.psro_v2 import psro_v2
 from open_spiel.python.algorithms.psro_v2 import meta_strategies
+from open_spiel.python.algorithms.nash_solver.general_nash_solver import normalize_ne
 
 
 # TODO: test symmetric game, as self.symmetric flags changes self.policies and self.num_players
@@ -108,7 +109,7 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
         complete_subgame = [self._meta_games[i][np.ix_(*selector)] for i in range(self._game_num_players)]
         return complete_subgame
 
-    def inner_loop(self, regret_threshold=0.15, support_threshold=0.01):
+    def inner_loop(self, regret_threshold=0.0, support_threshold=0.005):
         """
         Find equilibrium in the incomplete self._meta_games through iteratively augment the maximum complete subgame by sampling. Symmetric game could have insymmetric nash equilibrium, so uses self._game_num_players instead of self._num_players
         Returns:
@@ -141,6 +142,7 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
                 for j in range(len(self._complete_ind[i])):
                     if self._complete_ind[i][j] == 1 and ne_subgame[i][cum_sum[i][j] - 1] >= support_threshold:
                         ne_support_index_p.append(j)
+                assert len(ne_support_index_p) != 0
                 ne_support_index.append(ne_support_index_p)
 
             # ne_subgame: non-zero equilibrium support, [[0.1,0.5,0.4],[0.2,0.4,0.4]]
@@ -179,12 +181,15 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
         policy_len = [len(self._policies) for _ in range(self._game_num_players)] if self.symmetric_game else [len(ele)
                                                                                                                for ele
                                                                                                                in
-                                                                                                               self._policies]
+                                                                                                       self._policies]
         for p in range(self._game_num_players):
             eq_p = np.zeros([policy_len[p]], dtype=float)
             np.put(eq_p, ne_support_index[p], ne_subgame_nonzero[p])
             eq.append(eq_p)
+
+        eq = normalize_ne(eq)
         non_marginalized_probabilities = meta_strategies.get_joint_strategy_from_marginals(eq)
+
         return eq, non_marginalized_probabilities
 
     def schedule_deviation(self, eq, eq_sup):
