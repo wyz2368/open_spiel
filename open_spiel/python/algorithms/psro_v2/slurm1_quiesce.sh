@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --job-name=br_blocks
+#SBATCH --job-name=quiesce
 #SBATCH --mail-user=wangyzhsrg@aol.com
 #SBATCH --mail-type=BEGIN,END,FAIL
 #SBATCH --nodes=1
