@@ -164,8 +164,8 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
                     maximum_subgame_index[i].append(pol) # all other player's policies have to sample previous players' best deviation
                     new_subgame_sample_ind[i] = [pol]
                     # add best deviation into subgame and sample the corresponding profiles.
-                    for pol in itertools.product(*new_subgame_sample_ind):
-                        self.sample_pure_policy_to_empirical_game(pol)
+                    for profile in itertools.product(*new_subgame_sample_ind):
+                        self.sample_pure_policy_to_empirical_game(profile)
                     dev.append(i)
                     # update complete index.
                     self._complete_ind[i][pol] = 1
