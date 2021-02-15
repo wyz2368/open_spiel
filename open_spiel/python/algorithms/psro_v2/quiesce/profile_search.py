@@ -131,18 +131,18 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
         for player in range(self._game_num_players):
             self._complete_ind[player][-1] = 1
 
-        # print("New start.")
+        print("New start.")
         while not found_confirmed_eq:
-            # print("Complete index:", self._complete_ind)
+            print("***Complete index:", self._complete_ind)
             maximum_subgame = self.get_complete_meta_game
             ne_subgame = meta_strategies.general_nash_strategy(solver=self, return_joint=False, NE_solver=NE_solver,
                                                                game=maximum_subgame, checkpoint_dir=self.checkpoint_dir)
-            # print("Subgame:", maximum_subgame)
-            # print("NE:", ne_subgame)
+            print("Subgame:", maximum_subgame)
+            print("NE:", ne_subgame)
             # ne_support_index: list of list, index of where equilibrium is [[0,1],[2]]
             # cumsum: index ne_subgame with self._complete_ind
             cum_sum = [np.cumsum(ele) for ele in self._complete_ind]
-            # print("cum_sum:", cum_sum)
+            print("cum_sum:", cum_sum)
             ne_support_index = []
             for i in range(self._game_num_players):
                 ne_support_index_p = []
@@ -183,7 +183,7 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
             # debug: check maximum subgame remains the same
             # debug: check maximum game reached
 
-        # print("Complete index afterwards:", self._complete_ind)
+        print("Complete index afterwards:", self._complete_ind)
         # return confirmed nash equilibrium
         eq = []
         policy_len = [len(self._policies) for _ in range(self._game_num_players)] if self.symmetric_game else [len(ele)
