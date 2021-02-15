@@ -22,7 +22,72 @@ from __future__ import division
 from __future__ import print_function
 
 import numpy as np
-import copy
+
+def _project_distribution(updated_strategy, gamma):
+  """Projects the distribution in updated_x to have minimal probabilities.
+
+  Minimal probabilities are set as gamma, and the probabilities are then
+  renormalized to sum to 1.
+
+  Args:
+    updated_strategy: New distribution value after being updated by update rule.
+    gamma: minimal probability value when divided by number of actions.
+
+  Returns:
+    Projected distribution.
+  """
+  # Epsilon approximation of L2-norm projection onto the Delta_gamma space.
+  updated_strategy[updated_strategy < gamma] = gamma
+  updated_strategy = updated_strategy / np.sum(updated_strategy)
+  return updated_strategy
+
+
+def _approx_simplex_projection(updated_strategy, gamma=0.0):
+  """Approximately projects the distribution in updated_x to have minimal probabilities.
+
+  Minimal probabilities are set as gamma, and the probabilities are then
+  renormalized to sum to 1.
+
+  Args:
+    updated_strategy: New distribution value after being updated by update rule.
+    gamma: minimal probability value when divided by number of actions.
+
+  Returns:
+    Projected distribution.
+  """
+  # Epsilon approximation of L2-norm projection onto the Delta_gamma space.
+  updated_strategy[updated_strategy < gamma] = gamma
+  updated_strategy = updated_strategy / np.sum(updated_strategy)
+  return updated_strategy
+
+
+def _simplex_projection(updated_strategy, gamma=0.0):
+  """Project updated_strategy on the closest point in L2-norm on gamma-simplex.
+
+  Based on: https://eng.ucmerced.edu/people/wwang5/papers/SimplexProj.pdf
+
+  Args:
+    updated_strategy: New distribution value after being updated by update rule.
+    gamma: minimal probability value when divided by number of actions.
+
+  Returns:
+    Projected distribution
+
+  Algorithm description:
+  It aims to find a scalar lam to be substracted by each dimension of v
+  with the restriction that the resulted quantity should lie in [gamma, 1]
+  until the resulted vector summed up to 1
+  Example: [0.4, 0.7, 0.6], 0.2 -- > find lam=0.25
+            --> [max(0.4-0.25, 0.2), max(0.7-0.25, 0.2), max(0.6-0.25, 0.2)]
+            --> [0.2,  0.45, 0.35]
+  """
+
+  n = len(updated_strategy)
+  idx = np.arange(1, n + 1)
+  u = np.sort(updated_strategy)[::-1]
+  u_tmp = (1 - np.cumsum(u) - (n - idx) * gamma) / idx
+  rho = np.searchsorted(u + u_tmp <= gamma, True)
+  return np.maximum(updated_strategy + u_tmp[rho - 1], gamma)
 
 
 def _partial_multi_dot(player_payoff_tensor, strategies, index_avoided):
@@ -55,7 +120,7 @@ def _partial_multi_dot(player_payoff_tensor, strategies, index_avoided):
 
 
 
-def _replicator_dynamics_step(payoff_tensors, strategies, dt):
+def _replicator_dynamics_step(payoff_tensors, strategies, dt, gamma=0.0, use_approx=False):
   """Does one step of the replicator dynamics algorithm.
 
   Args:
@@ -76,8 +141,18 @@ def _replicator_dynamics_step(payoff_tensors, strategies, dt):
     values_per_strategy = _partial_multi_dot(current_payoff_tensor, strategies,
                                              player)
     average_return = np.dot(values_per_strategy, current_strategy)
+    # print("***************************")
+    # print("str:", player, current_strategy[player])
+    # print("val:", player, values_per_strategy)
+    # print("aver:", player , average_return)
     delta = current_strategy * (values_per_strategy - average_return)
     updated_strategy = current_strategy + dt * delta
+
+    # Projection to probability simplex. Otherwise, strategy blows up.
+    updated_strategy = (
+      _approx_simplex_projection(updated_strategy, gamma) if use_approx
+      else _simplex_projection(updated_strategy, gamma))
+
     new_strategies.append(updated_strategy)
 
   return new_strategies
@@ -85,7 +160,7 @@ def _replicator_dynamics_step(payoff_tensors, strategies, dt):
 
 def replicator_dynamics(payoff_tensors,
                         prd_initial_strategies=None,
-                        prd_iterations=int(5e4),
+                        prd_iterations=int(5e5),
                         prd_dt=1e-2,
                         average_over_last_n_strategies=None,
                         **unused_kwargs):
@@ -123,9 +198,6 @@ def replicator_dynamics(payoff_tensors,
   meta_strategy_window = []
   for i in range(prd_iterations):
     new_strategies = _replicator_dynamics_step(payoff_tensors, new_strategies, prd_dt)
-    if len(meta_strategy_window) != 0:
-      if check_norm(new_strategies, meta_strategy_window[-1]):
-        break
     if i >= prd_iterations - average_over_last_n_strategies:
       meta_strategy_window.append(new_strategies)
   average_new_strategies = np.mean(meta_strategy_window, axis=0)
