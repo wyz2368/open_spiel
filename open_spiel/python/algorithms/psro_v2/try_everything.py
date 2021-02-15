@@ -4,6 +4,14 @@ import os
 import itertools
 # from  open_spiel.python.algorithms.psro_v2.eval_utils import regret, strategy_regret
 
-a = [[0,0,0,1,1], [0,0,0,1,1]]
-cum_sum = [np.cumsum(ele) for ele in a]
-print(cum_sum)
+class Dog():
+    @property
+    def zero(self):
+        return np.zeros(4)
+
+    def happy(self):
+        a = self.zero
+        print(a)
+
+dog = Dog()
+dog.happy()
