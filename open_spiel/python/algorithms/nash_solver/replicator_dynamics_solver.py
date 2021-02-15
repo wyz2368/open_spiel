@@ -22,6 +22,7 @@ from __future__ import division
 from __future__ import print_function
 
 import numpy as np
+import copy
 
 
 def _partial_multi_dot(player_payoff_tensor, strategies, index_avoided):
@@ -75,10 +76,13 @@ def _replicator_dynamics_step(payoff_tensors, strategies, dt):
     values_per_strategy = _partial_multi_dot(current_payoff_tensor, strategies,
                                              player)
     average_return = np.dot(values_per_strategy, current_strategy)
+    print("***************************")
+    print("val:", values_per_strategy)
+    print("aver:", average_return)
     delta = current_strategy * (values_per_strategy - average_return)
-
     updated_strategy = current_strategy + dt * delta
     new_strategies.append(updated_strategy)
+
   return new_strategies
 
 
@@ -121,11 +125,23 @@ def replicator_dynamics(payoff_tensors,
 
   meta_strategy_window = []
   for i in range(prd_iterations):
-    new_strategies = _replicator_dynamics_step(
-        payoff_tensors, new_strategies, prd_dt)
+    new_strategies = _replicator_dynamics_step(payoff_tensors, new_strategies, prd_dt)
+    if len(meta_strategy_window) != 0:
+      if check_norm(new_strategies, meta_strategy_window[-1]):
+        break
     if i >= prd_iterations - average_over_last_n_strategies:
       meta_strategy_window.append(new_strategies)
   average_new_strategies = np.mean(meta_strategy_window, axis=0)
   nash_list = [average_new_strategies[i] for i in range(number_players)]
   # return average_new_strategies
   return nash_list
+
+def check_norm(new_strategy, old_strategy, norm_threshold=1e-3):
+  num_players = len(new_strategy)
+  norm = 0
+  for player in range(num_players):
+    norm += np.linalg.norm(new_strategy[player]-old_strategy[player])
+  if norm < norm_threshold:
+    return True
+  else:
+    return False
