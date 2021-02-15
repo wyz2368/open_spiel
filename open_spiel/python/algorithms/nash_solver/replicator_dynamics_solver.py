@@ -76,9 +76,6 @@ def _replicator_dynamics_step(payoff_tensors, strategies, dt):
     values_per_strategy = _partial_multi_dot(current_payoff_tensor, strategies,
                                              player)
     average_return = np.dot(values_per_strategy, current_strategy)
-    print("***************************")
-    print("val:", values_per_strategy)
-    print("aver:", average_return)
     delta = current_strategy * (values_per_strategy - average_return)
     updated_strategy = current_strategy + dt * delta
     new_strategies.append(updated_strategy)
