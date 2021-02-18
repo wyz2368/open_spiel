@@ -111,7 +111,7 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
         complete_subgame = [self._meta_games[i][np.ix_(*selector)] for i in range(self._game_num_players)]
         return complete_subgame
 
-    def inner_loop(self, regret_threshold=0.2, support_threshold=0.005):
+    def inner_loop(self, regret_threshold=0.0, support_threshold=0.005):
         """
         Find equilibrium in the incomplete self._meta_games through iteratively augment the maximum complete subgame by sampling. Symmetric game could have insymmetric nash equilibrium, so uses self._game_num_players instead of self._num_players
         Returns:
