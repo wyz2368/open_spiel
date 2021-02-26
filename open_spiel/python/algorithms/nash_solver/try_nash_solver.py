@@ -1,6 +1,7 @@
 from open_spiel.python.algorithms.nash_solver import general_nash_solver as gs
 
 import numpy as np
+from open_spiel.python.algorithms.psro_v2.eval_utils import dev_regret_general
 
 """
 Test NE solver.
@@ -43,30 +44,32 @@ game_list = ['MP', 'BOS', 'BC', 'RPS', 'HT', 'RND']
 
 game_name = 'MP'
 
-def game_selector(game_name):
-    if game_name == 'MP':
-        meta_games = MP_meta_games
-    elif game_name == 'BOS':
-        meta_games = BOS_meta_games
-    elif game_name == 'BC':
-        meta_games = BC_meta_games
-    elif game_name == 'RPS':
-        meta_games = RPS_meta_games
-    elif game_name == 'HT':
-        meta_games = HT_meta_games
-    elif game_name == 'RND':
-        meta_games = RND_meta_games
-    else:
-        raise ValueError("Game does not exist.")
-    return meta_games
+# def game_selector(game_name):
+#     if game_name == 'MP':
+#         meta_games = MP_meta_games
+#     elif game_name == 'BOS':
+#         meta_games = BOS_meta_games
+#     elif game_name == 'BC':
+#         meta_games = BC_meta_games
+#     elif game_name == 'RPS':
+#         meta_games = RPS_meta_games
+#     elif game_name == 'HT':
+#         meta_games = HT_meta_games
+#     elif game_name == 'RND':
+#         meta_games = RND_meta_games
+#     else:
+#         raise ValueError("Game does not exist.")
+#     return meta_games
+#
+# print("****************************************")
+# for game in game_list:
+#     print("The current game is ", game)
+#     meta_games = game_selector(game)
+#     equilibria = gs.nash_solver(meta_games, solver="gambit", mode='all')
+#     for eq in equilibria:
+#         print(eq)
+#     print('*************************************')
 
-print("****************************************")
-for game in game_list:
-    print("The current game is ", game)
-    meta_games = game_selector(game)
-    equilibria = gs.nash_solver(meta_games, solver="gambit", mode='all')
-    for eq in equilibria:
-        print(eq)
-    print('*************************************')
-
-
+# Test dev_regret_general
+regret = dev_regret_general(MP_meta_games, [np.array(1.0, 0), np.array(1.0, 0)])
+print(regret)

@@ -117,6 +117,9 @@ class AbstractMetaTrainer(object):
                gamma=0.0,
                abs_value=False,
                kl_reg=False,
+               quiesce_regret_threshold=None,
+               RD_regret_threshold=None,
+               RD_regularization=False,
                **kwargs):
     """Abstract Initialization for meta trainers.
 
@@ -206,6 +209,10 @@ class AbstractMetaTrainer(object):
     self.update_meta_strategies()
     # self.update_NE_list()
 
+    # quiesce
+    self.quiesce_regret_threshold = quiesce_regret_threshold
+    self.RD_regret_threshold = RD_regret_threshold
+    self.RD_regularization = RD_regularization
 
     
     # controls switch heuristics with pattern without changing oracle

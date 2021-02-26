@@ -138,6 +138,11 @@ flags.DEFINE_bool("local_launch", False, "Launch locally or not.")
 flags.DEFINE_bool("verbose", True, "Enables verbose printing and profiling.")
 flags.DEFINE_bool("log_train", False,"log training reward curve")
 
+# Quiesce
+flags.DEFINE_float("quiesce_regret_threshold", 0.0, "Regularization regret for quiesce search.")
+flags.DEFINE_float("RD_regret_threshold", 0.5, "Regularization regret for RD in last iter of quiesce search.")
+flags.DEFINE_bool("RD_regularization", False, "Regularization for RD in last iter of quiesce search.")
+
 
 def init_pg_responder(sess, env):
   """Initializes the Policy Gradient-based responder and agents."""
@@ -406,10 +411,11 @@ def gpsro_looper(env, oracle, agents, writer, quiesce=False, checkpoint_dir=None
       prd_gamma=1e-6,
       sample_from_marginals=sample_from_marginals,
       symmetric_game=FLAGS.symmetric_game,
+      quiesce_regret_threshold=FLAGS.quiesce_regret_threshold,
+      RD_regret_threshold=FLAGS.RD_regret_threshold,
+      RD_regularization=FLAGS.RD_regularization,
       checkpoint_dir=checkpoint_dir)
-  
-  # last_meta_prob = [np.array([1]) for _ in range(FLAGS.n_players)]
-  # last_meta_game = g_psro_solver.get_meta_game()
+
 
   start_time = time.time()
   for gpsro_iteration in range(1,FLAGS.gpsro_iterations+1):

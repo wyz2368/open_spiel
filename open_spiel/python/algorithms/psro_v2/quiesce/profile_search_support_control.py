@@ -4,6 +4,7 @@ import itertools
 import copy
 import numpy as np
 import time
+import heapq
 import functools
 print = functools.partial(print, flush=True)
 
@@ -26,7 +27,18 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
         self._new_policies = [([initial_policies[k]] if initial_policies else
                                [policy.UniformRandomPolicy(self._game)])
                               for k in range(self._num_players)]
-        # self._complete_ind = [[] for _ in range(self._num_players)]
+        self.backup_subgames = []
+        heapq.heapify(self.backup_subgames)
+
+        self.explored_subgame_verification = set()
+        self.backup_subgames_verification = set()
+
+
+        # The maximum restricted game support size with which beneficial
+        # deviations must be explored. Restricted games with support larger than
+        # this are queued and only explored in the event that no equilibrium can
+        # be found in beneficial deviations smaller than this.
+        self.restricted_game_size = 3
 
     def _initialize_game_state(self):
         effective_payoff_size = self._game_num_players
@@ -35,7 +47,6 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
             for _ in range(effective_payoff_size)
         ]
         super(PSROQuiesceSolver, self).update_empirical_gamestate(seed=None)
-        # self.update_complete_ind([0 for _ in range(self._game_num_players)], add_sample=True)
         self.number_profile_sampled = 1 #TODO: print out this.
 
     def update_meta_strategies(self):
@@ -99,17 +110,37 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
         # self.update_complete_ind(number_older_policies, add_sample=False)
         return meta_games
 
-    @property
-    def get_complete_meta_game(self):
+    def get_complete_meta_game(self, subgame_idx):
         """
         Returns the maximum complete game matrix
         in the same form as empirical game
         """
         selector = []
         for i in range(self._game_num_players):
-            selector.append(list(np.where(np.array(self._complete_ind[i]) == 1)[0]))
+            selector.append(list(np.where(np.array(subgame_idx[i]) == 1)[0]))
         complete_subgame = [self._meta_games[i][np.ix_(*selector)] for i in range(self._game_num_players)]
         return complete_subgame
+
+    def get_next_meta_game(self):
+        """
+        Pop a subgame from priority queue.
+        :return:
+        """
+        subgame_idx = heapq.heappop(self.backup_subgames)
+        subgame = self.get_complete_meta_game(subgame_idx)
+
+        return subgame, subgame_idx
+
+    def add_meta_game(self, subgame_idx):
+        """
+        Add a subgame to corresponding heap.
+        :param subgame_idx: (support_size priority, regret priority, subgame)
+        :param heap:
+        :return:
+        """
+        heapq.heappush(self.backup_subgames, subgame_idx)
+
+
 
     def inner_loop(self, regret_threshold=0.0, support_threshold=0.005):
         """
@@ -117,37 +148,40 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
         Returns:
             Equilibrium support, non_margianlized profile probability
         """
-        found_confirmed_eq = False
+
         # TODO: change to replicator with regularization for online target.(Low implementation priority.)
         NE_solver = 'replicator' if self._num_players > 2 else 'gambit'
 
         num_strategies = [len(self._policies[k]) for k in range(self._game_num_players)]
         # Complete index has a different meaning from the one in quiesce.py .
         # Here complete index keeps strategy set of the subgame, i.e., which strategy each player has.
-        self._complete_ind = [[0 for _ in range(num_strategies[player])] for player in range(self._game_num_players)]
+        subgame_idx = [[0 for _ in range(num_strategies[player])] for player in range(self._game_num_players)]
         # Simulate the newest strategy profile and mark it.
         newest_profile = [len(self._policies[k]) - 1 for k in range(self._game_num_players)]
         self.sample_pure_policy_to_empirical_game(newest_profile)
         for player in range(self._game_num_players):
-            self._complete_ind[player][-1] = 1
+            subgame_idx[player][-1] = 1
 
-        # print("New start.")
-        while not found_confirmed_eq:
-            # print("***Complete index:", self._complete_ind)
-            maximum_subgame = self.get_complete_meta_game
+        self.add_meta_game((1, 1, subgame_idx))
+
+        while True:
+            subgame, subgame_idx = self.get_next_meta_game()
+            # Simulate the missing payoff entries of the subgame
+            self.check_completeness(subgame)
+
+            # add to explored set
+            self.explored_subgame_verification.add(subgame_idx)
+
             ne_subgame = meta_strategies.general_nash_strategy(solver=self, return_joint=False, NE_solver=NE_solver,
-                                                               game=maximum_subgame, checkpoint_dir=self.checkpoint_dir)
-            # print("Subgame:", maximum_subgame)
-            # print("NE:", ne_subgame)
+                                                               game=subgame, checkpoint_dir=self.checkpoint_dir)
             # ne_support_index: list of list, index of where equilibrium is [[0,1],[2]]
-            # cumsum: index ne_subgame with self._complete_ind
-            cum_sum = [np.cumsum(ele) for ele in self._complete_ind]
-            # print("cum_sum:", cum_sum)
+            # cumsum: index ne_subgame with subgame_idx
+            cum_sum = [np.cumsum(ele) for ele in subgame_idx]
             ne_support_index = []
             for i in range(self._game_num_players):
                 ne_support_index_p = []
-                for j in range(len(self._complete_ind[i])):
-                    if self._complete_ind[i][j] == 1 and ne_subgame[i][cum_sum[i][j] - 1] >= support_threshold:
+                for j in range(len(subgame_idx[i])):
+                    if subgame_idx[i][j] == 1 and ne_subgame[i][cum_sum[i][j] - 1] >= support_threshold:
                         ne_support_index_p.append(j)
                 assert len(ne_support_index_p) != 0
                 ne_support_index.append(ne_support_index_p)
@@ -160,30 +194,74 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
             ne_payoffs = self.get_mixed_payoff(ne_support_index, ne_subgame_nonzero)
 
             # all possible deviation payoffs (Only get all deviations and corresponding payoff rather than choosing the maximal one.)
-            dev_pol, dev_payoffs = self.schedule_deviation(ne_support_index, ne_subgame_nonzero)
+            dev_pol, dev_payoffs = self.schedule_deviation(ne_support_index, ne_subgame_nonzero, subgame_idx)
 
-            # TODO: add sampling scheme, not find all deviation payoff.
-            # check max deviations and sample full subgame where beneficial deviation included
+            # Check whether deviation strategy exist
             dev = []
-            maximum_subgame_index = [list(np.where(np.array(ele) == 1)[0]) for ele in self._complete_ind]
             for i in range(self._game_num_players):
                 if not len(dev_payoffs[i]) == 0 and max(dev_payoffs[i]) - regret_threshold > ne_payoffs[i]:
-                    pol = dev_pol[i][np.argmax(dev_payoffs[i])]
-                    new_subgame_sample_ind = copy.deepcopy(maximum_subgame_index)
-                    maximum_subgame_index[i].append(pol) # all other player's policies have to sample previous players' best deviation
-                    new_subgame_sample_ind[i] = [pol]
-                    # add best deviation into subgame and sample the corresponding profiles.
-                    for profile in itertools.product(*new_subgame_sample_ind):
-                        self.sample_pure_policy_to_empirical_game(profile)
                     dev.append(i)
-                    # update complete index.
-                    self._complete_ind[i][pol] = 1
+            if len(dev) == 0:
+                break
 
-            found_confirmed_eq = (len(dev) == 0)
-            # debug: check maximum subgame remains the same
-            # debug: check maximum game reached
+            # When the size of the game is below the restricted game size:
+            current_support_size = [len(list(np.where(np.array(ele) == 1)[0])) for ele in subgame_idx]
+            if np.max(current_support_size) <= self.restricted_game_size:
+                beneficial_dev_pol = [[] for _ in range(self._game_num_players)]
+                beneficial_dev_pol_gain = [{} for _ in range(self._game_num_players)]
+                for position, pol in enumerate(dev_pol):
+                    for player in range(self._game_num_players):
+                        gain = dev_payoffs[player][position] - ne_payoffs[player]
+                        if gain > 0:
+                            beneficial_dev_pol[player].append(pol)
+                            beneficial_dev_pol_gain[player][pol] = gain
 
-        # print("Complete index afterwards:", self._complete_ind)
+                for player in range(self._game_num_players):
+                    beneficial_dev_pol[player].append(-1) #-1 means no sampling.
+
+                all_deviation_combinations = itertools.product(*beneficial_dev_pol)
+                for dev_pol in all_deviation_combinations:
+                    new_subgame_idx = copy.deepcopy(subgame_idx)
+                    gain = 0
+                    for player in range(self._game_num_players):
+                        if dev_pol[player] != -1:
+                            pol = dev_pol[player]
+                            new_subgame_idx[player][pol] = 1
+                            gain += beneficial_dev_pol_gain[player][pol]
+                    support_size = np.sum(new_subgame_idx)
+                    if new_subgame_idx not in self.explored_subgame_verification or self.backup_subgames_verification:
+                        self.add_meta_game((support_size, gain, new_subgame_idx))
+                        self.backup_subgames_verification.add(new_subgame_idx)
+
+            else: # support size larger than restricted game size.
+                br_pol = [[] for _ in range(self._game_num_players)]
+                br_pol_gain = [{} for _ in range(self._game_num_players)]
+                for player in range(self._game_num_players):
+                    if not len(dev_payoffs[player]) == 0 and max(dev_payoffs[player]) - regret_threshold > ne_payoffs[player]:
+                        position = np.argmax(dev_payoffs[player])
+                        pol = dev_pol[player][position]
+                        gain = dev_payoffs[player][position] - ne_payoffs[player]
+                        br_pol[player].append(pol)
+                        br_pol_gain[player][pol] = gain
+
+                for player in range(self._game_num_players):
+                    br_pol[player].append(-1)  # -1 means no sampling.
+
+                all_deviation_combinations = itertools.product(*br_pol)
+                for dev_pol in all_deviation_combinations:
+                    new_subgame_idx = copy.deepcopy(subgame_idx)
+                    gain = 0
+                    for player in range(self._game_num_players):
+                        if dev_pol[player] != -1:
+                            pol = dev_pol[player]
+                            new_subgame_idx[player][pol] = 1
+                            gain += br_pol_gain[player][pol]
+                    support_size = np.sum(new_subgame_idx)
+                    if new_subgame_idx not in self.explored_subgame_verification or self.backup_subgames_verification:
+                        self.add_meta_game((support_size, gain, new_subgame_idx))
+                        self.backup_subgames_verification.add(new_subgame_idx)
+
+
         # return confirmed nash equilibrium
         eq = []
         policy_len = [len(self._policies) for _ in range(self._game_num_players)] if self.symmetric_game else [len(ele)
@@ -200,7 +278,7 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
 
         return eq, non_marginalized_probabilities
 
-    def schedule_deviation(self, eq, eq_sup):
+    def schedule_deviation(self, eq, eq_sup, subgame_idx):
         """
         Sample all possible deviation from eq
         Return a list of best deviation for each player
@@ -218,7 +296,7 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
         for p in range(self._game_num_players):
             # check all possible deviations
             dev = []
-            possible_dev = list(np.where(np.array(self._complete_ind[p]) == 0)[0])
+            possible_dev = list(np.where(np.array(subgame_idx[p]) == 0)[0])
             iter_eq = copy.deepcopy(eq)  # TODO: eq support is eq.
             iter_eq[p] = possible_dev
             for pol in itertools.product(*iter_eq):
@@ -253,29 +331,6 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
             payoffs.append(np.sum(meta_game[i] * prob_matrix))
         return payoffs
 
-    # def update_complete_ind(self, policy_indicator, add_sample=True):
-    #     """
-    #     Update the maximum completed subgame index with newly added policy(one policy for each player)
-    #     Params:
-    #       policy_indicator: one dimensional list, policy to check, one number for each player
-    #       add_sample      : whether there are sample added after last update
-    #     """
-    #     policy_len = [len(self._policies) for _ in range(self._game_num_players)] if self.symmetric_game else [len(ele)
-    #                                                                                                            for ele
-    #                                                                                                            in
-    #                                                                                                            self._policies]
-    #     self.num_profiles = np.prod(policy_len)
-    #
-    #     for i in range(self._game_num_players):
-    #         for _ in range(policy_len[i] - len(self._complete_ind[i])):
-    #             self._complete_ind[i].append(0)
-    #
-    #         if not add_sample or self._complete_ind[i][policy_indicator[i]] == 1:
-    #             continue
-    #         selector = [list(np.where(np.array(ele) == 1)[0]) for ele in self._complete_ind]
-    #         selector[i].append(policy_indicator[i])
-    #         if not np.any(np.isnan(self._meta_games[i][np.ix_(*selector)])):
-    #             self._complete_ind[i][policy_indicator[i]] = 1
 
     def sample_pure_policy_to_empirical_game(self, policy_indicator):
         """
@@ -298,7 +353,6 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
         utility_estimates = self.sample_episodes(estimated_policies, self._sims_per_entry)
         for k in range(self._game_num_players):
             self._meta_games[k][tuple(policy_indicator)] = utility_estimates[k]
-        # self.update_complete_ind(policy_indicator, add_sample=True)
         return True
 
     def check_completeness(self, subgame):
@@ -312,3 +366,20 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
             nan_position = list(np.where(nan_lable)==1)
             for profile in nan_position:
                 self.sample_pure_policy_to_empirical_game(profile)
+
+    def find_all_combinations(self, beneficial_dev_pol):
+        """
+        Find all possible subgame index.
+        :param beneficial_dev_pol: [[1,2,3], [2,4], [3]]
+        :return:
+        """
+        all_combinations = []
+        for ele in beneficial_dev_pol:
+            combinations = []
+            for i in range(1, len(ele) + 1):
+                comb = list(itertools.combinations(ele, i))
+                for set in comb:
+                    combinations.append(set)
+            all_combinations.append(combinations)
+        all_subgames = itertools.product(*all_combinations)
+        return list(all_subgames)

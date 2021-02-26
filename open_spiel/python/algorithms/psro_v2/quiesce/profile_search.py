@@ -11,6 +11,7 @@ from open_spiel.python import policy
 from open_spiel.python.algorithms.psro_v2 import utils
 from open_spiel.python.algorithms.psro_v2 import psro_v2
 from open_spiel.python.algorithms.psro_v2 import meta_strategies
+from open_spiel.python.algorithms.nash_solver import controled_RD
 from open_spiel.python.algorithms.nash_solver.general_nash_solver import normalize_ne
 
 
@@ -45,7 +46,9 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
         """
         if self._meta_strategy_str in ['nash', 'general_nash', 'prd']:
             start_time = time.time()
-            self._meta_strategy_probabilities, self._non_marginalized_probabilities = self.inner_loop()
+            self._meta_strategy_probabilities, self._non_marginalized_probabilities = self.inner_loop(regret_threshold=self.quiesce_regret_threshold,
+                                                                                                      regularization=self.RD_regularization,
+                                                                                                      regularization_regret=self.RD_regret_threshold)
             return time.time() - start_time  # Return quiesce running time
         else:
             super(PSROQuiesceSolver, self).update_meta_strategies()
@@ -111,7 +114,7 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
         complete_subgame = [self._meta_games[i][np.ix_(*selector)] for i in range(self._game_num_players)]
         return complete_subgame
 
-    def inner_loop(self, regret_threshold=0.2, support_threshold=0.005):
+    def inner_loop(self, regret_threshold=0.0, support_threshold=0.005, regularization=False, regularization_regret=0.5):
         """
         Find equilibrium in the incomplete self._meta_games through iteratively augment the maximum complete subgame by sampling. Symmetric game could have insymmetric nash equilibrium, so uses self._game_num_players instead of self._num_players
         Returns:
@@ -131,18 +134,13 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
         for player in range(self._game_num_players):
             self._complete_ind[player][-1] = 1
 
-        # print("New start.")
         while not found_confirmed_eq:
-            # print("***Complete index:", self._complete_ind)
             maximum_subgame = self.get_complete_meta_game
             ne_subgame = meta_strategies.general_nash_strategy(solver=self, return_joint=False, NE_solver=NE_solver,
                                                                game=maximum_subgame, checkpoint_dir=self.checkpoint_dir)
-            # print("Subgame:", maximum_subgame)
-            # print("NE:", ne_subgame)
-            # ne_support_index: list of list, index of where equilibrium is [[0,1],[2]]
+
             # cumsum: index ne_subgame with self._complete_ind
             cum_sum = [np.cumsum(ele) for ele in self._complete_ind]
-            # print("cum_sum:", cum_sum)
             ne_support_index = []
             for i in range(self._game_num_players):
                 ne_support_index_p = []
@@ -183,8 +181,27 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
             # debug: check maximum subgame remains the same
             # debug: check maximum game reached
 
-        # print("Complete index afterwards:", self._complete_ind)
         # return confirmed nash equilibrium
+        # If True, first run quiesce to find the subgame containing a NE. Than run RD to regularize.
+        if regularization:
+            ne_subgame = controled_RD.controled_replicator_dynamics(maximum_subgame,
+                                                                    regret_threshold=regularization_regret,
+                                                                    num_players=self._game_num_players)
+            cum_sum = [np.cumsum(ele) for ele in self._complete_ind]
+            # print("cum_sum:", cum_sum)
+            ne_support_index = []
+            for i in range(self._game_num_players):
+                ne_support_index_p = []
+                for j in range(len(self._complete_ind[i])):
+                    if self._complete_ind[i][j] == 1 and ne_subgame[i][cum_sum[i][j] - 1] >= support_threshold:
+                        ne_support_index_p.append(j)
+                assert len(ne_support_index_p) != 0
+                ne_support_index.append(ne_support_index_p)
+
+            # ne_subgame: non-zero equilibrium support, [[0.1,0.5,0.4],[0.2,0.4,0.4]]
+            ne_subgame_nonzero = [np.array(ele) for ele in ne_subgame]
+            ne_subgame_nonzero = [ele[ele >= support_threshold] for ele in ne_subgame_nonzero]
+
         eq = []
         policy_len = [len(self._policies) for _ in range(self._game_num_players)] if self.symmetric_game else [len(ele)
                                                                                                                for ele
@@ -253,29 +270,7 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
             payoffs.append(np.sum(meta_game[i] * prob_matrix))
         return payoffs
 
-    # def update_complete_ind(self, policy_indicator, add_sample=True):
-    #     """
-    #     Update the maximum completed subgame index with newly added policy(one policy for each player)
-    #     Params:
-    #       policy_indicator: one dimensional list, policy to check, one number for each player
-    #       add_sample      : whether there are sample added after last update
-    #     """
-    #     policy_len = [len(self._policies) for _ in range(self._game_num_players)] if self.symmetric_game else [len(ele)
-    #                                                                                                            for ele
-    #                                                                                                            in
-    #                                                                                                            self._policies]
-    #     self.num_profiles = np.prod(policy_len)
-    #
-    #     for i in range(self._game_num_players):
-    #         for _ in range(policy_len[i] - len(self._complete_ind[i])):
-    #             self._complete_ind[i].append(0)
-    #
-    #         if not add_sample or self._complete_ind[i][policy_indicator[i]] == 1:
-    #             continue
-    #         selector = [list(np.where(np.array(ele) == 1)[0]) for ele in self._complete_ind]
-    #         selector[i].append(policy_indicator[i])
-    #         if not np.any(np.isnan(self._meta_games[i][np.ix_(*selector)])):
-    #             self._complete_ind[i][policy_indicator[i]] = 1
+
 
     def sample_pure_policy_to_empirical_game(self, policy_indicator):
         """
@@ -298,7 +293,6 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
         utility_estimates = self.sample_episodes(estimated_policies, self._sims_per_entry)
         for k in range(self._game_num_players):
             self._meta_games[k][tuple(policy_indicator)] = utility_estimates[k]
-        # self.update_complete_ind(policy_indicator, add_sample=True)
         return True
 
     def check_completeness(self, subgame):
