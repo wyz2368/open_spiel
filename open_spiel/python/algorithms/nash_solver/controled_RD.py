@@ -18,7 +18,6 @@ def controled_replicator_dynamics(payoff_tensors,
                                   prd_dt=1e-3,
                                   prd_gamma=0,
                                   average_over_last_n_strategies=None,
-                                  num_players=2,
                                   **unused_kwargs):
 
   """The Control Replicator Dynamics algorithm.
@@ -44,6 +43,11 @@ def controled_replicator_dynamics(payoff_tensors,
   number_players = len(payoff_tensors)
   # Number of actions available to each player.
   action_space_shapes = payoff_tensors[0].shape
+
+  if number_players == 2:
+      regret_calculator = dev_regret
+  else:
+      regret_calculator = dev_regret_general
 
   # If no initial starting position is given, start with uniform probabilities.
   new_strategies = prd_initial_strategies or [
@@ -76,10 +80,7 @@ def controled_replicator_dynamics(payoff_tensors,
         nash_list = [average_new_strategies[i] for i in range(number_players)]
 
         # Regret Control
-        if num_players == 2:
-            current_regret = dev_regret(payoff_tensors, nash_list)
-        else:
-            current_regret = dev_regret_general(payoff_tensors, nash_list)
+        current_regret = regret_calculator(payoff_tensors, nash_list)
         if current_regret < regret_threshold:
             break
 

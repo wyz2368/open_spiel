@@ -27,7 +27,10 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
         self._new_policies = [([initial_policies[k]] if initial_policies else
                                [policy.UniformRandomPolicy(self._game)])
                               for k in range(self._num_players)]
-        # self._complete_ind = [[] for _ in range(self._num_players)]
+        self.eq_quiesce = None
+        self.eq_quiesce_RD = None
+        self.eq_quiesce_nonmargin = None
+        self.eq_quiesce_RD_nonmargin = None
 
     def _initialize_game_state(self):
         effective_payoff_size = self._game_num_players
@@ -119,6 +122,10 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
         Find equilibrium in the incomplete self._meta_games through iteratively augment the maximum complete subgame by sampling. Symmetric game could have insymmetric nash equilibrium, so uses self._game_num_players instead of self._num_players
         Returns:
             Equilibrium support, non_margianlized profile probability
+        :param regret_threshold: controls regret in quiesce search.
+        :param support_threshold: controls minimal support in NE of the empirical game.
+        :param regularization: controls whether run RD in the subgame containing the NE.
+        :param regularization_regret: controls when RD stops.
         """
         found_confirmed_eq = False
         # TODO: change to replicator with regularization for online target.(Low implementation priority.)
@@ -181,41 +188,56 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
             # debug: check maximum subgame remains the same
             # debug: check maximum game reached
 
+        eq = []
+        policy_len = [len(self._policies) for _ in range(self._game_num_players)] if self.symmetric_game else [len(ele)
+                                                                                                               for ele
+                                                                                                               in
+                                                                                                               self._policies]
+        for p in range(self._game_num_players):
+            eq_p = np.zeros([policy_len[p]], dtype=float)
+            np.put(eq_p, ne_support_index[p], ne_subgame_nonzero[p])
+            eq.append(eq_p)
+
+        self.eq_quiesce = normalize_ne(eq)
+        self.eq_quiesce_nonmargin = meta_strategies.get_joint_strategy_from_marginals(eq)
+
+
         # return confirmed nash equilibrium
         # If True, first run quiesce to find the subgame containing a NE. Than run RD to regularize.
-        if regularization:
+        if True: #regularization:
             ne_subgame = controled_RD.controled_replicator_dynamics(maximum_subgame,
-                                                                    regret_threshold=regularization_regret,
-                                                                    num_players=self._game_num_players)
+                                                                    regret_threshold=regularization_regret)
             cum_sum = [np.cumsum(ele) for ele in self._complete_ind]
-            # print("cum_sum:", cum_sum)
             ne_support_index = []
             for i in range(self._game_num_players):
                 ne_support_index_p = []
                 for j in range(len(self._complete_ind[i])):
-                    if self._complete_ind[i][j] == 1 and ne_subgame[i][cum_sum[i][j] - 1] >= support_threshold:
+                    if self._complete_ind[i][j] == 1 and ne_subgame[i][cum_sum[i][j] - 1] >= 0:
                         ne_support_index_p.append(j)
                 assert len(ne_support_index_p) != 0
                 ne_support_index.append(ne_support_index_p)
 
             # ne_subgame: non-zero equilibrium support, [[0.1,0.5,0.4],[0.2,0.4,0.4]]
             ne_subgame_nonzero = [np.array(ele) for ele in ne_subgame]
-            ne_subgame_nonzero = [ele[ele >= support_threshold] for ele in ne_subgame_nonzero]
+            ne_subgame_nonzero = [ele[ele >= 0] for ele in ne_subgame_nonzero]
 
-        eq = []
-        policy_len = [len(self._policies) for _ in range(self._game_num_players)] if self.symmetric_game else [len(ele)
-                                                                                                               for ele
-                                                                                                               in
-                                                                                                       self._policies]
-        for p in range(self._game_num_players):
-            eq_p = np.zeros([policy_len[p]], dtype=float)
-            np.put(eq_p, ne_support_index[p], ne_subgame_nonzero[p])
-            eq.append(eq_p)
+            eq = []
+            policy_len = [len(self._policies) for _ in range(self._game_num_players)] if self.symmetric_game else [len(ele)
+                                                                                                                   for ele
+                                                                                                                   in
+                                                                                                           self._policies]
+            for p in range(self._game_num_players):
+                eq_p = np.zeros([policy_len[p]], dtype=float)
+                np.put(eq_p, ne_support_index[p], ne_subgame_nonzero[p])
+                eq.append(eq_p)
 
-        eq = normalize_ne(eq)
-        non_marginalized_probabilities = meta_strategies.get_joint_strategy_from_marginals(eq)
+            self.eq_quiesce_RD = normalize_ne(eq)
+            self.eq_quiesce_RD_nonmargin = meta_strategies.get_joint_strategy_from_marginals(eq)
 
-        return eq, non_marginalized_probabilities
+        if regularization:
+            return self.eq_quiesce_RD, self.eq_quiesce_RD_nonmargin
+        else:
+            return self.eq_quiesce, self.eq_quiesce_nonmargin
 
     def schedule_deviation(self, eq, eq_sup):
         """
@@ -306,3 +328,9 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
             nan_position = list(np.where(nan_lable)==1)
             for profile in nan_position:
                 self.sample_pure_policy_to_empirical_game(profile)
+
+    def get_another_probs(self):
+        if self.RD_regularization:
+            return self.eq_quiesce
+        else:
+            return self.eq_quiesce_RD

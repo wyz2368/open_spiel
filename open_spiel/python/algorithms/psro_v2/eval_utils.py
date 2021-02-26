@@ -12,6 +12,7 @@ import tensorflow.compat.v1 as tf
 
 
 
+
 def regret(meta_games, subgame_index, subgame_ne=None, start_index=0):
     """
     (Only used in block switch.)
@@ -395,5 +396,5 @@ def dev_regret_general(meta_games, probs):
             dev_payoff.append(np.sum(meta_games[i] * new_prob_matrix))
         deviation_payoffs.append(dev_payoff - profile_payoff)
 
-    regret = np.sum([np.max(ele) for ele in deviation_payoffs])
-    return regret
+    nashconv = np.sum([np.max(ele) for ele in deviation_payoffs])
+    return nashconv

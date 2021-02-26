@@ -477,8 +477,8 @@ def gpsro_looper(env, oracle, agents, writer, quiesce=False, checkpoint_dir=None
     #   for p in range(len(train_reward_curve)):
     #     for p_i in range(len(train_reward_curve[p])):
     #       writer.add_scalar('player'+str(p)+'_'+str(gpsro_iteration),train_reward_curve[p][p_i],p_i)
-    for p in range(len(expl_per_player)):
-      writer.add_scalar('player'+str(p)+'_exp', expl_per_player[p], gpsro_iteration)
+    # for p in range(len(expl_per_player)):
+    #   writer.add_scalar('player'+str(p)+'_exp', expl_per_player[p], gpsro_iteration)
     writer.add_scalar('exp', exploitabilities, gpsro_iteration)
     writer.add_scalar('exp_Mike', nash_Mike, gpsro_iteration)
     writer.add_scalar('exp_prd', prd_regret, gpsro_iteration)
@@ -486,7 +486,7 @@ def gpsro_looper(env, oracle, agents, writer, quiesce=False, checkpoint_dir=None
     if FLAGS.verbose:
       print("Exploitabilities : {}".format(exploitabilities))
       print("Exploitabilities_Mike : {}".format(nash_Mike))
-      print("Exploitabilities per player : {}".format(expl_per_player))
+      # print("Exploitabilities per player : {}".format(expl_per_player))
 
 def main(argv):
   if len(argv) > 1:
