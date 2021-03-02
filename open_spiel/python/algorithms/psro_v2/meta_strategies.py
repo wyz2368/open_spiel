@@ -22,6 +22,7 @@ from open_spiel.python.algorithms import projected_replicator_dynamics
 from open_spiel.python.algorithms.nash_solver import general_nash_solver as gs
 from open_spiel.python.algorithms.nash_solver import controled_RD
 from open_spiel.python.algorithms.psro_v2.quantalBR import nfg_to_efg
+from open_spiel.python.algorithms.nash_solver.general_nash_solver import normalize_ne
 import pyspiel
 
 
@@ -332,7 +333,7 @@ def regret_controled_RD(solver, return_joint=False, checkpoint_dir=None, regret_
     joint_strategies = get_joint_strategy_from_marginals(result)
     return result, joint_strategies
 
-def qbe_strategy(solver, return_joint=False, proportion=0.6, game=None, checkpoint_dir=None):
+def qbe_strategy(solver, return_joint=False, proportion=0.7, game=None, checkpoint_dir=None):
   """Returns qbe distribution on meta game matrix.
 
   This method works for general-sum multi-player games.
@@ -349,6 +350,7 @@ def qbe_strategy(solver, return_joint=False, proportion=0.6, game=None, checkpoi
   if not isinstance(meta_games, list):
     meta_games = [meta_games, -meta_games]
   equilibria = nfg_to_efg.do_gambit_analysis_qre(meta_games=meta_games, proportion=proportion, checkpoint_dir=checkpoint_dir)
+  equilibria = normalize_ne(equilibria)
 
   if not return_joint:
       return equilibria
