@@ -2,6 +2,7 @@ import numpy as np
 import copy
 import os
 import itertools
+from collections import OrderedDict
 # from  open_spiel.python.algorithms.psro_v2.eval_utils import regret, strategy_regret
 # from open_spiel.python.algorithms.nash_solver.replicator_dynamics_solver import replicator_dynamics
 
@@ -25,7 +26,13 @@ import itertools
 # a = [[1,2,3], [2,4], [3]]
 # print(find_all_combinations(a))
 
-a = [np.array([1]), np.array([1])]
-b = a.copy()
-b[0] = 1
-print(a, b)
+# a = []
+# a.append([np.array(1), np.array(1)])
+# a.append([1,1,3])
+# a.append([1,1,3])
+# a.append([1,2,3])
+# a.append([1,2,3])
+# a.append([1,2,3])
+# print([np.array(1), np.array(1)] in a)
+a = [True, True, False]
+print(True and True)

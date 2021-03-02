@@ -21,6 +21,7 @@ from open_spiel.python.algorithms import lp_solver
 from open_spiel.python.algorithms import projected_replicator_dynamics
 from open_spiel.python.algorithms.nash_solver import general_nash_solver as gs
 from open_spiel.python.algorithms.nash_solver import controled_RD
+from open_spiel.python.algorithms.psro_v2.quantalBR import nfg_to_efg
 import pyspiel
 
 
@@ -331,6 +332,29 @@ def regret_controled_RD(solver, return_joint=False, checkpoint_dir=None, regret_
     joint_strategies = get_joint_strategy_from_marginals(result)
     return result, joint_strategies
 
+def qbe_strategy(solver, return_joint=False, proportion=0.8, game=None, checkpoint_dir=None):
+  """Returns qbe distribution on meta game matrix.
+
+  This method works for general-sum multi-player games.
+
+  Args:
+    solver: GenPSROSolver instance.
+    return_joint: If true, only returns marginals. Otherwise marginals as well
+      as joint probabilities.
+    proportion: proportion position of all QBE with different lambda.
+  Returns:
+    Nash distribution on strategies.
+  """
+  meta_games = solver.get_meta_game() if game is None else game
+  if not isinstance(meta_games, list):
+    meta_games = [meta_games, -meta_games]
+  equilibria = nfg_to_efg.do_gambit_analysis_qre(meta_games=meta_games, proportion=proportion)
+
+  if not return_joint:
+      return equilibria
+  else:
+      joint_strategies = get_joint_strategy_from_marginals(equilibria)
+      return equilibria, joint_strategies
 
 
 META_STRATEGY_METHODS = {
@@ -342,7 +366,8 @@ META_STRATEGY_METHODS = {
     "sp": self_play_strategy,
     "weighted_ne": weighted_NE_strategy,
     "pDO": projected_DO,
-    "CRD": regret_controled_RD
+    "CRD": regret_controled_RD,
+    "QBE": qbe_strategy
 }
 
 
@@ -354,5 +379,6 @@ META_STRATEGY_METHODS_SE = {
     "sp": self_play_strategy,
     "weighted_ne": weighted_NE_strategy,
     "pDO": projected_DO,
-    "CRD": regret_controled_RD
+    "CRD": regret_controled_RD,
+    "QBE": qbe_strategy
 }

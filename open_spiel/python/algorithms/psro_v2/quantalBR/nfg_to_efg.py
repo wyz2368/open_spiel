@@ -4,6 +4,7 @@ import os
 import pickle
 import itertools
 import logging
+import math
 
 """
 This script connects meta-games with gambit. It translates a meta-game to am EFG format 
@@ -119,9 +120,9 @@ def gambit_analysis_qre(timeout, checkpoint_dir=None):
     :param method: The gamebit command line method.
     """
     if checkpoint_dir is None:
-        gambit_DIR = os.path.dirname(os.path.realpath(__file__)) + '/nfg'
+        gambit_DIR = os.path.dirname(os.path.realpath(__file__)) + '/efg'
     else:
-        gambit_DIR = checkpoint_dir + '/nfg'
+        gambit_DIR = checkpoint_dir + '/efg'
     gambit_EFG = gambit_DIR + '/payoffmatrix.efg'
 
     if not isExist(gambit_EFG):
@@ -129,11 +130,11 @@ def gambit_analysis_qre(timeout, checkpoint_dir=None):
     command_str = "gambit-logit" + " -q " + gambit_EFG + " -d 8 > " + gambit_DIR + "/qre.txt"
     subproc.call_and_wait_with_timeout(command_str, timeout)
 
-def decode_gambit_file_qre(meta_games, mode="all", checkpoint_dir=None):
+def decode_gambit_file_qre(meta_games, proportion, checkpoint_dir=None):
     """
     Decode the results returned from gambit to a numpy format used for PSRO.
     :param meta_games: A meta-game in PSRO.
-    :param mode: "all", "pure", "one" options
+    :param proportion: position of the all qbe with different lambda.
     :param max_num_nash: the number of NE considered to return
     :return: a list of NE
     """
@@ -146,8 +147,7 @@ def decode_gambit_file_qre(meta_games, mode="all", checkpoint_dir=None):
     if not isExist(nash_DIR):
         raise ValueError("qre.txt file does not exist!")
     num_lines = file_len(nash_DIR)
-
-    logging.info("Number of QRE (lambda) is ", num_lines)
+    # logging.info("Number of QRE (lambda) is ", num_lines)
 
     shape = np.shape(meta_games[0])
     slice_idx = []
@@ -157,37 +157,61 @@ def decode_gambit_file_qre(meta_games, mode="all", checkpoint_dir=None):
         pos += shape[i]
 
     equilibria = []
+    equilibria_restricted = []
     with open(nash_DIR,'r') as f:
         for _ in np.arange(num_lines):
             equilibrim = []
+            equilibrim_rest = []
             nash = f.readline()
             if len(nash.strip()) == 0:
                 continue
-            nash = nash[3:]
             nash = nash.split(',')
             new_nash = []
             for j in range(len(nash)):
                 new_nash.append(convert(nash[j]))
-
             new_nash = np.array(new_nash)
-            new_nash = np.round(new_nash, decimals=8)
+            # nash_rest is used to distinguish different qbe.
+            new_nash_unrest = np.round(new_nash, decimals=8)
+            nash_rest = np.round(new_nash, decimals=2)
+
+            new_nash_unrest = new_nash_unrest[1:] # remove the value of lambda.
+            nash_rest = nash_rest[1:]
             for idx in slice_idx:
-                equilibrim.append(new_nash[idx])
+                equilibrim.append(new_nash_unrest[idx])
+                equilibrim_rest.append(nash_rest[idx])
+
             equilibria.append(equilibrim)
+            equilibria_restricted.append(equilibrim_rest)
 
-    if mode == "all" or mode == "pure":
-        return equilibria
-    elif mode == "one":
-        return equilibria[0]
-    else:
-        logging.info("mode is beyond all/pure/one.")
+    unique_qbe = []
+    qbe_idx = []
+    num_players = len(meta_games)
+    for i, eq in enumerate(equilibria_restricted):
+        if i == 0:
+            unique_qbe.append(eq)
+            qbe_idx.append(i)
+            continue
+        allclose = True
+        last_qbe = unique_qbe[-1]
+        for player in range(num_players):
+            allclose = allclose and np.allclose(last_qbe[player], eq[player])
+        if not allclose:
+            unique_qbe.append(eq)
+            qbe_idx.append(i)
+
+    num_qbe = len(unique_qbe)
+    idx_position = math.floor(num_qbe * proportion) - 1
+    position = qbe_idx[idx_position]
+
+    return equilibria[position]
 
 
-def do_gambit_analysis_qre(meta_games, mode, timeout = 600, checkpoint_dir=None):
+
+def do_gambit_analysis_qre(meta_games, proportion, timeout=600, checkpoint_dir=None):
     """
     Combine encoder and decoder.
     :param meta_games: meta-games in PSRO.
-    :param mode: "all", "pure", "one" options
+    :param proportion: position of the all qbe with different lambda.
     :param timeout: Maximum time for the subprocess
     :param method: The gamebit command line method.
     :param method_pure_ne: The gamebit command line method for finding pure NE.
@@ -211,7 +235,7 @@ def do_gambit_analysis_qre(meta_games, mode, timeout = 600, checkpoint_dir=None)
         if not isExist(nash_DIR):
             raise ValueError("qre.txt file does not exist!")
 
-        equilibria = decode_gambit_file_qre(meta_games, mode, checkpoint_dir=checkpoint_dir)
+        equilibria = decode_gambit_file_qre(meta_games, proportion, checkpoint_dir=checkpoint_dir)
         if len(equilibria) != 0:
             break
         timeout += 120
