@@ -348,7 +348,7 @@ def qbe_strategy(solver, return_joint=False, proportion=0.8, game=None, checkpoi
   meta_games = solver.get_meta_game() if game is None else game
   if not isinstance(meta_games, list):
     meta_games = [meta_games, -meta_games]
-  equilibria = nfg_to_efg.do_gambit_analysis_qre(meta_games=meta_games, proportion=proportion)
+  equilibria = nfg_to_efg.do_gambit_analysis_qre(meta_games=meta_games, proportion=proportion, checkpoint_dir=checkpoint_dir)
 
   if not return_joint:
       return equilibria

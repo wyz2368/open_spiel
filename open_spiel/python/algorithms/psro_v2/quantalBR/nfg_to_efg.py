@@ -217,6 +217,7 @@ def do_gambit_analysis_qre(meta_games, proportion, timeout=600, checkpoint_dir=N
     :param method_pure_ne: The gamebit command line method for finding pure NE.
     :return: a list of NE.
     """
+    print("check_dir:", checkpoint_dir)
     if checkpoint_dir is None:
         gambit_DIR = os.path.dirname(os.path.realpath(__file__)) + '/efg'
     else:
