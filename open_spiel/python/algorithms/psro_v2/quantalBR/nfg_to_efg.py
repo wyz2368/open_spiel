@@ -281,6 +281,13 @@ def file_len(fname):
     return num_lines
 
 def controll_regret(payoff_tensors, equilibria, regret_threshold=0.35):
+    """
+    Find qre with certain regret shreshold within the EG.
+    :param payoff_tensors:
+    :param equilibria:
+    :param regret_threshold:
+    :return:
+    """
     for eq in equilibria:
         current_regret = dev_regret(payoff_tensors, eq)
         if current_regret < regret_threshold:
