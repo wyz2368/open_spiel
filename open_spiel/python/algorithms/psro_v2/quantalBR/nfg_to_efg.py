@@ -6,6 +6,8 @@ import itertools
 import logging
 import math
 
+from open_spiel.python.algorithms.psro_v2.eval_utils import dev_regret
+
 """
 This script connects meta-games with gambit. It translates a meta-game to am EFG format 
 that gambit-logit could recognize to find the QRE.
@@ -130,7 +132,7 @@ def gambit_analysis_qre(timeout, checkpoint_dir=None):
     command_str = "gambit-logit" + " -q " + gambit_EFG + " -d 8 > " + gambit_DIR + "/qre.txt"
     subproc.call_and_wait_with_timeout(command_str, timeout)
 
-def decode_gambit_file_qre(meta_games, proportion, checkpoint_dir=None):
+def decode_gambit_file_qre(meta_games, proportion, mode, checkpoint_dir=None):
     """
     Decode the results returned from gambit to a numpy format used for PSRO.
     :param meta_games: A meta-game in PSRO.
@@ -200,14 +202,18 @@ def decode_gambit_file_qre(meta_games, proportion, checkpoint_dir=None):
             qbe_idx.append(i)
 
     num_qbe = len(unique_qbe)
-    idx_position = math.floor(num_qbe * proportion) - 1
-    position = qbe_idx[idx_position]
+    if mode == "all":
+        new_equilibria = [equilibria[i] for i in qbe_idx]
+        return new_equilibria
+    else:
+        idx_position = math.floor(num_qbe * proportion) - 1
+        position = qbe_idx[idx_position]
 
-    return equilibria[position]
+        return equilibria[position]
 
 
 
-def do_gambit_analysis_qre(meta_games, proportion, timeout=600, checkpoint_dir=None):
+def do_gambit_analysis_qre(meta_games, proportion, mode="all", timeout=600, checkpoint_dir=None):
     """
     Combine encoder and decoder.
     :param meta_games: meta-games in PSRO.
@@ -235,7 +241,7 @@ def do_gambit_analysis_qre(meta_games, proportion, timeout=600, checkpoint_dir=N
         if not isExist(nash_DIR):
             raise ValueError("qre.txt file does not exist!")
 
-        equilibria = decode_gambit_file_qre(meta_games, proportion, checkpoint_dir=checkpoint_dir)
+        equilibria = decode_gambit_file_qre(meta_games, proportion, mode=mode, checkpoint_dir=checkpoint_dir)
         if len(equilibria) != 0:
             break
         timeout += 120
@@ -243,7 +249,13 @@ def do_gambit_analysis_qre(meta_games, proportion, timeout=600, checkpoint_dir=N
             logging.warning("Gambit has been running for more than 2 hour.!")
         logging.warning("Timeout has been added by 120s.")
     logging.info('gambit_analysis done!')
-    return equilibria
+
+    # find the qre satifying regret threshold
+    if mode == "all":
+        controlled_equilibrium = controll_regret(meta_games, equilibria)
+        return controlled_equilibrium
+    else:
+        return equilibria
 
 
 def convert(s):
@@ -268,6 +280,11 @@ def file_len(fname):
     num_lines = sum(1 for line in open(fname))
     return num_lines
 
-
+def controll_regret(payoff_tensors, equilibria, regret_threshold=0.35):
+    for eq in equilibria:
+        current_regret = dev_regret(payoff_tensors, eq)
+        if current_regret < regret_threshold:
+            break
+    return eq
 
 

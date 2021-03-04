@@ -333,7 +333,7 @@ def regret_controled_RD(solver, return_joint=False, checkpoint_dir=None, regret_
     joint_strategies = get_joint_strategy_from_marginals(result)
     return result, joint_strategies
 
-def qbe_strategy(solver, return_joint=False, proportion=1.0, game=None, checkpoint_dir=None):
+def qbe_strategy(solver, return_joint=False, proportion=1.0, game=None, mode="all", checkpoint_dir=None):
   """Returns qbe distribution on meta game matrix.
 
   This method works for general-sum multi-player games.
@@ -349,7 +349,11 @@ def qbe_strategy(solver, return_joint=False, proportion=1.0, game=None, checkpoi
   meta_games = solver.get_meta_game() if game is None else game
   if not isinstance(meta_games, list):
     meta_games = [meta_games, -meta_games]
-  equilibria = nfg_to_efg.do_gambit_analysis_qre(meta_games=meta_games, proportion=proportion, checkpoint_dir=checkpoint_dir)
+  equilibria = nfg_to_efg.do_gambit_analysis_qre(meta_games=meta_games,
+                                                 proportion=proportion,
+                                                 mode=mode,
+                                                 checkpoint_dir=checkpoint_dir)
+
   equilibria = normalize_ne(equilibria)
 
   if not return_joint:
