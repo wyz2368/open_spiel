@@ -232,7 +232,7 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
 
                     new_subgame_encode = self.verification_encoding(new_subgame_idx)
                     if new_subgame_encode not in self.explored_subgame_verification or self.backup_subgames_verification:
-                        self.add_meta_game((support_size, gain, new_subgame_idx))
+                        self.add_meta_game((support_size, -gain, new_subgame_idx))
                         self.backup_subgames_verification.add(new_subgame_encode)
 
             else: # support size larger than restricted game size.
@@ -261,7 +261,7 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
                     support_size = np.sum(new_subgame_idx)
                     new_subgame_encode = self.verification_encoding(new_subgame_idx)
                     if new_subgame_encode not in self.explored_subgame_verification or self.backup_subgames_verification:
-                        self.add_meta_game((support_size, gain, new_subgame_idx))
+                        self.add_meta_game((support_size, -gain, new_subgame_idx))
                         self.backup_subgames_verification.add(new_subgame_encode)
 
 
