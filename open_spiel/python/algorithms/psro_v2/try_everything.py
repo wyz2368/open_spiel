@@ -13,14 +13,6 @@ from collections import OrderedDict
 #
 # print(a)
 
-def verification_encoding(subgame_idx):
-    """
-    Translate subgame index to a tuple. For example, [[0,0,1],[0,1,0]]->(0,0,1,0,1,0)
-    :param subgame_idx:
-    :return:
-    """
-    flat_list = [item for sublist in subgame_idx for item in sublist]
-    return tuple(flat_list)
-
-a = [[0,0,1],[0,1,0]]
-print(verification_encoding(a))
+a = [[1,2,3], [2,3,4]]
+b = [[2,3,4], [1,2,3]]
+print(list(itertools.product(*a)))

@@ -209,8 +209,8 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
                 # Save the deviation policy and its regret.
                 beneficial_dev_pol = [[] for _ in range(self._game_num_players)]
                 beneficial_dev_pol_gain = [{} for _ in range(self._game_num_players)]
-                for position, pol in enumerate(dev_pol):
-                    for player in range(self._game_num_players):
+                for player in range(self._game_num_players):
+                    for position, pol in enumerate(dev_pol[player]):
                         gain = dev_payoffs[player][position] - ne_payoffs[player]
                         if gain > 0:
                             beneficial_dev_pol[player].append(pol)
