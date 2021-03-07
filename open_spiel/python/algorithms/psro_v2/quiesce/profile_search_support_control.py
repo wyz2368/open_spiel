@@ -30,9 +30,9 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
         self.backup_subgames = []
         heapq.heapify(self.backup_subgames)
 
+        # Record which subgame has been explored.
         self.explored_subgame_verification = set()
         self.backup_subgames_verification = set()
-
 
         # The maximum restricted game support size with which beneficial
         # deviations must be explored. Restricted games with support larger than
@@ -47,7 +47,7 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
             for _ in range(effective_payoff_size)
         ]
         super(PSROQuiesceSolver, self).update_empirical_gamestate(seed=None)
-        self.number_profile_sampled = 1 #TODO: print out this.
+        self.number_profile_sampled = 1
 
     def update_meta_strategies(self):
         """Recomputes the current meta strategy of each player.
@@ -112,8 +112,7 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
 
     def get_complete_meta_game(self, subgame_idx):
         """
-        Returns the maximum complete game matrix
-        in the same form as empirical game
+        Returns the subgame given the subgame index.
         """
         selector = []
         for i in range(self._game_num_players):
@@ -126,20 +125,19 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
         Pop a subgame from priority queue.
         :return:
         """
-        subgame_idx = heapq.heappop(self.backup_subgames)
+        _, _, subgame_idx = heapq.heappop(self.backup_subgames)
         subgame = self.get_complete_meta_game(subgame_idx)
 
         return subgame, subgame_idx
 
-    def add_meta_game(self, subgame_idx):
+    def add_meta_game(self, subgame_idx_tuple):
         """
         Add a subgame to corresponding heap.
-        :param subgame_idx: (support_size priority, regret priority, subgame)
+        :param subgame_idx_tuple: (support_size priority, regret priority, subgame)
         :param heap:
         :return:
         """
-        heapq.heappush(self.backup_subgames, subgame_idx)
-
+        heapq.heappush(self.backup_subgames, subgame_idx_tuple)
 
 
     def inner_loop(self, regret_threshold=0.0, support_threshold=0.005):
@@ -166,11 +164,12 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
 
         while True:
             subgame, subgame_idx = self.get_next_meta_game()
-            # Simulate the missing payoff entries of the subgame
+            # Check and simulate the missing payoff entries of the subgame.
             self.check_completeness(subgame)
 
             # add to explored set
-            self.explored_subgame_verification.add(subgame_idx)
+            subgame_encode = self.verification_encoding(subgame_idx)
+            self.explored_subgame_verification.add(subgame_encode)
 
             ne_subgame = meta_strategies.general_nash_strategy(solver=self, return_joint=False, NE_solver=NE_solver,
                                                                game=subgame, checkpoint_dir=self.checkpoint_dir)
@@ -207,6 +206,7 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
             # When the size of the game is below the restricted game size:
             current_support_size = [len(list(np.where(np.array(ele) == 1)[0])) for ele in subgame_idx]
             if np.max(current_support_size) <= self.restricted_game_size:
+                # Save the deviation policy and its regret.
                 beneficial_dev_pol = [[] for _ in range(self._game_num_players)]
                 beneficial_dev_pol_gain = [{} for _ in range(self._game_num_players)]
                 for position, pol in enumerate(dev_pol):
@@ -217,7 +217,7 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
                             beneficial_dev_pol_gain[player][pol] = gain
 
                 for player in range(self._game_num_players):
-                    beneficial_dev_pol[player].append(-1) #-1 means no sampling.
+                    beneficial_dev_pol[player].append(-1) #-1 means no strategy sampling from that player.
 
                 all_deviation_combinations = itertools.product(*beneficial_dev_pol)
                 for dev_pol in all_deviation_combinations:
@@ -229,9 +229,11 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
                             new_subgame_idx[player][pol] = 1
                             gain += beneficial_dev_pol_gain[player][pol]
                     support_size = np.sum(new_subgame_idx)
-                    if new_subgame_idx not in self.explored_subgame_verification or self.backup_subgames_verification:
+
+                    new_subgame_encode = self.verification_encoding(new_subgame_idx)
+                    if new_subgame_encode not in self.explored_subgame_verification or self.backup_subgames_verification:
                         self.add_meta_game((support_size, gain, new_subgame_idx))
-                        self.backup_subgames_verification.add(new_subgame_idx)
+                        self.backup_subgames_verification.add(new_subgame_encode)
 
             else: # support size larger than restricted game size.
                 br_pol = [[] for _ in range(self._game_num_players)]
@@ -257,9 +259,10 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
                             new_subgame_idx[player][pol] = 1
                             gain += br_pol_gain[player][pol]
                     support_size = np.sum(new_subgame_idx)
-                    if new_subgame_idx not in self.explored_subgame_verification or self.backup_subgames_verification:
+                    new_subgame_encode = self.verification_encoding(new_subgame_idx)
+                    if new_subgame_encode not in self.explored_subgame_verification or self.backup_subgames_verification:
                         self.add_meta_game((support_size, gain, new_subgame_idx))
-                        self.backup_subgames_verification.add(new_subgame_idx)
+                        self.backup_subgames_verification.add(new_subgame_encode)
 
 
         # return confirmed nash equilibrium
@@ -363,7 +366,7 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
         """
         nan_lable = np.isnan(subgame[0])
         if np.any(nan_lable):
-            nan_position = list(np.where(nan_lable)==1)
+            nan_position = list(np.where(nan_lable) == 1)
             for profile in nan_position:
                 self.sample_pure_policy_to_empirical_game(profile)
 
@@ -383,3 +386,12 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
             all_combinations.append(combinations)
         all_subgames = itertools.product(*all_combinations)
         return list(all_subgames)
+
+    def verification_encoding(self, subgame_idx):
+        """
+        Translate subgame index to a tuple. For example, [[0,0,1],[0,1,0]]->(0,0,1,0,1,0)
+        :param subgame_idx:
+        :return:
+        """
+        flat_list = [item for sublist in subgame_idx for item in sublist]
+        return tuple(flat_list)

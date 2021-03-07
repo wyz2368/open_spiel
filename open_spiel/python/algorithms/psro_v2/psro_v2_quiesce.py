@@ -53,7 +53,7 @@ from open_spiel.python.algorithms.psro_v2 import psro_v2
 from open_spiel.python.algorithms.psro_v2 import rl_oracle
 from open_spiel.python.algorithms.psro_v2 import rl_policy
 from open_spiel.python.algorithms.psro_v2 import strategy_selectors
-from open_spiel.python.algorithms.psro_v2.quiesce.profile_search import PSROQuiesceSolver
+from open_spiel.python.algorithms.psro_v2.quiesce import profile_search, profile_search_support_control
 from open_spiel.python.algorithms.psro_v2 import meta_strategies
 from open_spiel.python.algorithms.psro_v2.eval_utils import save_strategies, save_nash, save_pkl, dev_regret
 
@@ -78,6 +78,7 @@ flags.DEFINE_integer("gpsro_iterations", 50,
 flags.DEFINE_bool("symmetric_game", False, "Whether to consider the current "
                   "game as a symmetric game.")
 flags.DEFINE_bool("quiesce", True, "Whether to use quiece")
+flags.DEFINE_bool("quiesce_control", False, "Whether to use quiece with support control")
 flags.DEFINE_bool("sparse_quiesce", False, "whether to use sparse matrix quiesce implementation")
 
 # Rectify options
@@ -388,15 +389,17 @@ def save_at_termination(solver, file_for_meta_game):
     with open(file_for_meta_game,'wb') as f:
         pickle.dump(solver.get_meta_game(), f)
 
-def gpsro_looper(env, oracle, agents, writer, quiesce=False, checkpoint_dir=None, seed=None):
+def gpsro_looper(env, oracle, agents, writer, quiesce=False, support_control=False, checkpoint_dir=None, seed=None):
   """Initializes and executes the GPSRO training loop."""
   sample_from_marginals = True  # TODO(somidshafiei) set False for alpharank
   training_strategy_selector = FLAGS.training_strategy_selector or strategy_selectors.probabilistic_strategy_selector
   
   if not quiesce:
     solver = psro_v2.PSROSolver
+  elif support_control:
+    solver = profile_search_support_control.PSROQuiesceSolver
   else:
-    solver = PSROQuiesceSolver
+    solver = profile_search.PSROQuiesceSolver
 
   g_psro_solver = solver(
       env.game,
@@ -524,7 +527,7 @@ def main(argv):
     elif FLAGS.oracle_type == "ARS_parallel":
       oracle, agents = init_ars_parallel_responder(sess, env)
     # sess.run(tf.global_variables_initializer())
-    gpsro_looper(env, oracle, agents, writer, quiesce=FLAGS.quiesce, checkpoint_dir=checkpoint_dir, seed=seed)
+    gpsro_looper(env, oracle, agents, writer, quiesce=FLAGS.quiesce, support_control=FLAGS.quiesce_control, checkpoint_dir=checkpoint_dir, seed=seed)
 
   writer.close()
 
