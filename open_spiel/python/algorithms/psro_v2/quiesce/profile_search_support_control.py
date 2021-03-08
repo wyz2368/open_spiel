@@ -139,6 +139,14 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
         """
         heapq.heappush(self.backup_subgames, subgame_idx_tuple)
 
+    def reset_priority_queue(self):
+        self.backup_subgames = []
+        heapq.heapify(self.backup_subgames)
+
+        # Record which subgame has been explored.
+        self.explored_subgame_verification = set()
+        self.backup_subgames_verification = set()
+
 
     def inner_loop(self, regret_threshold=0.0, support_threshold=0.005):
         """
@@ -160,6 +168,7 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
         for player in range(self._game_num_players):
             subgame_idx[player][-1] = 1
 
+        self.reset_priority_queue()
         self.add_meta_game((1, 1, subgame_idx))
 
         while True:
