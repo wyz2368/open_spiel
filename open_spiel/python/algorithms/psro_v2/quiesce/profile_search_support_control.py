@@ -171,7 +171,14 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
         self.reset_priority_queue()
         self.add_meta_game((1, 1, subgame_idx))
 
+        print("Begin Inner loop:")
+        print("Backup games:", self.backup_subgames)
+        print("Explored:", self.explored_subgame_verification)
+        print("Backup:", self.backup_subgames_verification)
+
+        iteration = 0
         while True:
+            iteration += 1
             subgame, subgame_idx = self.get_next_meta_game()
             # Check and simulate the missing payoff entries of the subgame.
             self.check_completeness(subgame)
@@ -180,8 +187,10 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
             subgame_encode = self.verification_encoding(subgame_idx)
             self.explored_subgame_verification.add(subgame_encode)
 
+            print("Starting RD.")
             ne_subgame = meta_strategies.general_nash_strategy(solver=self, return_joint=False, NE_solver=NE_solver,
                                                                game=subgame, checkpoint_dir=self.checkpoint_dir)
+            print("Finishing RD.")
             # ne_support_index: list of list, index of where equilibrium is [[0,1],[2]]
             # cumsum: index ne_subgame with subgame_idx
             cum_sum = [np.cumsum(ele) for ele in subgame_idx]
@@ -212,6 +221,7 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
             if len(dev) == 0:
                 break
 
+            print("Starting priority queue.")
             # When the size of the game is below the restricted game size:
             current_support_size = [len(list(np.where(np.array(ele) == 1)[0])) for ele in subgame_idx]
             if np.max(current_support_size) <= self.restricted_game_size:
@@ -273,6 +283,12 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
                         self.add_meta_game((support_size, -gain, new_subgame_idx))
                         self.backup_subgames_verification.add(new_subgame_encode)
 
+            print("Finishing priority queue.")
+            print("Iteration:", iteration)
+            print("Backup games:", self.backup_subgames)
+            print("Explored:", self.explored_subgame_verification)
+            print("Backup:", self.backup_subgames_verification)
+            print("*****************************************")
 
         # return confirmed nash equilibrium
         eq = []
