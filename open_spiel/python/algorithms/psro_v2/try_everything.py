@@ -13,6 +13,6 @@ from collections import OrderedDict
 #
 # print(a)
 
-a = [[1,2,3], [2,3,4]]
-b = [[2,3,4], [1,2,3]]
-print(list(itertools.product(*a)))
+a = [1]
+b = [2]
+print(1 not in a or b)
