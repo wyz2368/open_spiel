@@ -280,7 +280,7 @@ def file_len(fname):
     num_lines = sum(1 for line in open(fname))
     return num_lines
 
-def controll_regret(payoff_tensors, equilibria, regret_threshold=0.45):
+def controll_regret(payoff_tensors, equilibria, regret_threshold=0.2):
     """
     Find qre with certain regret shreshold within the EG.
     :param payoff_tensors:
