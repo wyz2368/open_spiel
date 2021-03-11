@@ -391,8 +391,8 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
         """
         nan_lable = np.isnan(subgame[0])
         if np.any(nan_lable):
-            nan_position = list(np.where(nan_lable) == 1)
-            for profile in nan_position:
+            nan_position = list(np.where(nan_lable == 1))
+            for profile in zip(*nan_position):
                 self.sample_pure_policy_to_empirical_game(profile)
 
     def find_all_combinations(self, beneficial_dev_pol):
