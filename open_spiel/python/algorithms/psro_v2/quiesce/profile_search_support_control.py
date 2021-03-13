@@ -181,7 +181,9 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
             iteration += 1
             subgame, subgame_idx = self.get_next_meta_game()
             # Check and simulate the missing payoff entries of the subgame.
-            self.check_completeness(subgame)
+            flag = self.check_completeness(subgame)
+            if flag:
+                subgame = self.get_complete_meta_game(subgame_idx)
 
             # add to explored set
             subgame_encode = self.verification_encoding(subgame_idx)
@@ -397,6 +399,8 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
             nan_position = list(np.where(nan_lable == 1))
             for profile in zip(*nan_position):
                 self.sample_pure_policy_to_empirical_game(profile)
+            return True
+        return False
 
     def find_all_combinations(self, beneficial_dev_pol):
         """

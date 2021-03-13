@@ -28,7 +28,21 @@ def check_completeness(subgame):
             print("profile", profile)
 
 
-subgame = [np.array([[np.nan, 2],
-                     [2, np.nan]])]
+subgame = [np.array([[[ 1.95 ,    np.nan],
+            [-1.815, -1.2  ]],
+
+           [[-0.885,  2.575],
+            [ 0.275,  0.19 ]]]),
+           np.array([[[-0.31 ,    np.nan],
+            [ 3.115,  0.485]],
+
+           [[-2.075, -3.085],
+            [-2.505,  0.945]]]), np.array([[[-1.64 ,    np.nan],
+            [-1.3  ,  0.715]],
+
+           [[ 2.96 ,  0.51 ],
+            [ 2.23 , -1.135]]])]
+
+print("NAN:", subgame[0][0,0,1])
 
 check_completeness(subgame)
