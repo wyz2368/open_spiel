@@ -30,8 +30,8 @@ RPS_p2_meta_game = np.array([[0, 1, -1], [-1, 0, 1], [1, -1, 0]])
 RPS_meta_games = [RPS_p1_meta_game, RPS_p2_meta_game]
 
 #(5) Hunt Games
-HT_p1_meta_game = np.array([[4, 1], [3, 2]])
-HT_p2_meta_game = np.array([[4, 3], [1, 2]])
+HT_p1_meta_game = np.array([[np.nan, 1], [3, 2]])
+HT_p2_meta_game = np.array([[np.nan, 3], [1, 2]])
 HT_meta_games = [HT_p1_meta_game, HT_p2_meta_game]
 
 game_name = 'HT'
