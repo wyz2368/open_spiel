@@ -201,7 +201,7 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
                     if subgame_idx[i][j] == 1 and ne_subgame[i][cum_sum[i][j] - 1] >= support_threshold:
                         ne_support_index_p.append(j)
                 if len(ne_support_index_p) == 0:
-                    print("ne_support_index_p:", ne_support_index_p)
+                    print("ne_subgame:", ne_subgame)
                     print("subgame:", subgame)
                 assert len(ne_support_index_p) != 0 #TODO: assertion can be triggered with no reason.
                 ne_support_index.append(ne_support_index_p)
