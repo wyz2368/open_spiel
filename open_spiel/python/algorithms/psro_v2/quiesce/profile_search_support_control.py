@@ -181,7 +181,7 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
             iteration += 1
             subgame, subgame_idx = self.get_next_meta_game()
             # Check and simulate the missing payoff entries of the subgame.
-            flag = self.check_completeness(subgame)
+            flag = self.check_completeness(subgame, subgame_idx)
             if flag:
                 subgame = self.get_complete_meta_game(subgame_idx)
 
@@ -202,11 +202,7 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
                 for j in range(len(subgame_idx[i])):
                     if subgame_idx[i][j] == 1 and ne_subgame[i][cum_sum[i][j] - 1] >= support_threshold:
                         ne_support_index_p.append(j)
-                if len(ne_support_index_p) == 0:
-                    print("subgame_idx:", subgame_idx)
-                    print("subgame:", subgame)
-                    print("full game:", self._meta_games)
-                assert len(ne_support_index_p) != 0 #TODO: assertion can be triggered with no reason.
+                assert len(ne_support_index_p) != 0
                 ne_support_index.append(ne_support_index_p)
 
             # ne_subgame: non-zero equilibrium support, [[0.1,0.5,0.4],[0.2,0.4,0.4]]
@@ -389,17 +385,26 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
             self._meta_games[k][tuple(policy_indicator)] = utility_estimates[k]
         return True
 
-    def check_completeness(self, subgame):
+    def check_completeness(self, subgame, subgame_idx):
         """
         Check if a subgame is complete. If not, simulate missing entries.
         :param subgame:
         :return:
         """
+        def translate(subgame_idx, profile):
+            "Tranlate idx from subgame to full game."
+            fullgame_profile = []
+            for player, idx in enumerate(subgame_idx):
+                one_pos = np.where(idx == 1)[0]
+                fullgame_profile.append(one_pos[profile[player]])
+            return fullgame_profile
+
         nan_lable = np.isnan(subgame[0])
         if np.any(nan_lable):
             nan_position = list(np.where(nan_lable == 1))
             for profile in zip(*nan_position):
-                self.sample_pure_policy_to_empirical_game(profile)
+                fullgame_profile = translate(subgame_idx, profile)
+                self.sample_pure_policy_to_empirical_game(fullgame_profile)
             return True
         return False
 
