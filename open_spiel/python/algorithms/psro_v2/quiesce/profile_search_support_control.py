@@ -205,6 +205,7 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
                 if len(ne_support_index_p) == 0:
                     print("ne_subgame:", ne_subgame)
                     print("subgame:", subgame)
+                    print("full game:", self._meta_games)
                 assert len(ne_support_index_p) != 0 #TODO: assertion can be triggered with no reason.
                 ne_support_index.append(ne_support_index_p)
 
