@@ -13,12 +13,22 @@ from collections import OrderedDict
 #
 # print(a)
 
-def check_completeness(subgame):
+def check_completeness(subgame, subgame_idx):
     """
     Check if a subgame is complete. If not, simulate missing entries.
     :param subgame:
     :return:
     """
+
+    def translate(subgame_idx, profile):
+        "Tranlate idx from subgame to full game."
+        fullgame_profile = []
+        for player, idx in enumerate(subgame_idx):
+            print("idx", idx)
+            one_pos = np.where(np.array(idx) == 1)[0]
+            print(one_pos)
+            fullgame_profile.append(one_pos[profile[player]])
+        return fullgame_profile
     nan_lable = np.isnan(subgame[0])
     print("nan_table", nan_lable)
     if np.any(nan_lable):
@@ -26,6 +36,7 @@ def check_completeness(subgame):
         print("nan_position", nan_position)
         for profile in zip(*nan_position):
             print("profile", profile)
+            print("full game idx:", translate(subgame_idx, profile))
         return True
     return False
 
@@ -102,7 +113,5 @@ def get_complete_meta_game(subgame, subgame_idx):
 
 complete_subgame = get_complete_meta_game(subgame, subgame_idx)
 print(complete_subgame)
-flag = check_completeness(complete_subgame)
+flag = check_completeness(complete_subgame, subgame_idx)
 print(flag)
-a = tuple([0, 0, 1])
-print(subgame[0][a])

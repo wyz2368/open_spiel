@@ -395,7 +395,7 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
             "Tranlate idx from subgame to full game."
             fullgame_profile = []
             for player, idx in enumerate(subgame_idx):
-                one_pos = np.where(idx == 1)[0]
+                one_pos = np.where(np.array(idx) == 1)[0]
                 fullgame_profile.append(one_pos[profile[player]])
             return fullgame_profile
 
