@@ -117,6 +117,9 @@ class AbstractMetaTrainer(object):
                gamma=0.0,
                abs_value=False,
                kl_reg=False,
+               quiesce_regret_threshold=None,
+               RD_regret_threshold=None,
+               RD_regularization=False,
                **kwargs):
     """Abstract Initialization for meta trainers.
 
@@ -172,6 +175,11 @@ class AbstractMetaTrainer(object):
     self._oracle = oracle
     self._train_loggable_oracle = (oracle.__class__.__name__!='BestResponseOracle')
     self._num_players = self._game.num_players()
+
+    # quiesce
+    self.quiesce_regret_threshold = quiesce_regret_threshold
+    self.RD_regret_threshold = RD_regret_threshold
+    self.RD_regularization = RD_regularization
 
     self.symmetric_game = symmetric_game
     self._game_num_players = self._num_players

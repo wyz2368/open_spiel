@@ -181,12 +181,11 @@ class PSROSolver(abstract_meta_trainer.AbstractMetaTrainer):
         meta_strategy_method=meta_strategy_method,
         training_strategy_selector=training_strategy_selector,
         number_policies_selected=number_policies_selected,
+        quiesce_regret_threshold=quiesce_regret_threshold,
+        RD_regret_threshold=RD_regret_threshold,
+        RD_regularization=RD_regularization,
         **kwargs)
 
-    # quiesce
-    self.quiesce_regret_threshold = quiesce_regret_threshold
-    self.RD_regret_threshold = RD_regret_threshold
-    self.RD_regularization = RD_regularization
 
   def _initialize_policy(self, initial_policies):
     #TODO: add policy initialization for symmetric game.
