@@ -431,7 +431,7 @@ def gpsro_looper(env, oracle, agents, writer, quiesce=False, support_control=Fal
     train_reward_curve = g_psro_solver.iteration(seed=seed)
     # meta_game = g_psro_solver.get_meta_game()
     meta_probabilities = g_psro_solver.get_meta_strategies()
-    another_probabilities = g_psro_solver.get_another_probs()
+    # another_probabilities = g_psro_solver.get_another_probs()
     policies = g_psro_solver.get_policies()
 
     if FLAGS.verbose:
@@ -444,14 +444,14 @@ def gpsro_looper(env, oracle, agents, writer, quiesce=False, support_control=Fal
     aggr_policies = aggregator.aggregate(
         range(FLAGS.n_players), policies, meta_probabilities)
 
-    another_aggr_policies = aggregator.aggregate(
-        range(FLAGS.n_players), policies, another_probabilities)
+    # another_aggr_policies = aggregator.aggregate(
+    #     range(FLAGS.n_players), policies, another_probabilities)
 
     exploitabilities, expl_per_player = exploitability.nash_conv(
         env.game, aggr_policies, return_only_nash_conv=False)
 
-    another_exploitabilities, another_expl_per_player = exploitability.nash_conv(
-        env.game, another_aggr_policies, return_only_nash_conv=False)
+    # another_exploitabilities, another_expl_per_player = exploitability.nash_conv(
+    #     env.game, another_aggr_policies, return_only_nash_conv=False)
 
 
     if gpsro_iteration % 10 ==0:
@@ -459,14 +459,14 @@ def gpsro_looper(env, oracle, agents, writer, quiesce=False, support_control=Fal
       # save_strategies(solver=g_psro_solver, checkpoint_dir=checkpoint_dir)
 
     writer.add_scalar('exp', exploitabilities, gpsro_iteration)
-    writer.add_scalar('another_exp', another_exploitabilities, gpsro_iteration)
+    # writer.add_scalar('another_exp', another_exploitabilities, gpsro_iteration)
 
     # Save number of simulated profiles.
     writer.add_scalar('Num of simulated profiles', g_psro_solver.number_profile_sampled, gpsro_iteration)
 
     if FLAGS.verbose:
       print("Exploitabilities : {}".format(exploitabilities))
-      print("Another_Exploitabilities : {}".format(another_exploitabilities))
+      # print("Another_Exploitabilities : {}".format(another_exploitabilities))
       # print("Exploitabilities per player : {}".format(expl_per_player))
 
 def main(argv):
