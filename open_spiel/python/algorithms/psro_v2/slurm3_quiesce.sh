@@ -12,5 +12,5 @@
 
 module load python3.6-anaconda/5.2.0
 cd ${SLURM_SUBMIT_DIR}
-python psro_v2_quiesce.py --quiesce_regret_threshold=0.0 --RD_regret_threshold=0.3 --RD_regularization=True --quiesce_control=False --game_name=leduc_poker --n_players=3 --meta_strategy_method=prd --oracle_type=DQN --gpsro_iterations=50 --number_training_episodes=10000 --sbatch_run=True --root_result_folder=dqn_RD_crd_quiesce_030
+python psro_v2_quiesce.py --quiesce_regret_threshold=0.0 --RD_regret_threshold=0.3 --RD_regularization=False --quiesce_control=False --game_name=leduc_poker --n_players=3 --meta_strategy_method=prd --oracle_type=DQN --gpsro_iterations=50 --number_training_episodes=10000 --sbatch_run=True --root_result_folder=dqn_RD_do_quiesce
 
