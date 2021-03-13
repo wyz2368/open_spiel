@@ -529,7 +529,11 @@ def main(argv):
     elif FLAGS.oracle_type == "ARS_parallel":
       oracle, agents = init_ars_parallel_responder(sess, env)
     # sess.run(tf.global_variables_initializer())
-    gpsro_looper(env, oracle, agents, writer, quiesce=FLAGS.quiesce, support_control=FLAGS.quiesce_control, checkpoint_dir=checkpoint_dir, seed=seed)
+    gpsro_looper(env, oracle, agents, writer,
+                 quiesce=FLAGS.quiesce,
+                 support_control=FLAGS.quiesce_control,
+                 checkpoint_dir=checkpoint_dir,
+                 seed=seed)
 
   writer.close()
 
