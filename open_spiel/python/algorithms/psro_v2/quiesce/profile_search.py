@@ -129,7 +129,8 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
         """
         found_confirmed_eq = False
         # TODO: change to replicator with regularization for online target.(Low implementation priority.)
-        NE_solver = 'replicator' if self._num_players > 2 else 'gambit'
+        # NE_solver = 'replicator' if self._num_players > 2 else 'gambit'
+        NE_solver = 'gambit'
 
         num_strategies = [len(self._policies[k]) for k in range(self._game_num_players)]
         # Complete index has a different meaning from the one in quiesce.py .
@@ -205,8 +206,11 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
         # return confirmed nash equilibrium
         # If True, first run quiesce to find the subgame containing a NE. Than run RD to regularize.
         if True: #regularization:
-            ne_subgame = controled_RD.controled_replicator_dynamics(maximum_subgame,
-                                                                    regret_threshold=regularization_regret)
+            # ne_subgame = controled_RD.controled_replicator_dynamics(maximum_subgame,
+            #                                                         regret_threshold=regularization_regret)
+            ne_subgame = meta_strategies.general_nash_strategy(solver=self, return_joint=False, NE_solver="replicator",
+                                                               game=maximum_subgame, checkpoint_dir=self.checkpoint_dir)
+
             cum_sum = [np.cumsum(ele) for ele in self._complete_ind]
             ne_support_index = []
             for i in range(self._game_num_players):

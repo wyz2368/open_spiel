@@ -190,7 +190,7 @@ def decode_gambit_file(meta_games, mode="all", max_num_nash=10, checkpoint_dir=N
         logging.info("mode is beyond all/pure/one.")
 
 
-def do_gambit_analysis(meta_games, mode, timeout = 600, method="lcp", method_pure_ne="enumpure", checkpoint_dir=None):
+def do_gambit_analysis(meta_games, mode, timeout = 600, method="simpdiv", method_pure_ne="enumpure", checkpoint_dir=None):
     """
     Combine encoder and decoder.
     :param meta_games: meta-games in PSRO.
