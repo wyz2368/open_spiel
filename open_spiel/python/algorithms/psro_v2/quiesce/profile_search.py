@@ -13,6 +13,7 @@ from open_spiel.python.algorithms.psro_v2 import psro_v2
 from open_spiel.python.algorithms.psro_v2 import meta_strategies
 from open_spiel.python.algorithms.nash_solver import controled_RD
 from open_spiel.python.algorithms.nash_solver.general_nash_solver import normalize_ne
+from open_spiel.python.algorithms.psro_v2.eval_utils import dev_regret, dev_regret_general
 
 
 # TODO: test symmetric game, as self.symmetric flags changes self.policies and self.num_players
@@ -201,6 +202,8 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
 
         self.eq_quiesce = normalize_ne(eq)
         self.eq_quiesce_nonmargin = meta_strategies.get_joint_strategy_from_marginals(eq)
+        current_regret = dev_regret_general(maximum_subgame, self.eq_quiesce)
+        print("Output Profile Regret:", current_regret)
 
 
         # return confirmed nash equilibrium
