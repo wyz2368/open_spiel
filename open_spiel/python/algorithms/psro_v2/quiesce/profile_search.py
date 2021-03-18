@@ -202,7 +202,7 @@ class PSROQuiesceSolver(psro_v2.PSROSolver):
 
         self.eq_quiesce = normalize_ne(eq)
         self.eq_quiesce_nonmargin = meta_strategies.get_joint_strategy_from_marginals(eq)
-        current_regret = dev_regret_general(maximum_subgame, self.eq_quiesce)
+        current_regret = dev_regret_general(maximum_subgame, ne_subgame_nonzero)
         print("Output Profile Regret:", current_regret)
 
 
