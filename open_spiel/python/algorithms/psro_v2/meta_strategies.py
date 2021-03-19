@@ -320,7 +320,7 @@ def projected_DO(solver, return_joint=False, checkpoint_dir=None, gamma=1e-3):
     return result, joint_strategies
 
 
-def regret_controled_RD(solver, return_joint=False, checkpoint_dir=None, regret_threshold=0.35):
+def regret_controled_RD(solver, return_joint=False, checkpoint_dir=None, regret_threshold=0.10):
   meta_games = solver.get_meta_game()
   if not isinstance(meta_games, list):
     meta_games = [meta_games, -meta_games]
@@ -332,6 +332,7 @@ def regret_controled_RD(solver, return_joint=False, checkpoint_dir=None, regret_
   else:
     joint_strategies = get_joint_strategy_from_marginals(result)
     return result, joint_strategies
+
 
 def qbe_strategy(solver, return_joint=False, proportion=1.0, game=None, mode="all", checkpoint_dir=None):
   """Returns qbe distribution on meta game matrix.
