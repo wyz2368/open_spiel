@@ -12,5 +12,5 @@
 
 module load python3.6-anaconda/5.2.0
 cd ${SLURM_SUBMIT_DIR}
-python psro_v2_example.py --game_name=kuhn_poker --n_players=2 --meta_strategy_method=CRD --oracle_type=DQN --gpsro_iterations=50 --number_training_episodes=10000 --sbatch_run=True --root_result_folder=dqn_crd_kuhn_010
+python psro_v2_example.py --game_name=kuhn_poker --n_players=2 --meta_strategy_method=CRD --oracle_type=DQN --gpsro_iterations=50 --number_training_episodes=10000 --sbatch_run=True --root_result_folder=dqn_crd_kuhn_020
 
