@@ -14,7 +14,7 @@ from open_spiel.python.algorithms.psro_v2.eval_utils import dev_regret, dev_regr
 def controled_replicator_dynamics(payoff_tensors,
                                   regret_threshold,
                                   prd_initial_strategies=None,
-                                  prd_iterations=int(3e5),
+                                  prd_iterations=int(1e5),
                                   prd_dt=1e-3,
                                   prd_gamma=0,
                                   average_over_last_n_strategies=None,
@@ -74,7 +74,7 @@ def controled_replicator_dynamics(payoff_tensors,
     if i >= prd_iterations - average_over_last_n_strategies:
       meta_strategy_window.append(new_strategies)
 
-    if i >= 1e5 and i % 100 == 0:
+    if i >= 1e4: # and i % 100 == 0:
         # return average_new_strategies
         average_new_strategies = np.mean(meta_strategy_window, axis=0)
         nash_list = [average_new_strategies[i] for i in range(number_players)]
