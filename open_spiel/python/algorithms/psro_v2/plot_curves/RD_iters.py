@@ -19,7 +19,7 @@ plt.figure()
 # plt.title("NashConv Curves ", fontsize = 22)
 
 RD_iter = genfromtxt('./regularization_data/RD_iter1.csv', delimiter=',')
-RD_converge = np.ones(len(RD_iter)) * 1e5
+# RD_converge = np.ones(len(RD_iter)) * 1e5
 
 # axes = plt.gca()
 # axes.set_ylim([0,3])
@@ -27,7 +27,7 @@ RD_converge = np.ones(len(RD_iter)) * 1e5
 X = np.arange(1, len(RD_iter)+1)
 
 
-plt.plot(X, RD_converge, color="C1", label='Convergence to NE')
+# plt.plot(X, RD_converge, color="C1", label='Convergence to NE')
 plt.plot(X, RD_iter, color="C2", label='Regularized RD')
 
 

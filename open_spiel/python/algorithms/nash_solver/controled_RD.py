@@ -74,7 +74,7 @@ def controled_replicator_dynamics(payoff_tensors,
     if i >= prd_iterations - average_over_last_n_strategies:
       meta_strategy_window.append(new_strategies)
 
-    if i >= 1e4: # and i % 100 == 0:
+    if i >= 0: # and i % 100 == 0:
         # return average_new_strategies
         average_new_strategies = np.mean(meta_strategy_window, axis=0)
         nash_list = [average_new_strategies[i] for i in range(number_players)]
