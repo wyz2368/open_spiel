@@ -28,8 +28,8 @@ Mike_crd_std = genfromtxt('./data/2Nash_merged_csv/dqn_crd_0.35_Deepmind_std.csv
 dqn_do_mean = genfromtxt('./data/2Nash_merged_csv/dqn_DO_mean.csv', delimiter=',')[:103]
 dqn_do_std = genfromtxt('./data/2Nash_merged_csv/dqn_DO_std.csv', delimiter=',')[:103]
 
-qbe_mean = genfromtxt('./regularization_data/qbe_025_mean.csv', delimiter=',')
-qbe_std = genfromtxt('./regularization_data/qbe_025_std.csv', delimiter=',')
+qbe_mean = genfromtxt('./regularization_data/qbe_035_mean.csv', delimiter=',')
+qbe_std = genfromtxt('./regularization_data/qbe_035_std.csv', delimiter=',')
 
 
 axes = plt.gca()
